@@ -8,29 +8,39 @@ public class PlayerStateController : MonoBehaviour
 {
     [Header(("引用"))]
     [SerializeField] private PlayerMotor playerMotor;
+    [SerializeField] private PlayerJump playerJump;
     //泛型字典管理具体状态类，同时使用readonly防止运行过程中修改
     private readonly Dictionary<Type,PlayerStateBase> states=new Dictionary<Type, PlayerStateBase>();
     //获取玩家当前引用和信息，负责调用实际行为逻辑和供具体状态类引用
     private PlayerContext context;
     private PlayerStateBase currentState;
+    private IPlayerInputSource playerInput;
     //利用属性封装外部可读不可改
     public PlayerStateBase CurrentState => currentState;
-
+    public void Init(IPlayerInputSource playerInput)
+    {
+        this.playerInput = playerInput;
+    }
     private void Awake()
     {
-        playerMotor.GetComponent<PlayerMotor>();
+        if (playerMotor == null)
+        {
+            playerMotor = GetComponent<PlayerMotor>();
+        }
+        if (playerJump == null)
+        {
+            playerJump = GetComponent<PlayerJump>();
+        }
         //存入引用即可
-        context = new PlayerContext(playerMotor);
+        context = new PlayerContext(playerMotor,playerJump);
         //获取组件信息和玩家信息
         RegisterState();
     }
-
     private void Start()
     {
         //一开始就设定为待机状态，填入的泛型参数即为你想切换的状态
         ChangeState<PlayerIdleState>();
     }
-
     private void Update()
     {
         //处理状态切换逻辑
@@ -52,30 +62,38 @@ public class PlayerStateController : MonoBehaviour
         {
             return;
         }
-        //待机状态下逻辑切换
-        if (currentState is PlayerIdleState)
+        //是否有输入
+        if (playerInput == null)
         {
-            if(playerMotor.InputSource.MoveInput!= Vector2.zero)
+            playerInput = playerMotor.InputSource;
+            if (playerInput == null)
             {
-                ChangeState<PlayerGroundMoveState>();
                 return;
             }
         }
-        //地面状态下逻辑切换
-        if (currentState is PlayerGroundMoveState)
+        bool hasMoveInput = playerInput.MoveInput != Vector2.zero;
+        //是否在地上
+        bool isGrounded = playerMotor.IsGrounded;
+        //如果触发了Jump键位并且跳起来了,或者说就是在空中
+        if ((playerInput.ConsumeJumpPressed() && playerJump.TryJump())||!isGrounded)
         {
-            if (playerMotor.InputSource.MoveInput == Vector2.zero)
-            {
-                ChangeState<PlayerIdleState>();
-                return;
-            }
+            ChangeState<PlayerAirState>();
+            return;
         }
+        //地面有移动输入时进入移动状态
+        if (hasMoveInput)
+        {
+            ChangeState<PlayerGroundMoveState>();
+            return;
+        }
+        ChangeState<PlayerIdleState>();
     }
     private void RegisterState()
     {
         //注册方法，调用添加字典方法，同时完成new操作触发构造函数，传入context值
         AddState(new PlayerIdleState(context));
         AddState(new PlayerGroundMoveState(context));
+        AddState(new PlayerAirState(context));
     }
     //————————————————————————————————————————————————辅助方法————————————————————————————————————————————
     /// <summary>

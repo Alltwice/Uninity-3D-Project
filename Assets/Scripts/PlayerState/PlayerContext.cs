@@ -6,8 +6,10 @@ public class PlayerContext
 {
     // ===== 稳定引用 =====
     public PlayerMotor Motor { get; private set; }
-    public PlayerContext( PlayerMotor motor)
+    public PlayerJump Jump { get; private set; }
+    public PlayerContext( PlayerMotor motor, PlayerJump jump )
     {
         Motor = motor;
+        Jump = jump;
     }
 }

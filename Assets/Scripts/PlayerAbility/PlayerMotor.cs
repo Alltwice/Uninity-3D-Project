@@ -8,6 +8,7 @@ public class PlayerMotor : MonoBehaviour
 {
     [Header("移动设置")]
     [SerializeField] private float moveSpeed = 5f;
+    [SerializeField] private float airMoveSpeed = 2f;
     [Tooltip("变向时旋转速度")]
     [SerializeField] private float rotationSmoothSpeed = 12f;
     [SerializeField] private float gravity = -20f;
@@ -21,6 +22,16 @@ public class PlayerMotor : MonoBehaviour
     //主要用于处理角色竖直方向上的下落和跳跃
     private Vector3 verticalVelocity;
 
+    /// <summary>
+    /// 给外部暴露修改高度和应用重力
+    /// </summary>
+    /// <param name="value">传入高度参数</param>
+    public void ChangeVerticalVelocity_y(float value)
+    {
+        verticalVelocity.y =value;
+    }
+    public bool IsGrounded => characterController.isGrounded;
+    public float Gravity => gravity;
     private void Awake()
     {
         characterController=GetComponent<CharacterController>();
@@ -29,7 +40,6 @@ public class PlayerMotor : MonoBehaviour
             cameraTransform = Camera.main.transform;
         }
     }
-
     /// <summary>
     /// 对外部暴露主动依赖函数，等待被组合脚本调用后注入
     /// </summary>
@@ -66,6 +76,25 @@ public class PlayerMotor : MonoBehaviour
         //旋转角色向移动方向
         RotateToMoveDirection(moveDirection);
 
+    }
+    /// <summary>
+    /// 处理空中移动
+    /// </summary>
+    public void AirMove()
+    {
+        //获取输入方向
+        Vector2 moveInput = inputSource.MoveInput;
+        Vector3 inputDirection = new Vector3(moveInput.x, 0f, moveInput.y);
+        if (inputDirection.sqrMagnitude > 1f)
+        {
+            inputDirection.Normalize();
+        }
+        Vector3 moveDirection = GetCameraMoveDir(inputDirection);
+        ApplyGravity();
+        Vector3 horizontalVelocity = moveDirection * airMoveSpeed;
+        Vector3 finalVelocity = horizontalVelocity + verticalVelocity;
+        characterController.Move(finalVelocity * Time.deltaTime);
+        RotateToMoveDirection(moveDirection);
     }
     //——————————————————————————————————————辅助方法——————————————————————————————————————————————
     

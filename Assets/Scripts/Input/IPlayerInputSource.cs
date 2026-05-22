@@ -7,4 +7,5 @@ public interface IPlayerInputSource
     //写入具体输入事件
     Vector2 MoveInput { get; }
     Vector2 LookInput { get; }
+    bool ConsumeJumpPressed();
 }
