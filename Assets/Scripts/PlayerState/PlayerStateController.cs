@@ -6,10 +6,11 @@ using System.Collections.Generic;
 /// </summary>
 public class PlayerStateController : MonoBehaviour
 {
+    [Header(("引用"))]
+    [SerializeField] private PlayerMotor playerMotor;
     //泛型字典管理具体状态类，同时使用readonly防止运行过程中修改
     private readonly Dictionary<Type,PlayerStateBase> states=new Dictionary<Type, PlayerStateBase>();
     //获取玩家当前引用和信息，负责调用实际行为逻辑和供具体状态类引用
-    private PlayerInfoProvider contextProvider;
     private PlayerContext context;
     private PlayerStateBase currentState;
     //利用属性封装外部可读不可改
@@ -17,10 +18,10 @@ public class PlayerStateController : MonoBehaviour
 
     private void Awake()
     {
+        playerMotor.GetComponent<PlayerMotor>();
+        //存入引用即可
+        context = new PlayerContext(playerMotor);
         //获取组件信息和玩家信息
-        contextProvider=GetComponent<PlayerInfoProvider>();
-        context = contextProvider.Context;
-        //new具体状态类同时注入信息
         RegisterState();
     }
 
@@ -42,7 +43,7 @@ public class PlayerStateController : MonoBehaviour
     private void HandleStateTransitions()
     {
         //当前状态为空不切换
-        if (currentState != null)
+        if (currentState == null)
         {
             return;
         }
@@ -51,15 +52,23 @@ public class PlayerStateController : MonoBehaviour
         {
             return;
         }
-
+        //待机状态下逻辑切换
         if (currentState is PlayerIdleState)
         {
-            
+            if(playerMotor.InputSource.MoveInput!= Vector2.zero)
+            {
+                ChangeState<PlayerGroundMoveState>();
+                return;
+            }
         }
-
+        //地面状态下逻辑切换
         if (currentState is PlayerGroundMoveState)
         {
-            
+            if (playerMotor.InputSource.MoveInput == Vector2.zero)
+            {
+                ChangeState<PlayerIdleState>();
+                return;
+            }
         }
     }
     private void RegisterState()

@@ -7,8 +7,7 @@ public class PlayerInstaller : MonoBehaviour
     [Header("玩家需求组件")]
     [SerializeField] private PlayerInputReader inputReader;
     [SerializeField] private PlayerMotor playerMotor;
-    [SerializeField] private Transform cameraTransform;
-
+    [SerializeField] private PlayerCameraOrbitTarget playerCameraOrbitTarget;
     private void Start()
     {
         if (inputReader == null)
@@ -22,12 +21,8 @@ public class PlayerInstaller : MonoBehaviour
             Debug.LogError("PlayerSceneContext: playerMotor is not assigned.");
             return;
         }
-
-        if (cameraTransform == null && Camera.main != null)
-        {
-            cameraTransform = Camera.main.transform;
-        }
         //调用依赖注入逻辑
-        playerMotor.Init(inputReader, cameraTransform);
+        playerMotor.Init(inputReader);
+        playerCameraOrbitTarget.Init(inputReader);
     }
 }

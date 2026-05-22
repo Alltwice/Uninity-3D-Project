@@ -180,7 +180,7 @@ Camera:
     height: 1
   near clip plane: 0.1
   far clip plane: 5000
-  field of view: 40
+  field of view: 35
   orthographic: 0
   orthographic size: 10
   m_Depth: -1
@@ -426,7 +426,7 @@ GameObject:
   m_Component:
   - component: {fileID: 452349616}
   - component: {fileID: 452349615}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: PlayerInputReader
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -472,7 +472,7 @@ GameObject:
   - component: {fileID: 528381384}
   - component: {fileID: 528381383}
   - component: {fileID: 528381382}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Plane
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -634,7 +634,7 @@ GameObject:
   - component: {fileID: 862262194}
   - component: {fileID: 862262193}
   - component: {fileID: 862262192}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -702,7 +702,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: 11e4b9abda3f41c48a7debcf09638a79, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -743,7 +743,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 916766219}
-  m_Layer: 0
+  - component: {fileID: 916766220}
+  m_Layer: 6
   m_Name: CameraPoint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -758,13 +759,32 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 916766218}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.08715578, y: 0, z: 0, w: 0.9961947}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: 0.17364816, y: 0, z: 0, w: 0.9848078}
+  m_LocalPosition: {x: 0, y: 1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1431779362}
-  m_LocalEulerAnglesHint: {x: 10, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 20, y: 0, z: 0}
+--- !u!114 &916766220
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 916766218}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e219f5c654e481d48aa7266fec8026a4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerCameraOrbitTarget
+  thirdPersonFollow: {fileID: 1753215612}
+  mouseSensitivity: 0.12
+  minPitch: -50
+  maxPitch: 60
+  normalDistance: 15
+  topViewDistance: 20
+  distanceSmoothSpeed: 8
 --- !u!1 &1431779358
 GameObject:
   m_ObjectHideFlags: 0
@@ -779,7 +799,8 @@ GameObject:
   - component: {fileID: 1431779359}
   - component: {fileID: 1431779363}
   - component: {fileID: 1431779364}
-  m_Layer: 0
+  - component: {fileID: 1431779365}
+  m_Layer: 6
   m_Name: Player
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -879,10 +900,10 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 916766219}
   - {fileID: 862262191}
   - {fileID: 452349616}
   - {fileID: 1907145892}
+  - {fileID: 916766219}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1431779363
@@ -898,7 +919,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMotor
   moveSpeed: 5
-  rotationSmoothSpeed: 1
+  rotationSmoothSpeed: 12
   gravity: -20
   groundedVerticalVelocity: -2
 --- !u!143 &1431779364
@@ -926,6 +947,19 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1431779365
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1431779358}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac2aa542d7dc3ea439e3057964b49d6d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStateController
+  playerMotor: {fileID: 1431779363}
 --- !u!1 &1472191975
 GameObject:
   m_ObjectHideFlags: 0
@@ -968,7 +1002,9 @@ GameObject:
   m_Component:
   - component: {fileID: 1753215608}
   - component: {fileID: 1753215609}
-  - component: {fileID: 1753215610}
+  - component: {fileID: 1753215612}
+  - component: {fileID: 1753215611}
+  - component: {fileID: 1753215613}
   m_Layer: 0
   m_Name: Camera
   m_TagString: Untagged
@@ -984,14 +1020,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1753215607}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.08715578, y: -0, z: -0, w: 0.9961947}
-  m_LocalPosition: {x: 1, y: 2.7814171, z: -4.431635}
+  m_LocalRotation: {x: 0.17364816, y: -0, z: -0, w: 0.9848078}
+  m_LocalPosition: {x: 0, y: 7.130302, z: -10.595389}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 330585546}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 9.98, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 15, y: 0, z: 0}
 --- !u!114 &1753215609
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1016,7 +1052,7 @@ MonoBehaviour:
     LookAtTarget: {fileID: 0}
     CustomLookAtTarget: 0
   Lens:
-    FieldOfView: 40
+    FieldOfView: 35
     OrthographicSize: 10
     NearClipPlane: 0.1
     FarClipPlane: 5000
@@ -1035,7 +1071,20 @@ MonoBehaviour:
       BarrelClipping: 0.25
       Anamorphism: 0
   BlendHint: 0
---- !u!114 &1753215610
+--- !u!114 &1753215611
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1753215607}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4afa82ae3200b82408d605c3dbdd1e38, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineRotateWithFollowTarget
+  Damping: 0
+--- !u!114 &1753215612
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1047,11 +1096,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 625c14eee3ad46c99df7c7c891ef668a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineThirdPersonFollow
-  Damping: {x: 0.5, y: 0.5, z: 0.3}
-  ShoulderOffset: {x: 1, y: 1, z: 0}
+  Damping: {x: 0.1, y: 0.5, z: 0.3}
+  ShoulderOffset: {x: 0, y: 0, z: 3.5}
   VerticalArmLength: 0
   CameraSide: 1
-  CameraDistance: 4.5
+  CameraDistance: 15
   AvoidObstacles:
     Enabled: 0
     CollisionFilter:
@@ -1061,6 +1110,45 @@ MonoBehaviour:
     CameraRadius: 0.2
     DampingIntoCollision: 0
     DampingFromCollision: 0.5
+--- !u!114 &1753215613
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1753215607}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dbe43d662878a7c43bcd44d43c9e2094, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineDeoccluder
+  CollideAgainst:
+    serializedVersion: 2
+    m_Bits: 8
+  IgnoreTag: Player
+  TransparentLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  MinimumDistanceFromTarget: 0.3
+  AvoidObstacles:
+    Enabled: 1
+    DistanceLimit: 0
+    MinimumOcclusionTime: 0
+    CameraRadius: 0.4
+    UseFollowTarget:
+      Enabled: 0
+      YOffset: 0
+    Strategy: 0
+    MaximumEffort: 4
+    SmoothingTime: 0
+    Damping: 0.4
+    DampingWhenOccluded: 0.2
+  ShotQualityEvaluation:
+    Enabled: 0
+    OptimalDistance: 10
+    NearLimit: 5
+    FarLimit: 30
+    MaxQualityBoost: 0.2
 --- !u!1 &1907145891
 GameObject:
   m_ObjectHideFlags: 0
@@ -1071,7 +1159,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1907145892}
   - component: {fileID: 1907145893}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: PlayerInstaller
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1107,7 +1195,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInstaller
   inputReader: {fileID: 452349615}
   playerMotor: {fileID: 1431779363}
-  cameraTransform: {fileID: 330585546}
+  playerCameraOrbitTarget: {fileID: 916766220}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

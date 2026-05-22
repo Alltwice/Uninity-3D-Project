@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// 在拿到输入数据之后具体要处理的输入内容，需要挂载在具体对象上
+/// 在拿到输入数据之后具体要处理的输入内容
 /// </summary>
 public class PlayerMotor : MonoBehaviour
 {
@@ -16,6 +16,7 @@ public class PlayerMotor : MonoBehaviour
     //能够处理碰撞，斜坡，台阶，贴地
     private CharacterController characterController;
     private IPlayerInputSource inputSource;
+    public IPlayerInputSource InputSource => inputSource;
     private Transform cameraTransform;
     //主要用于处理角色竖直方向上的下落和跳跃
     private Vector3 verticalVelocity;
@@ -23,28 +24,26 @@ public class PlayerMotor : MonoBehaviour
     private void Awake()
     {
         characterController=GetComponent<CharacterController>();
+        if (cameraTransform == null && Camera.main != null)
+        {
+            cameraTransform = Camera.main.transform;
+        }
     }
 
     /// <summary>
     /// 对外部暴露主动依赖函数，等待被组合脚本调用后注入
     /// </summary>
-    public void Init(IPlayerInputSource inputSource, Transform cameraTransform)
+    public void Init(IPlayerInputSource inputSource)
     {
         //给当前脚本中的内容赋值
         this.inputSource = inputSource;
-        this.cameraTransform = cameraTransform;
-    }
-
-    private void Update()
-    {
-        Move();
     }
     //——————————————————————————————————————调用方法————————————————————————————————————————————————
     
     /// <summary>
     /// 处理移动逻辑
     /// </summary>
-    private void Move()
+    public void Move()
     {
         //获取外部的位移信息
         Vector2 moveInput = inputSource.MoveInput;
@@ -102,7 +101,6 @@ public class PlayerMotor : MonoBehaviour
         {
             verticalVelocity.y = groundedVerticalVelocity;
         }
-
         verticalVelocity.y += gravity * Time.deltaTime;
     }
     /// <summary>
