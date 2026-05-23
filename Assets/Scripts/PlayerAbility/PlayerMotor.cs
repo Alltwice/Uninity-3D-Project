@@ -6,9 +6,14 @@ using UnityEngine;
 /// </summary>
 public class PlayerMotor : MonoBehaviour
 {
-    [Header("移动设置")]
+    [Header("移动速度")]
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float airMoveSpeed = 2f;
+    [Header("移动加速度")] 
+    [SerializeField] private float groundAcceleration = 35f;
+    [SerializeField] private float groundDeceleration = 45f;
+    [SerializeField] private float airAcceleration = 8f;
+    [Header("其他")]
     [Tooltip("变向时旋转速度")]
     [SerializeField] private float rotationSmoothSpeed = 12f;
     [SerializeField] private float gravity = -20f;
@@ -21,6 +26,7 @@ public class PlayerMotor : MonoBehaviour
     private Transform cameraTransform;
     //主要用于处理角色竖直方向上的下落和跳跃
     private Vector3 verticalVelocity;
+    private Vector3 horizontalVelocity;
 
     /// <summary>
     /// 给外部暴露修改高度和应用重力
@@ -55,20 +61,12 @@ public class PlayerMotor : MonoBehaviour
     /// </summary>
     public void Move()
     {
-        //获取外部的位移信息
-        Vector2 moveInput = inputSource.MoveInput;
-        //将二维输入转为三维位置信息
-        Vector3 inputDirection = new Vector3(moveInput.x, 0, moveInput.y);
-        //处理斜向移动和可能的遥感百分比移速问题
-        if(inputDirection.sqrMagnitude>1f)
-        {
-            inputDirection.Normalize();
-        }
-        //处理相机朝向和输入力度之后确定移动方向为摄像机朝向位置
-        Vector3 moveDirection = GetCameraMoveDir(inputDirection);
+        Vector3 moveDirection = GetInputDirection();
         ApplyGravity();
         //确定水平速度
-        Vector3 horizontalVelocity = moveDirection * moveSpeed;
+        Vector3 targetHorizontalVelocity = moveDirection * moveSpeed;
+        //实现加速效果，每帧向目标位置移动参数个单位
+        horizontalVelocity=Vector3.MoveTowards(horizontalVelocity, targetHorizontalVelocity, groundAcceleration * Time.deltaTime);
         //确定最终方向
         Vector3 finalVelocity = horizontalVelocity+verticalVelocity;
         //移动
@@ -82,19 +80,23 @@ public class PlayerMotor : MonoBehaviour
     /// </summary>
     public void AirMove()
     {
-        //获取输入方向
-        Vector2 moveInput = inputSource.MoveInput;
-        Vector3 inputDirection = new Vector3(moveInput.x, 0f, moveInput.y);
-        if (inputDirection.sqrMagnitude > 1f)
-        {
-            inputDirection.Normalize();
-        }
-        Vector3 moveDirection = GetCameraMoveDir(inputDirection);
+        Vector3 moveDirection = GetInputDirection();
         ApplyGravity();
-        Vector3 horizontalVelocity = moveDirection * airMoveSpeed;
+        Vector3 targetVerticalVelocity = moveDirection * airMoveSpeed;
+        horizontalVelocity=Vector3.MoveTowards(horizontalVelocity, targetVerticalVelocity, airAcceleration * Time.deltaTime);
         Vector3 finalVelocity = horizontalVelocity + verticalVelocity;
         characterController.Move(finalVelocity * Time.deltaTime);
         RotateToMoveDirection(moveDirection);
+    }
+    /// <summary>
+    /// 移动时有一个减速效果
+    /// </summary>
+    public void IdleMove()
+    {
+        horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, Vector3.zero, groundDeceleration * Time.deltaTime);
+        ApplyGravity();
+        Vector3 finalVelocity = horizontalVelocity + verticalVelocity;
+        characterController.Move(finalVelocity * Time.deltaTime);
     }
     //——————————————————————————————————————辅助方法——————————————————————————————————————————————
     
@@ -147,5 +149,18 @@ public class PlayerMotor : MonoBehaviour
         Quaternion targetRotation=Quaternion.LookRotation(moveDirection);
         //做线性插值旋转，最后一个参数值越大越接近于b值
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSmoothSpeed * Time.deltaTime);
+    }
+
+    private Vector3 GetInputDirection()
+    {
+        //获取输入方向
+        Vector2 moveInput = inputSource.MoveInput;
+        Vector3 inputDirection = new Vector3(moveInput.x, 0f, moveInput.y);
+        if (inputDirection.sqrMagnitude > 1f)
+        {
+            inputDirection.Normalize();
+        }
+        Vector3 moveDirection = GetCameraMoveDir(inputDirection);
+        return moveDirection;
     }
 }

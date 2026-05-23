@@ -9,15 +9,13 @@ public class PlayerIdleState : PlayerStateBase
 
     public override void Enter()
     {
-        Debug.Log("Entering PlayerIdleState");
     }
     public override void Exit()
     {
-        Debug.Log("Exiting PlayerIdleState");
     }
     public override void Tick()
     {
-
+        Context.Motor.IdleMove(); 
     }
     public override bool CanExit()
     {
