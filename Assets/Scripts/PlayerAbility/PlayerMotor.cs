@@ -22,11 +22,15 @@ public class PlayerMotor : MonoBehaviour
     //能够处理碰撞，斜坡，台阶，贴地
     private CharacterController characterController;
     private IPlayerInputSource inputSource;
-    public IPlayerInputSource InputSource => inputSource;
     private Transform cameraTransform;
     //主要用于处理角色竖直方向上的下落和跳跃
     private Vector3 verticalVelocity;
     private Vector3 horizontalVelocity;
+    //给外部暴露读取的数据
+    public float MoveSpeed => moveSpeed;
+    //获取向量长度
+    public float HorizontalSpeed => new Vector3(horizontalVelocity.x, 0, horizontalVelocity.z).magnitude;
+    public IPlayerInputSource InputSource => inputSource;
 
     /// <summary>
     /// 给外部暴露修改高度和应用重力
