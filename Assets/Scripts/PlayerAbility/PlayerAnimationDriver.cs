@@ -15,6 +15,7 @@ public class PlayerAnimationDriver : MonoBehaviour
     private static readonly int MoveSpeedID = Animator.StringToHash("MoveSpeed");
     private static readonly int VerticalSpeedID = Animator.StringToHash("VerticalSpeed");
     private static readonly int IsGroundID = Animator.StringToHash("IsGround");
+    private static readonly int JumpTriggerID = Animator.StringToHash("JumpTrigger");
     private void Awake()
     {
         motor=GetComponent<PlayerMotor>();
@@ -35,7 +36,11 @@ public class PlayerAnimationDriver : MonoBehaviour
         animator.SetFloat(MoveSpeedID, nomalizedMoveSpeed, moveSpeedDampTime,Time.deltaTime);
         animator.SetBool(IsGroundID, motor.IsGrounded);
     }
-    
+
+    public void PlayJumpAnimation()
+    {
+        animator.SetTrigger(JumpTriggerID);
+    }
     //————————————————————————————————————————————辅助方法——————————————————————————————————————————————
     /// <summary>
     /// 将真实速度转换为比值后供使用

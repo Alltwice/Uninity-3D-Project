@@ -1,0 +1,370 @@
+fileFormatVersion: 2
+guid: 41b1e04abff52db4a9cfc79ac3a4eab4
+ModelImporter:
+  serializedVersion: 24200
+  internalIDToNameTable: []
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 0.tongue
+    second: {fileID: 2100000, guid: 6975f8a66171d9a4a8c8b8510fc5cc18, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 1.lower teeth
+    second: {fileID: 2100000, guid: 86c404a179b0ddc4cafd89cf09caf915, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 10.skin
+    second: {fileID: 2100000, guid: 19e1d9a8ee533d24187e299e700c4c86, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 11.shoes
+    second: {fileID: 2100000, guid: 4d37426c7b32f5542be8f865dfb1b1c4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 12.wings&halo
+    second: {fileID: 2100000, guid: 5642f800debb2004da4973e45b49fcd8, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 13.stockings
+    second: {fileID: 2100000, guid: 2f72e0039c5f1f64ea882071fdc050cd, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 14.dress
+    second: {fileID: 2100000, guid: 881bc1881f6fa9d47bf5af4d1401c394, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 15.dress-
+    second: {fileID: 2100000, guid: a9dce82d75dc9fc4caaf654289c8a3ba, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 16.dressline
+    second: {fileID: 2100000, guid: b335b5ff482fa50428016bb21a4c3b94, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 17.dressline-
+    second: {fileID: 2100000, guid: e7e5f8d99b54fd444b5d034bae823768, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 18.shorts
+    second: {fileID: 2100000, guid: 91405d9c88e6de14185eb1d85566548e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 19.beltL
+    second: {fileID: 2100000, guid: d80ad96e351c55f47a8ffa5bd3855155, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 2.upper teeth
+    second: {fileID: 2100000, guid: 76cdfcfcf9af1a044bf5ad2ad8bacbc8, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 20.beltW
+    second: {fileID: 2100000, guid: 3bb052782e53d294aa23ed1c8307f5ac, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 21.dress inner
+    second: {fileID: 2100000, guid: c1192a3511c6c874e92b8fde02221242, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 22.hat
+    second: {fileID: 2100000, guid: e1e7d37728310c64592b68c99e0fa62b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 23.coat
+    second: {fileID: 2100000, guid: 515131172671b0b4a962f6a7deea0796, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 24.coatinner
+    second: {fileID: 2100000, guid: cf6e5a88a976d7f4c9f13741082c9d60, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 25.gloves
+    second: {fileID: 2100000, guid: 4f5bc44a462ca6944837f8ab77dacc46, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 26.cloak
+    second: {fileID: 2100000, guid: d37588deba6c5774a912279dadd5f9d6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 27.ribbons
+    second: {fileID: 2100000, guid: a4a07c2d151c1804685e188db27ca457, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 28.ribbons gloves
+    second: {fileID: 2100000, guid: 0beec9f1514c36b4c95d7dc870117f14, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 29.metal dress
+    second: {fileID: 2100000, guid: c0c6c038e7fc0b445a6e7279ef8cab6d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 3.faceA
+    second: {fileID: 2100000, guid: 5618f6092d501fa4c86af98d4fceddaa, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 30.metal gloves
+    second: {fileID: 2100000, guid: 4a2854cdd06cb454a8cb7d3d4cfd58bf, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 31.metal coat
+    second: {fileID: 2100000, guid: fc379e2118c864542950a249c1fe9dce, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 32.Emo mark-pale complexion
+    second: {fileID: 2100000, guid: 561e69265f0d78c43ac8f2fb391e1556, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 33.hairF
+    second: {fileID: 2100000, guid: ca9b9d10e807fcf479e2c2742309cadf, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 34.hairB
+    second: {fileID: 2100000, guid: 205a7aeb42627124d882e240343886b5, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 35.hairB1
+    second: {fileID: 2100000, guid: ac480813b41a65c49881ae30a7eda893, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 36.hairB2
+    second: {fileID: 2100000, guid: 165ff38c2c27ca049a9cebd0ce803ea7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 37.hairB3
+    second: {fileID: 2100000, guid: b1042be98dabc4b4f953417ecd0b832f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 38.hairF+
+    second: {fileID: 2100000, guid: d98fe1528a487274797857b8b469e06c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 39.hairB+
+    second: {fileID: 2100000, guid: 2e1c0910e290b9b4491561da35db2a38, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 4.faceB
+    second: {fileID: 2100000, guid: 32fb5b0fec66e5c40964575537d45e14, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 40.hairB1+
+    second: {fileID: 2100000, guid: 2af52326655e2c74f9beb457840d5f8a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 41.hairB2+
+    second: {fileID: 2100000, guid: 6d93b3888e3d5b44dbfead44a510731e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 42.hairB3+
+    second: {fileID: 2100000, guid: 1d893fa383b59544c8b656da1ad3091a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 43.hair accessary
+    second: {fileID: 2100000, guid: 44122f85b96deb84a8fba3bdcb73e3ed, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 44.Emo mark-embarrassed
+    second: {fileID: 2100000, guid: 02f0d8fa14aa00946b3af16d072d3af7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 45.Emo mark-sweating
+    second: {fileID: 2100000, guid: 266ce7cbcebffbc4081a38b8ad83f09d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 46.Emo mark-star
+    second: {fileID: 2100000, guid: bf007fda6d08bac4e9cc1cb498cf8b6b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 47.Emo mark-gluttonous
+    second: {fileID: 2100000, guid: c73cfc610ca2d2b4daacaacf8cf3db6c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 48.Emo mark-heart
+    second: {fileID: 2100000, guid: 6481cdedb355f1e4e84b560b44f4abdf, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 49.Emo mark-angry
+    second: {fileID: 2100000, guid: 2ea47b4fb23e8574baaacc8cd6cbb185, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 5.iris
+    second: {fileID: 2100000, guid: 24950ad3ec78d3846be09ccaf3be7dc4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 50.Emo mark-blush
+    second: {fileID: 2100000, guid: f196b72ee965d6c469162df72e5f3337, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 51.Emo mark-kyakya
+    second: {fileID: 2100000, guid: b79c3907b9e136f46ab1c66761a2e44a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 6.pupil
+    second: {fileID: 2100000, guid: 97a6c22efd284f043bf175e42a75ffe0, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 7.Emo mark-guruguru
+    second: {fileID: 2100000, guid: e91462cef585ac445a9a707d86b06b29, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 8.highlight
+    second: {fileID: 2100000, guid: 545d6de012271f74e94ba121ef2380d2, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: 9.tear
+    second: {fileID: 2100000, guid: 68c60fc5e98017d41ad4091ab16e02d1, type: 2}
+  materials:
+    materialImportMode: 2
+    materialName: 0
+    materialSearch: 0
+    materialLocation: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    resampleCurves: 1
+    optimizeGameObjects: 0
+    removeConstantScaleCurves: 0
+    motionNodeName: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    importAnimatedCustomProperties: 0
+    importConstraints: 0
+    animationCompression: 3
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    extraUserProperties: []
+    clipAnimations: []
+    isReadable: 0
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 1
+    meshCompression: 0
+    addColliders: 0
+    useSRGBMaterialColor: 1
+    sortHierarchyByName: 1
+    importPhysicalCameras: 1
+    importVisibility: 1
+    importBlendShapes: 1
+    importCameras: 1
+    importLights: 1
+    nodeNameCollisionStrategy: 1
+    fileIdsGeneration: 2
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    keepQuads: 0
+    weldVertices: 1
+    bakeAxisConversion: 0
+    preserveHierarchy: 0
+    skinWeightsMode: 0
+    maxBonesPerVertex: 4
+    minBoneWeight: 0.001
+    optimizeBones: 1
+    generateMeshLods: 0
+    meshLodGenerationFlags: 0
+    maximumMeshLod: -1
+    meshOptimizationFlags: -1
+    indexFormat: 0
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVMarginMethod: 1
+    secondaryUVMinLightmapResolution: 40
+    secondaryUVMinObjectScale: 1
+    secondaryUVPackMargin: 4
+    useFileScale: 1
+    strictVertexDataChecks: 0
+  tangentSpace:
+    normalSmoothAngle: 60
+    normalImportMode: 0
+    tangentImportMode: 3
+    normalCalculationMode: 4
+    legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0
+    blendShapeNormalImportMode: 1
+    normalSmoothingSource: 0
+  referencedClips: []
+  importAnimation: 1
+  humanDescription:
+    serializedVersion: 3
+    human: []
+    skeleton: []
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
+    feetSpacing: 0
+    globalScale: 1
+    rootMotionBoneName: 
+    hasTranslationDoF: 0
+    hasExtraRoot: 1
+    skeletonHasParents: 1
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  autoGenerateAvatarMappingIfUnspecified: 1
+  animationType: 3
+  humanoidOversampling: 1
+  avatarSetup: 1
+  addHumanoidExtraRootOnlyWhenUsingAvatar: 1
+  importBlendShapeDeformPercent: 1
+  remapMaterialsIfMaterialImportModeIsNone: 0
+  additionalBone: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

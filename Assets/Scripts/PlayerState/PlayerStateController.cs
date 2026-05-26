@@ -9,6 +9,7 @@ public class PlayerStateController : MonoBehaviour
     [Header(("引用"))]
     [SerializeField] private PlayerMotor playerMotor;
     [SerializeField] private PlayerJump playerJump;
+    [SerializeField] private PlayerAnimationDriver animationDriver;
     //泛型字典管理具体状态类，同时使用readonly防止运行过程中修改
     private readonly Dictionary<Type,PlayerStateBase> states=new Dictionary<Type, PlayerStateBase>();
     //获取玩家当前引用和信息，负责调用实际行为逻辑和供具体状态类引用
@@ -23,16 +24,11 @@ public class PlayerStateController : MonoBehaviour
     }
     private void Awake()
     {
-        if (playerMotor == null)
-        {
-            playerMotor = GetComponent<PlayerMotor>();
-        }
-        if (playerJump == null)
-        {
-            playerJump = GetComponent<PlayerJump>();
-        }
+        animationDriver=GetComponent<PlayerAnimationDriver>();
+        playerMotor = GetComponent<PlayerMotor>();
+        playerJump = GetComponent<PlayerJump>();
         //存入引用即可
-        context = new PlayerContext(playerMotor,playerJump);
+        context = new PlayerContext(playerMotor,playerJump,animationDriver);
         //获取组件信息和玩家信息
         RegisterState();
     }
@@ -75,8 +71,9 @@ public class PlayerStateController : MonoBehaviour
         //是否在地上
         bool isGrounded = playerMotor.IsGrounded;
         //如果触发了Jump键位并且跳起来了,或者说就是在空中
-        if ((playerInput.ConsumeJumpPressed() && playerJump.TryJump())||!isGrounded)
+        if (playerInput.ConsumeJumpPressed() && playerJump.TryJump())
         {
+            animationDriver.PlayJumpAnimation();
             ChangeState<PlayerAirState>();
             return;
         }
