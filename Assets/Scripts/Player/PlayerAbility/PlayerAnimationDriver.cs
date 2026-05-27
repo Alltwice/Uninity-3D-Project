@@ -21,7 +21,7 @@ public class PlayerAnimationDriver : MonoBehaviour
         motor=GetComponent<PlayerMotor>();
         animator=GetComponent<Animator>();
     }
-    private void Update()
+    private void LateUpdate()
     { 
         UpdateLocomotionParameters();   
     }
