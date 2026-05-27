@@ -31,14 +31,17 @@ public class PlayerAnimationDriver : MonoBehaviour
     /// </summary>
     private void UpdateLocomotionParameters()
     {
-        //具体含义为给编号MoveSoeed的动画，传入当前比值，变化速率为固定每帧moveSpeedDampTime个单位
+        //具体含义为给编号MoveSoeed的动画，传入当前比值
+        //第三个参数为用多久让参数靠近，用于平滑数值
         float nomalizedMoveSpeed = GetNormalizedMoveSpeed();
         animator.SetFloat(MoveSpeedID, nomalizedMoveSpeed, moveSpeedDampTime,Time.deltaTime);
+        animator.SetFloat(VerticalSpeedID, motor.VerticalSpeed, verticalSpeedDampTime, Time.deltaTime);
         animator.SetBool(IsGroundID, motor.IsGrounded);
     }
 
     public void PlayJumpAnimation()
     {
+        animator.ResetTrigger(JumpTriggerID);
         animator.SetTrigger(JumpTriggerID);
     }
     //————————————————————————————————————————————辅助方法——————————————————————————————————————————————
@@ -55,9 +58,5 @@ public class PlayerAnimationDriver : MonoBehaviour
         //这里前者为实际水平移动速度，后者为最大速度，求得其比值供BlenderTree使用
         float speed=motor.HorizontalSpeed/motor.MoveSpeed;
         return Mathf.Clamp01(speed);
-        if (speed <= 0.015f)
-        {
-            return 0f;
-        }
     }
 }

@@ -31,6 +31,7 @@ public class PlayerMotor : MonoBehaviour
     //获取向量长度
     public float HorizontalSpeed => new Vector3(horizontalVelocity.x, 0, horizontalVelocity.z).magnitude;
     public IPlayerInputSource InputSource => inputSource;
+    public float VerticalSpeed => verticalVelocity.y;
 
     /// <summary>
     /// 给外部暴露修改高度和应用重力
