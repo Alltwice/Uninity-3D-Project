@@ -26,6 +26,7 @@ public class PlayerMotor : MonoBehaviour
     //主要用于处理角色竖直方向上的下落和跳跃
     private Vector3 verticalVelocity;
     private Vector3 horizontalVelocity;
+    private bool isGrounded;
     //给外部暴露读取的数据
     public float MoveSpeed => moveSpeed;
     //获取向量长度
@@ -41,11 +42,12 @@ public class PlayerMotor : MonoBehaviour
     {
         verticalVelocity.y =value;
     }
-    public bool IsGrounded => characterController.isGrounded;
+    public bool IsGrounded => isGrounded;
     public float Gravity => gravity;
     private void Awake()
     {
         characterController=GetComponent<CharacterController>();
+        isGrounded = characterController != null && characterController.isGrounded;
         if (cameraTransform == null && Camera.main != null)
         {
             cameraTransform = Camera.main.transform;
@@ -75,7 +77,7 @@ public class PlayerMotor : MonoBehaviour
         //确定最终方向
         Vector3 finalVelocity = horizontalVelocity+verticalVelocity;
         //移动
-        characterController.Move(finalVelocity * Time.deltaTime);
+        MoveCharacter(finalVelocity);
         //旋转角色向移动方向
         RotateToMoveDirection(moveDirection);
 
@@ -90,7 +92,7 @@ public class PlayerMotor : MonoBehaviour
         Vector3 targetVerticalVelocity = moveDirection * airMoveSpeed;
         horizontalVelocity=Vector3.MoveTowards(horizontalVelocity, targetVerticalVelocity, airAcceleration * Time.deltaTime);
         Vector3 finalVelocity = horizontalVelocity + verticalVelocity;
-        characterController.Move(finalVelocity * Time.deltaTime);
+        MoveCharacter(finalVelocity);
         RotateToMoveDirection(moveDirection);
     }
     /// <summary>
@@ -101,7 +103,7 @@ public class PlayerMotor : MonoBehaviour
         horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, Vector3.zero, groundDeceleration * Time.deltaTime);
         ApplyGravity();
         Vector3 finalVelocity = horizontalVelocity + verticalVelocity;
-        characterController.Move(finalVelocity * Time.deltaTime);
+        MoveCharacter(finalVelocity);
     }
     //——————————————————————————————————————辅助方法——————————————————————————————————————————————
     
@@ -133,11 +135,27 @@ public class PlayerMotor : MonoBehaviour
     private void ApplyGravity()
     {
         //确保当前始终有力压着角色且不会累计
-        if (characterController.isGrounded && verticalVelocity.y < 0)
+        if (isGrounded && verticalVelocity.y < 0)
+        {
+            verticalVelocity.y = groundedVerticalVelocity;
+            return;
+        }
+        verticalVelocity.y += gravity * Time.deltaTime;
+    }
+    /// <summary>
+    /// 移动辅助方法
+    /// </summary>
+    /// <param name="velocity">传入最终真实移动速度</param>
+    private void MoveCharacter(Vector3 velocity)
+    {
+        //CC移动时会返回一个是否有碰撞的信息
+        CollisionFlags collisionFlags = characterController.Move(velocity * Time.deltaTime);
+        //确认是接地才会将isGround设定为地面
+        isGrounded = (collisionFlags & CollisionFlags.Below) != 0 || characterController.isGrounded;
+        if (isGrounded && verticalVelocity.y < groundedVerticalVelocity)
         {
             verticalVelocity.y = groundedVerticalVelocity;
         }
-        verticalVelocity.y += gravity * Time.deltaTime;
     }
     /// <summary>
     /// 处理角色向不同方向移动时的躯体旋转

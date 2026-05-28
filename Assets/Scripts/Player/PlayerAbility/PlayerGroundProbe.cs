@@ -9,8 +9,10 @@ public class PlayerGroundProbe : MonoBehaviour
     [SerializeField] private CharacterController characterController;
     [Header("地面检测")]
     [SerializeField] private LayerMask groundMask;
+    [Tooltip(("检测点向上偏移程度"))]
     [SerializeField] private float probeStartOffset = 0.2f;
     [SerializeField] private float probeDistance = 1.0f;
+    [Tooltip("胶囊体检测半径")]
     [SerializeField] private float radiusScale = 0.9f;
     [Header("落地预判")]
     [SerializeField] private float landingAnticipationTime = 0.12f;
@@ -42,7 +44,8 @@ public class PlayerGroundProbe : MonoBehaviour
         // 从脚底球心上方一点开始向下检测，避免初始位置贴地导致检测不稳定
         Vector3 origin = bottomSphereCenter + up * probeStartOffset;
         float maxCastDistance = probeStartOffset + probeDistance;
-
+        //球形范围射线检测，参数分别为，检测中心，半径，方向，返回被碰撞体信息，最大检测范围，检测层级，不清楚是什么
+        //该段代码用于时刻检测地面距离
         HasGround = Physics.SphereCast(
             origin,
             radius,
@@ -52,16 +55,16 @@ public class PlayerGroundProbe : MonoBehaviour
             groundMask,
             QueryTriggerInteraction.Ignore
         );
-
+        //如果存在地面，设定地面距离
         if (HasGround)
         {
             GroundDistance = Mathf.Max(0f, hit.distance - probeStartOffset);
         }
+        //否则默认调整为最大值
         else
         {
             GroundDistance = float.PositiveInfinity;
         }
-
         // 根据下落速度动态计算提前量。
         // 下落越快，越早进入落地预判。
         float anticipationDistance = Mathf.Clamp(
@@ -69,7 +72,7 @@ public class PlayerGroundProbe : MonoBehaviour
             minAnticipationDistance,
             maxAnticipationDistance
         );
-
+        //如果正在下落，并且不在地面上，检测到了地面且地面距离小于了提前量距离
         IsNearGround =
             !isGrounded &&
             verticalSpeed < 0f &&
@@ -92,11 +95,11 @@ public class PlayerGroundProbe : MonoBehaviour
         Vector3 worldCenter = transform.TransformPoint(characterController.center);
         float halfHeight = characterController.height * 0.5f;
         float radius = characterController.radius * radiusScale;
-
         Vector3 bottomSphereCenter = worldCenter - up * (halfHeight - characterController.radius);
         Vector3 origin = bottomSphereCenter + up * probeStartOffset;
-
+        //绘制圆形
         Gizmos.DrawWireSphere(origin, radius);
+        //绘制线条
         Gizmos.DrawLine(origin, origin - up * (probeStartOffset + probeDistance));
     }
 #endif

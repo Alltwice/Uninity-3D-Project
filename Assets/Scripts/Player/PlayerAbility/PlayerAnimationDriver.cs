@@ -8,6 +8,7 @@ public class PlayerAnimationDriver : MonoBehaviour
     [Header("引用")] 
     [SerializeField] private Animator animator;
     [SerializeField] private PlayerMotor motor;
+    [SerializeField] private PlayerGroundProbe groundProbe;
     [Header("动画切换参数")] 
     [SerializeField] private float moveSpeedDampTime=0.1f;
     [SerializeField] private float verticalSpeedDampTime = 0.05f;
@@ -16,10 +17,12 @@ public class PlayerAnimationDriver : MonoBehaviour
     private static readonly int VerticalSpeedID = Animator.StringToHash("VerticalSpeed");
     private static readonly int IsGroundID = Animator.StringToHash("IsGround");
     private static readonly int JumpTriggerID = Animator.StringToHash("JumpTrigger");
+    private static readonly int IsNearGroundID = Animator.StringToHash("IsNearGround");
     private void Awake()
     {
         motor=GetComponent<PlayerMotor>();
         animator=GetComponent<Animator>();
+        groundProbe=GetComponent<PlayerGroundProbe>();
     }
     private void LateUpdate()
     { 
@@ -31,12 +34,18 @@ public class PlayerAnimationDriver : MonoBehaviour
     /// </summary>
     private void UpdateLocomotionParameters()
     {
+        //如果不在地面时启用检测
+        if (!motor.IsGrounded)
+        {
+            groundProbe.Refresh(motor.VerticalSpeed, motor.IsGrounded);
+        }
         //具体含义为给编号MoveSoeed的动画，传入当前比值
         //第三个参数为用多久让参数靠近，用于平滑数值
         float nomalizedMoveSpeed = GetNormalizedMoveSpeed();
         animator.SetFloat(MoveSpeedID, nomalizedMoveSpeed, moveSpeedDampTime,Time.deltaTime);
         animator.SetFloat(VerticalSpeedID, motor.VerticalSpeed, verticalSpeedDampTime, Time.deltaTime);
         animator.SetBool(IsGroundID, motor.IsGrounded);
+        animator.SetBool(IsNearGroundID,groundProbe.IsNearGround);
     }
 
     public void PlayJumpAnimation()

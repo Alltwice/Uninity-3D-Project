@@ -8,76 +8,71 @@ using UnityEngine.InputSystem;
 public class PlayerInputReader : MonoBehaviour,IPlayerInputSource
 {
     //引用自动创建输入脚本
-    private InputSystem_Actions _inputActions;
+    private InputSystem_Actions inputActions;
+    private IPlayerActionBuffer actionBuffer;
     //承接接口内容
     public Vector2 MoveInput { get; private set; }
     public Vector2 LookInput { get; private set; }
-    private bool jumpPressed;
     //Awake时新建系统输入脚本
     private void Awake()
     {
-        _inputActions = new InputSystem_Actions();
+        inputActions = new InputSystem_Actions();
+        actionBuffer = GetComponent<PlayerActionBuffer>();
+    }
+
+    public void Init(IPlayerActionBuffer actionBuffer)
+    {
+        this.actionBuffer = actionBuffer;
     }
     //启用时启用对应输入和订阅
     private void OnEnable()
     {
         RegisterInputCallbacks();
-        _inputActions.Player.Enable();
+        inputActions.Player.Enable();
     }
     //关闭时关闭对应输入和订阅
     private void OnDisable()
     {
-        _inputActions.Player.Disable();
+        inputActions.Player.Disable();
         UnregisterInputCallbacks();
         MoveInput = Vector2.zero;
         LookInput = Vector2.zero;
+        actionBuffer?.Clear(PlayerBufferedAction.Jump);
     }
     //当前对象被销毁后系统自动创建对象同时销毁
     private void OnDestroy()
     {
-        _inputActions?.Dispose();
-    }
-/// <summary>
-/// 按下跳跃后传入true
-/// 如果为true将其设定为false，向外部判定跳跃成功，否则失败
-/// </summary>
-/// <returns></returns>
-    public bool ConsumeJumpPressed()
-    {
-        if (!jumpPressed)
-        {
-            return false;
-        }
-
-        jumpPressed = false;
-        return true;
+        inputActions?.Dispose();
     }
     /// <summary>
     /// 订阅输入事件
     /// </summary>
     private void RegisterInputCallbacks()
     {
-        _inputActions.Player.Move.performed += OnMovePerformed;
-        _inputActions.Player.Move.canceled += OnMoveCanceled;
-        _inputActions.Player.Look.performed += OnLookPerformed;
-        _inputActions.Player.Look.canceled += OnLookCanceled;
-        _inputActions.Player.Jump.performed += OnJumpPerformed;
+        inputActions.Player.Move.performed += OnMovePerformed;
+        inputActions.Player.Move.canceled += OnMoveCanceled;
+        inputActions.Player.Look.performed += OnLookPerformed;
+        inputActions.Player.Look.canceled += OnLookCanceled;
+        inputActions.Player.Jump.started += OnJumpStarted;
     }
     /// <summary>
     /// 解绑输入事件
     /// </summary>
     private void UnregisterInputCallbacks()
     {
-        _inputActions.Player.Move.performed-= OnMovePerformed;
-        _inputActions.Player.Move.canceled -= OnMoveCanceled;
-        _inputActions.Player.Look.performed -= OnLookPerformed;
-        _inputActions.Player.Look.canceled -= OnLookCanceled;
-        _inputActions.Player.Jump.performed -= OnJumpPerformed;
+        inputActions.Player.Move.performed-= OnMovePerformed;
+        inputActions.Player.Move.canceled -= OnMoveCanceled;
+        inputActions.Player.Look.performed -= OnLookPerformed;
+        inputActions.Player.Look.canceled -= OnLookCanceled;
+        inputActions.Player.Jump.started -= OnJumpStarted;
     }
     //以下为处理按下和松开时的数据
     private void OnMovePerformed(InputAction.CallbackContext ctx)=> MoveInput = ctx.ReadValue<Vector2>();
     private void OnMoveCanceled(InputAction.CallbackContext ctx)=> MoveInput = Vector2.zero;
     private void OnLookPerformed(InputAction.CallbackContext ctx)=> LookInput = ctx.ReadValue<Vector2>();
     private void OnLookCanceled(InputAction.CallbackContext ctx)=> LookInput = Vector2.zero;
-    private void OnJumpPerformed(InputAction.CallbackContext ctx) => jumpPressed = true;
+    private void OnJumpStarted(InputAction.CallbackContext ctx)
+    {
+        actionBuffer?.Buffer(PlayerBufferedAction.Jump);
+    }
 }

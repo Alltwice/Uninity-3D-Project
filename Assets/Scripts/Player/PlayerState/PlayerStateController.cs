@@ -16,11 +16,18 @@ public class PlayerStateController : MonoBehaviour
     private PlayerContext context;
     private PlayerStateBase currentState;
     private IPlayerInputSource playerInput;
+    private IPlayerActionBuffer actionBuffer;
     //利用属性封装外部可读不可改
     public PlayerStateBase CurrentState => currentState;
-    public void Init(IPlayerInputSource playerInput)
+    public void Init(IPlayerInputSource playerInput, IPlayerActionBuffer actionBuffer)
     {
         this.playerInput = playerInput;
+        this.actionBuffer = actionBuffer;
+    }
+
+    public void Init(IPlayerInputSource playerInput)
+    {
+        Init(playerInput, null);
     }
     private void Awake()
     {
@@ -70,8 +77,13 @@ public class PlayerStateController : MonoBehaviour
         bool hasMoveInput = playerInput.MoveInput != Vector2.zero;
         //是否在地上
         bool isGrounded = playerMotor.IsGrounded;
+        if (!isGrounded)
+        {
+            ChangeState<PlayerAirState>();
+            return;
+        }
         //如果触发了Jump键位并且跳起来了,或者说就是在空中
-        if (playerInput.ConsumeJumpPressed() && playerJump.TryJump())
+        if (actionBuffer.Consume(PlayerBufferedAction.Jump) && playerJump.TryJump())
         {
             animationDriver.PlayJumpAnimation();
             ChangeState<PlayerAirState>();
