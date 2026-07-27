@@ -44,7 +44,7 @@ public class PlayerGroundProbe : MonoBehaviour
         // 从脚底球心上方一点开始向下检测，避免初始位置贴地导致检测不稳定
         Vector3 origin = bottomSphereCenter + up * probeStartOffset;
         float maxCastDistance = probeStartOffset + probeDistance;
-        //球形范围射线检测，参数分别为，检测中心，半径，方向，返回被碰撞体信息，最大检测范围，检测层级，不清楚是什么
+        //球形范围射线检测，参数分别为，检测中心，半径，方向，返回被碰撞体信息，最大检测范围，检测层级，是否检测trigger
         //该段代码用于时刻检测地面距离
         HasGround = Physics.SphereCast(
             origin,

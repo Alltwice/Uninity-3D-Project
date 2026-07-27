@@ -5,7 +5,7 @@ using UnityEngine;
 public class PlayerInstaller : MonoBehaviour
 {
     [Header("玩家需求组件")]
-    [SerializeField] private PlayerInputReader inputReader;
+    [SerializeField] private PlayerInputReader playerInputReader;
     [SerializeField] private PlayerActionBuffer actionBuffer;
     [SerializeField] private PlayerMotor playerMotor;
     [SerializeField] private PlayerStateController playerStateController;
@@ -14,10 +14,10 @@ public class PlayerInstaller : MonoBehaviour
     {
         //调用依赖注入逻辑
         ResolveActionBuffer();
-        inputReader.Init(actionBuffer);
-        playerMotor.Init(inputReader);
-        playerCameraOrbitTarget.Init(inputReader);
-        playerStateController.Init(inputReader, actionBuffer);
+        playerInputReader.Init(actionBuffer);
+        playerMotor.Init(playerInputReader);
+        playerCameraOrbitTarget.Init(playerInputReader);
+        playerStateController.Init(playerInputReader, actionBuffer);
     }
 
     private void ResolveActionBuffer()
@@ -27,10 +27,10 @@ public class PlayerInstaller : MonoBehaviour
             return;
         }
 
-        actionBuffer = inputReader.GetComponent<PlayerActionBuffer>();
+        actionBuffer = playerInputReader.GetComponent<PlayerActionBuffer>();
         if (actionBuffer == null)
         {
-            actionBuffer = inputReader.gameObject.AddComponent<PlayerActionBuffer>();
+            actionBuffer = playerInputReader.gameObject.AddComponent<PlayerActionBuffer>();
         }
     }
 }

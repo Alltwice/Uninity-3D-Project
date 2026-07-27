@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 /// <summary>
 /// 玩家空中状态
@@ -18,6 +19,29 @@ public class PlayerAirState : PlayerStateBase
     public override void Tick()
     {
         Context.Motor.AirMove();
+    }
+
+    protected override Type EvaluateNextStateType()
+    {
+        if (Context.InputSource == null || !Context.Motor.IsGrounded)
+        {
+            return null;
+        }
+
+        if (Context.ActionBuffer != null
+            && Context.ActionBuffer.Consume(PlayerBufferedAction.Jump)
+            && Context.Jump.TryJump())
+        {
+            Context.AnimationDriver.PlayJumpAnimation();
+            return typeof(PlayerAirState);
+        }
+
+        if (Context.InputSource.MoveInput != Vector2.zero)
+        {
+            return typeof(PlayerGroundMoveState);
+        }
+
+        return typeof(PlayerIdleState);
     }
 
     public override bool CanExit()

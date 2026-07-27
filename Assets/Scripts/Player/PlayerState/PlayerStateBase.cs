@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 /// <summary>
 /// 状态基类，存在进入退出，状态锁和引用容器
@@ -15,6 +16,16 @@ public abstract class PlayerStateBase
     public virtual void Enter(){}
     public virtual void Exit(){}
     public virtual void Tick(){}
+    public Type GetNextStateType()
+    {
+        if (!CanExit())
+        {
+            return null;
+        }
+
+        return EvaluateNextStateType();
+    }
+    protected abstract Type EvaluateNextStateType();
     //状态锁，具体逻辑具体脚本内处理
     public virtual bool CanExit() { return false; }
 }

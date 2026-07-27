@@ -11,7 +11,7 @@ public class PlayerStateController : MonoBehaviour
     [SerializeField] private PlayerJump playerJump;
     [SerializeField] private PlayerAnimationDriver animationDriver;
     //泛型字典管理具体状态类，同时使用readonly防止运行过程中修改
-    private readonly Dictionary<Type,PlayerStateBase> states=new Dictionary<Type, PlayerStateBase>();
+    private readonly Dictionary<Type, PlayerStateBase> states=new Dictionary<Type, PlayerStateBase>();
     //获取玩家当前引用和信息，负责调用实际行为逻辑和供具体状态类引用
     private PlayerContext context;
     private PlayerStateBase currentState;
@@ -34,75 +34,72 @@ public class PlayerStateController : MonoBehaviour
         animationDriver=GetComponent<PlayerAnimationDriver>();
         playerMotor = GetComponent<PlayerMotor>();
         playerJump = GetComponent<PlayerJump>();
-        //存入引用即可
-        context = new PlayerContext(playerMotor,playerJump,animationDriver);
-        //获取组件信息和玩家信息
-        RegisterState();
     }
     private void Start()
     {
+        if (playerInput == null)
+        {
+            playerInput = playerMotor.InputSource;
+        }
+
+        //存入引用即可
+        context = new PlayerContext(
+            playerMotor,
+            playerJump,
+            animationDriver,
+            playerInput,
+            actionBuffer);
+        //获取组件信息和玩家信息
+        RegisterState();
         //一开始就设定为待机状态，填入的泛型参数即为你想切换的状态
         ChangeState<PlayerIdleState>();
     }
     private void Update()
     {
-        //处理状态切换逻辑
-        HandleStateTransitions();
+        //读取当前状态给出的目标类型，并交给唯一的核心切换逻辑处理
+        ChangeState(currentState?.GetNextStateType());
         //执行当前状态类中的刷新逻辑
         currentState?.Tick();
     }
-//——————————————————————————————————————————————————————————————调用方法————————————————————————————
+//——————————————————————————————————————————————————————————————主要方法————————————————————————————
 
-    private void HandleStateTransitions()
-    {
-        //当前状态为空不切换
-        if (currentState == null)
-        {
-            return;
-        }
-        //当前状态上锁不切换
-        if (!currentState.CanExit())
-        {
-            return;
-        }
-        //是否有输入
-        if (playerInput == null)
-        {
-            playerInput = playerMotor.InputSource;
-            if (playerInput == null)
-            {
-                return;
-            }
-        }
-        bool hasMoveInput = playerInput.MoveInput != Vector2.zero;
-        //是否在地上
-        bool isGrounded = playerMotor.IsGrounded;
-        if (!isGrounded)
-        {
-            ChangeState<PlayerAirState>();
-            return;
-        }
-        //如果触发了Jump键位并且跳起来了,或者说就是在空中
-        if (actionBuffer.Consume(PlayerBufferedAction.Jump) && playerJump.TryJump())
-        {
-            animationDriver.PlayJumpAnimation();
-            ChangeState<PlayerAirState>();
-            return;
-        }
-        //地面有移动输入时进入移动状态
-        if (hasMoveInput)
-        {
-            ChangeState<PlayerGroundMoveState>();
-            return;
-        }
-        ChangeState<PlayerIdleState>();
-    }
     private void RegisterState()
     {
         //注册方法，调用添加字典方法，同时完成new操作触发构造函数，传入context值
         AddState(new PlayerIdleState(context));
         AddState(new PlayerGroundMoveState(context));
         AddState(new PlayerAirState(context));
+    }
+    /// <summary>
+    /// 根据传入的类型切换状态
+    /// </summary>
+    /// <param name="nextStateType">目标状态类型，null表示保持当前状态</param>
+    private void ChangeState(Type nextStateType)
+    {
+        if (nextStateType == null)
+        {
+            return;
+        }
+
+        //如果尝试获取失败可能为未加入不切换,同时无论成功失败与否，都会将最终内容out到nextState当中供使用
+        if (!states.TryGetValue(nextStateType, out PlayerStateBase nextState))
+        {
+            return;
+        }
+        //重复状态不切换
+        if (currentState == nextState)
+        {
+            return;
+        }
+        //如果当前状态不为空的同时状态锁为锁定则不切换状态
+        if (currentState != null&&!currentState.CanExit())
+        {
+            return;
+        }
+        //退出当前状态，切换下一个状态
+        currentState?.Exit();
+        currentState = nextState;
+        currentState?.Enter();
     }
     //————————————————————————————————————————————————辅助方法————————————————————————————————————————————
     /// <summary>
@@ -128,26 +125,6 @@ public class PlayerStateController : MonoBehaviour
     /// <typeparam name="TState">泛型存储状态类</typeparam>
     private void ChangeState<TState>() where TState : PlayerStateBase
     {
-        //这里没有传入任何参数，但是能通过函数调用时<>中的内容推断类型
-        Type nextStateType = typeof(TState);
-        //如果尝试获取失败可能为未加入不切换,同时无论成功失败与否，都会将最终内容out到nextState当中供使用
-        if (!states.TryGetValue(nextStateType, out PlayerStateBase nextState))
-        {
-            return;
-        }
-        //重复状态不切换
-        if (currentState == nextState)
-        {
-            return;
-        }
-        //如果当前状态不为空的同时状态锁为锁定则不切换状态
-        if (currentState != null&&!currentState.CanExit())
-        {
-            return;
-        }
-        //退出当前状态，切换下一个状态
-        currentState?.Exit();
-        currentState = nextState;
-        currentState?.Enter();
+        ChangeState(typeof(TState));
     }
 }

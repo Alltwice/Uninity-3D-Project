@@ -5,7 +5,7 @@ using UnityEngine;
 public interface IPlayerActionBuffer
 {
     void Buffer(PlayerBufferedAction action);
-    void Buffer(PlayerBufferedAction action, float duration);
+    void BufferInternal(PlayerBufferedAction action, float duration);
     bool Consume(PlayerBufferedAction action);
     bool HasBuffered(PlayerBufferedAction action);
     void Clear(PlayerBufferedAction action);

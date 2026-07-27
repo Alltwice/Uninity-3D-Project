@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 /// <summary>
 /// 玩家待机状态
@@ -16,6 +17,33 @@ public class PlayerIdleState : PlayerStateBase
     public override void Tick()
     {
         Context.Motor.IdleMove(); 
+    }
+    protected override Type EvaluateNextStateType()
+    {
+        if (Context.InputSource == null)
+        {
+            return null;
+        }
+
+        if (!Context.Motor.IsGrounded)
+        {
+            return typeof(PlayerAirState);
+        }
+
+        if (Context.ActionBuffer != null
+            && Context.ActionBuffer.Consume(PlayerBufferedAction.Jump)
+            && Context.Jump.TryJump())
+        {
+            Context.AnimationDriver.PlayJumpAnimation();
+            return typeof(PlayerAirState);
+        }
+
+        if (Context.InputSource.MoveInput != Vector2.zero)
+        {
+            return typeof(PlayerGroundMoveState);
+        }
+
+        return null;
     }
     public override bool CanExit()
     {

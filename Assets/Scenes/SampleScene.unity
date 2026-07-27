@@ -700,6 +700,28 @@ Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 9e9dd8d32cf76fa43941fa1ff36e6b86, type: 3}
   m_PrefabInstance: {fileID: 1050617291}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &685771098
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 685771089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed5a30d592712ea468a523c9f703129c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerGroundProbe
+  characterController: {fileID: 685771096}
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 8
+  probeStartOffset: 0.2
+  probeDistance: 1
+  radiusScale: 0.9
+  landingAnticipationTime: 0.12
+  minAnticipationDistance: 0.15
+  maxAnticipationDistance: 0.8
 --- !u!1 &736860437
 GameObject:
   m_ObjectHideFlags: 0
@@ -751,6 +773,7 @@ MonoBehaviour:
   normalDistance: 4
   topViewDistance: 6.5
   distanceSmoothSpeed: 8
+  begainToTopViewDistance: 10
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -881,6 +904,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 9e9dd8d32cf76fa43941fa1ff36e6b86, type: 3}
       insertIndex: -1
       addedObject: {fileID: 685771091}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 9e9dd8d32cf76fa43941fa1ff36e6b86, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 685771098}
   m_SourcePrefab: {fileID: 100100000, guid: 9e9dd8d32cf76fa43941fa1ff36e6b86, type: 3}
 --- !u!1 &1292428504
 GameObject:
@@ -1260,7 +1286,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 443fd6a6e09fbbb488afd510618c5ec8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInstaller
-  inputReader: {fileID: 452349615}
+  playerInputReader: {fileID: 452349615}
   actionBuffer: {fileID: 1292428505}
   playerMotor: {fileID: 685771095}
   playerStateController: {fileID: 685771094}
@@ -1277,7 +1303,7 @@ GameObject:
   - component: {fileID: 1926611499}
   - component: {fileID: 1926611498}
   - component: {fileID: 1926611497}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}

@@ -37,7 +37,7 @@ public class PlayerInputReader : MonoBehaviour,IPlayerInputSource
         UnregisterInputCallbacks();
         MoveInput = Vector2.zero;
         LookInput = Vector2.zero;
-        actionBuffer?.Clear(PlayerBufferedAction.Jump);
+        actionBuffer.Clear(PlayerBufferedAction.Jump);
     }
     //当前对象被销毁后系统自动创建对象同时销毁
     private void OnDestroy()
@@ -71,8 +71,5 @@ public class PlayerInputReader : MonoBehaviour,IPlayerInputSource
     private void OnMoveCanceled(InputAction.CallbackContext ctx)=> MoveInput = Vector2.zero;
     private void OnLookPerformed(InputAction.CallbackContext ctx)=> LookInput = ctx.ReadValue<Vector2>();
     private void OnLookCanceled(InputAction.CallbackContext ctx)=> LookInput = Vector2.zero;
-    private void OnJumpStarted(InputAction.CallbackContext ctx)
-    {
-        actionBuffer?.Buffer(PlayerBufferedAction.Jump);
-    }
+    private void OnJumpStarted(InputAction.CallbackContext ctx)=> actionBuffer.Buffer(PlayerBufferedAction.Jump);
 }

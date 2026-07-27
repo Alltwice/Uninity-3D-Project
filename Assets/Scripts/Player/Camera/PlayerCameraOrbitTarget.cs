@@ -8,22 +8,28 @@ public class PlayerCameraOrbitTarget : MonoBehaviour
 {
     [Header("引用")]
     [SerializeField] private CinemachineThirdPersonFollow thirdPersonFollow;
-    [Header("鼠标")]
+    [Header("鼠标灵敏度")]
     [SerializeField] private float mouseSensitivity=0.12f;
     [Header("最大俯仰角")]
     [SerializeField] private float minPitch=-50;
     [SerializeField] private float maxPitch=60;
-    [Header("俯视角镜头拉远")] 
+    [Header("镜头远近")] 
     [SerializeField] private float normalDistance = 4f;
     [SerializeField] private float topViewDistance = 6.5f;
     [SerializeField] private float distanceSmoothSpeed = 8f;
+    [SerializeField] private float begainToTopViewDistance = 10f;
     private IPlayerInputSource inputSource;
-    //水平和抚养旋转角度
+    //偏航角（左右）和俯仰角（上下）旋转角度
     private float yaw;
     private float pitch;
     public float Yaw => yaw;
     public float Pitch => pitch;
     private float currentDistance;
+
+    private void Awake()
+    {
+        currentDistance = normalDistance;
+    }
     /// <summary>
     /// 外部主动依赖注入
     /// </summary>
@@ -58,7 +64,7 @@ public class PlayerCameraOrbitTarget : MonoBehaviour
     {
         // 假设 pitch 越大越偏俯视,这里设置了y轴翻转*-1即可
         //这个mathf方法会计算c在a到b之间的比例并返回
-        float topViewRate = Mathf.InverseLerp(10f, maxPitch, pitch);
+        float topViewRate = Mathf.InverseLerp(begainToTopViewDistance, maxPitch, pitch);
         //拿到比例之后算出具体的当前值是多少
         float targetDistance = Mathf.Lerp(normalDistance, topViewDistance, topViewRate);
         //当前的距离由当前值到目标值并由设置的速度移动
