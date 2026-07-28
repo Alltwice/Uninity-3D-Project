@@ -74,7 +74,7 @@ public class PlayerMotor : MonoBehaviour
         Vector3 targetHorizontalVelocity = moveDirection * moveSpeed;
         //实现加速效果，每帧向目标位置移动参数个单位
         horizontalVelocity=Vector3.MoveTowards(horizontalVelocity, targetHorizontalVelocity, groundAcceleration * Time.deltaTime);
-        //确定最终方向
+        //确定最后速度方向
         Vector3 finalVelocity = horizontalVelocity+verticalVelocity;
         //移动
         MoveCharacter(finalVelocity);
@@ -150,7 +150,7 @@ public class PlayerMotor : MonoBehaviour
     {
         //CC移动时会返回一个是否有碰撞的信息
         CollisionFlags collisionFlags = characterController.Move(velocity * Time.deltaTime);
-        //确认是接地才会将isGround设定为地面
+        //确认是接地才会将isGround设定为地面并持续施加向下的力
         isGrounded = (collisionFlags & CollisionFlags.Below) != 0 || characterController.isGrounded;
         if (isGrounded && verticalVelocity.y < groundedVerticalVelocity)
         {
@@ -173,7 +173,10 @@ public class PlayerMotor : MonoBehaviour
         //做线性插值旋转，最后一个参数值越大越接近于b值
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSmoothSpeed * Time.deltaTime);
     }
-
+    /// <summary>
+    /// 从输入源中获取输入方向并将其向量化
+    /// </summary>
+    /// <returns></returns>
     private Vector3 GetInputDirection()
     {
         //获取输入方向
