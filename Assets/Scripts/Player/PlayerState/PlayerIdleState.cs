@@ -10,6 +10,7 @@ public class PlayerIdleState : PlayerStateBase
 
     public override void Enter()
     {
+        Context.AnimationController.RequestLocomotion();
     }
     public override void Exit()
     {
@@ -34,7 +35,7 @@ public class PlayerIdleState : PlayerStateBase
             && Context.ActionBuffer.Consume(PlayerBufferedAction.Jump)
             && Context.Jump.TryJump())
         {
-            Context.AnimationDriver.PlayJumpAnimation();
+            Context.AnimationController.RequestJump();
             return typeof(PlayerAirState);
         }
 

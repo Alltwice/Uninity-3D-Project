@@ -17,7 +17,7 @@ public class PlayerInputReader : MonoBehaviour,IPlayerInputSource
     private void Awake()
     {
         inputActions = new InputSystem_Actions();
-        actionBuffer = GetComponent<PlayerActionBuffer>();
+        ResolveActionBuffer();
     }
 
     public void Init(IPlayerActionBuffer actionBuffer)
@@ -27,17 +27,27 @@ public class PlayerInputReader : MonoBehaviour,IPlayerInputSource
     //启用时启用对应输入和订阅
     private void OnEnable()
     {
+        if (inputActions == null)
+        {
+            inputActions = new InputSystem_Actions();
+        }
+
+        ResolveActionBuffer();
         RegisterInputCallbacks();
         inputActions.Player.Enable();
     }
     //关闭时关闭对应输入和订阅
     private void OnDisable()
     {
-        inputActions.Player.Disable();
-        UnregisterInputCallbacks();
+        if (inputActions != null)
+        {
+            inputActions.Player.Disable();
+            UnregisterInputCallbacks();
+        }
+
         MoveInput = Vector2.zero;
         LookInput = Vector2.zero;
-        actionBuffer.Clear(PlayerBufferedAction.Jump);
+        actionBuffer?.Clear(PlayerBufferedAction.Jump);
     }
     //当前对象被销毁后系统自动创建对象同时销毁
     private void OnDestroy()
@@ -71,5 +81,32 @@ public class PlayerInputReader : MonoBehaviour,IPlayerInputSource
     private void OnMoveCanceled(InputAction.CallbackContext ctx)=> MoveInput = Vector2.zero;
     private void OnLookPerformed(InputAction.CallbackContext ctx)=> LookInput = ctx.ReadValue<Vector2>();
     private void OnLookCanceled(InputAction.CallbackContext ctx)=> LookInput = Vector2.zero;
-    private void OnJumpStarted(InputAction.CallbackContext ctx)=> actionBuffer.Buffer(PlayerBufferedAction.Jump);
+    private void OnJumpStarted(InputAction.CallbackContext ctx)
+    {
+        ResolveActionBuffer();
+        if (actionBuffer == null)
+        {
+            Debug.LogError(
+                $"{nameof(PlayerInputReader)} could not find a {nameof(PlayerActionBuffer)} " +
+                "in the Player hierarchy.",
+                this);
+            return;
+        }
+
+        actionBuffer.Buffer(PlayerBufferedAction.Jump);
+    }
+
+    private void ResolveActionBuffer()
+    {
+        if (actionBuffer != null)
+        {
+            return;
+        }
+
+        actionBuffer = GetComponent<PlayerActionBuffer>();
+        if (actionBuffer == null && transform.parent != null)
+        {
+            actionBuffer = transform.parent.GetComponentInChildren<PlayerActionBuffer>(true);
+        }
+    }
 }

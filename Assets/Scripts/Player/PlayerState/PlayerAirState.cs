@@ -32,7 +32,7 @@ public class PlayerAirState : PlayerStateBase
             && Context.ActionBuffer.Consume(PlayerBufferedAction.Jump)
             && Context.Jump.TryJump())
         {
-            Context.AnimationDriver.PlayJumpAnimation();
+            Context.AnimationController.RequestJump();
             return typeof(PlayerAirState);
         }
 

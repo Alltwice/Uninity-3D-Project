@@ -8,7 +8,7 @@ public class PlayerGroundMoveState : PlayerStateBase
     public PlayerGroundMoveState(PlayerContext context) : base(context){}
     public override void Enter()
     {
-
+        Context.AnimationController.RequestLocomotion();
     }
     public override void Exit()
     {
@@ -36,7 +36,7 @@ public class PlayerGroundMoveState : PlayerStateBase
             && Context.ActionBuffer.Consume(PlayerBufferedAction.Jump)
             && Context.Jump.TryJump())
         {
-            Context.AnimationDriver.PlayJumpAnimation();
+            Context.AnimationController.RequestJump();
             return typeof(PlayerAirState);
         }
 

@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 using System.Collections.Generic;
 /// <summary>
 /// 具体管理状态机切换流程
@@ -9,7 +10,8 @@ public class PlayerStateController : MonoBehaviour
     [Header(("引用"))]
     [SerializeField] private PlayerMotor playerMotor;
     [SerializeField] private PlayerJump playerJump;
-    [SerializeField] private PlayerAnimationDriver animationDriver;
+    [FormerlySerializedAs("animationDriver")]
+    [SerializeField] private PlayerAnimationController animationController;
     //泛型字典管理具体状态类，同时使用readonly防止运行过程中修改
     private readonly Dictionary<Type, PlayerStateBase> states=new Dictionary<Type, PlayerStateBase>();
     //获取玩家当前引用和信息，负责调用实际行为逻辑和供具体状态类引用
@@ -31,7 +33,7 @@ public class PlayerStateController : MonoBehaviour
     }
     private void Awake()
     {
-        animationDriver=GetComponent<PlayerAnimationDriver>();
+        animationController = GetComponent<PlayerAnimationController>();
         playerMotor = GetComponent<PlayerMotor>();
         playerJump = GetComponent<PlayerJump>();
     }
@@ -46,7 +48,7 @@ public class PlayerStateController : MonoBehaviour
         context = new PlayerContext(
             playerMotor,
             playerJump,
-            animationDriver,
+            animationController,
             playerInput,
             actionBuffer);
         //获取组件信息和玩家信息

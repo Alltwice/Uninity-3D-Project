@@ -7,19 +7,19 @@ public class PlayerContext
     // ===== 稳定引用 =====
     public PlayerMotor Motor { get; private set; }
     public PlayerJump Jump { get; private set; }
-    public PlayerAnimationDriver AnimationDriver { get; private set; }
+    public IPlayerAnimationController AnimationController { get; private set; }
     public IPlayerInputSource InputSource { get; private set; }
     public IPlayerActionBuffer ActionBuffer { get; private set; }
     public PlayerContext(
         PlayerMotor motor,
         PlayerJump jump,
-        PlayerAnimationDriver animationDriver,
+        IPlayerAnimationController animationController,
         IPlayerInputSource inputSource,
         IPlayerActionBuffer actionBuffer)
     {
         Motor = motor;
         Jump = jump;
-        AnimationDriver = animationDriver;
+        AnimationController = animationController;
         InputSource = inputSource;
         ActionBuffer = actionBuffer;
     }
