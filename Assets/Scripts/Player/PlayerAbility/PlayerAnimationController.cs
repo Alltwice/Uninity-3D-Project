@@ -1,69 +1,28 @@
 using Animancer;
 using UnityEngine;
-
-public interface IPlayerAnimationController
+/// <summary>
+/// 动画播放控制器
+/// </summary>
+public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationController
 {
-    void RequestLocomotion();
-    void RequestJump();
-}
-
-[DisallowMultipleComponent]
-[RequireComponent(typeof(Animator))]
-[RequireComponent(typeof(AnimancerComponent))]
-[RequireComponent(typeof(PlayerAnimationDataSource))]
-[DefaultExecutionOrder(100)]
-public sealed class PlayerAnimationController : MonoBehaviour, IPlayerAnimationController
-{
-    [Header("References")]
+    [Header("引用")]
     [SerializeField] private AnimancerComponent animancer;
     [SerializeField] private PlayerAnimationDataSource dataSource;
 
-    [Header("Transitions")]
-    [SerializeField] private LinearMixerTransition locomotionTransition = new();
-    [SerializeField] private ClipTransition jumpTransition = new();
-
-    [Header("Locomotion")]
-    [Min(0f)]
-    [SerializeField] private float moveSpeedDampTime = 0.1f;
-
+    [Header("动画参数设置")]
+    //该存在类似与BlendTree
+    [SerializeField] private LinearMixerTransition locomotionTransition = new LinearMixerTransition();
+    //管理动画数据（开始结束时间，过度，速度等）
+    [SerializeField] private ClipTransition jumpTransition = new ClipTransition();
+    //运行状态下的混合数
     private LinearMixerState locomotionState;
     private float locomotionParameter;
-    private float locomotionParameterVelocity;
+
 
     private void Awake()
-    {
-        if (animancer == null)
-        {
-            animancer = GetComponent<AnimancerComponent>();
-        }
-
-        if (dataSource == null)
-        {
-            dataSource = GetComponent<PlayerAnimationDataSource>();
-        }
-
-        Animator animator = animancer != null ? animancer.Animator : null;
-        if (animator == null)
-        {
-            animator = GetComponent<Animator>();
-            if (animancer != null)
-            {
-                animancer.Animator = animator;
-            }
-        }
-
-        if (animancer == null || dataSource == null || animator == null)
-        {
-            Debug.LogError(
-                $"{nameof(PlayerAnimationController)} requires an Animator, " +
-                $"{nameof(AnimancerComponent)}, and {nameof(PlayerAnimationDataSource)}.",
-                this);
-            enabled = false;
-            return;
-        }
-
-        animator.runtimeAnimatorController = null;
-        animator.applyRootMotion = false;
+    { 
+        animancer = GetComponent<AnimancerComponent>();
+        dataSource = GetComponent<PlayerAnimationDataSource>();
     }
 
     private void Start()
@@ -71,43 +30,25 @@ public sealed class PlayerAnimationController : MonoBehaviour, IPlayerAnimationC
         RequestLocomotion();
     }
 
-    private void Update()
+    private void LateUpdate()
     {
         PlayerAnimationFrame frame = dataSource.Capture();
-        locomotionParameter = Mathf.SmoothDamp(
-            locomotionParameter,
-            frame.NormalizedMoveSpeed,
-            ref locomotionParameterVelocity,
-            moveSpeedDampTime);
-
-        if (locomotionState != null)
-        {
-            locomotionState.Parameter = locomotionParameter;
-        }
+        locomotionState.Parameter = frame.NormalizedMoveSpeed;
     }
-
+    /// <summary>
+    /// 请求播放移动动画
+    /// </summary>
     public void RequestLocomotion()
     {
-        if (!isActiveAndEnabled || animancer == null || !locomotionTransition.IsValid)
-        {
-            return;
-        }
-
-        locomotionState = animancer.Play(locomotionTransition) as LinearMixerState;
-        if (locomotionState != null)
-        {
-            locomotionState.Parameter = locomotionParameter;
-        }
+        //将父类AnimancerState转换为具体的LinearMixerState
+        locomotionState = (LinearMixerState)animancer.Play(locomotionTransition);
+        locomotionState.Parameter = locomotionParameter;
     }
-
+    /// <summary>
+    /// 请求播放跳跃动画
+    /// </summary>
     public void RequestJump()
     {
-        if (!isActiveAndEnabled || animancer == null || !jumpTransition.IsValid)
-        {
-            return;
-        }
-
         AnimancerState jumpState = animancer.Play(jumpTransition);
-        jumpState.Time = 0f;
     }
 }

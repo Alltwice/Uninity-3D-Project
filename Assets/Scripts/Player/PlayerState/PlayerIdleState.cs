@@ -21,11 +21,6 @@ public class PlayerIdleState : PlayerStateBase
     }
     protected override Type EvaluateNextStateType()
     {
-        if (Context.InputSource == null)
-        {
-            return null;
-        }
-
         if (!Context.Motor.IsGrounded)
         {
             return typeof(PlayerAirState);

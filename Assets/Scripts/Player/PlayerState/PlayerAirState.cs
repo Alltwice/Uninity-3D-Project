@@ -23,11 +23,6 @@ public class PlayerAirState : PlayerStateBase
 
     protected override Type EvaluateNextStateType()
     {
-        if (Context.InputSource == null || !Context.Motor.IsGrounded)
-        {
-            return null;
-        }
-
         if (Context.ActionBuffer != null
             && Context.ActionBuffer.Consume(PlayerBufferedAction.Jump)
             && Context.Jump.TryJump())

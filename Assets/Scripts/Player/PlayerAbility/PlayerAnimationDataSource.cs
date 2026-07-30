@@ -1,6 +1,8 @@
 using UnityEngine;
-
-public readonly struct PlayerAnimationFrame
+/// <summary>
+/// 动画切换参数结构体
+/// </summary>
+public struct PlayerAnimationFrame
 {
     public PlayerAnimationFrame(
         float normalizedMoveSpeed,
@@ -19,37 +21,37 @@ public readonly struct PlayerAnimationFrame
     public bool IsGrounded { get; }
     public bool IsNearGround { get; }
 }
-
-[DisallowMultipleComponent]
-[RequireComponent(typeof(PlayerMotor))]
-[RequireComponent(typeof(PlayerGroundProbe))]
-public sealed class PlayerAnimationDataSource : MonoBehaviour
+/// <summary>
+/// 捕获和处理动画所需数据
+/// </summary>
+public class PlayerAnimationDataSource : MonoBehaviour
 {
-    [Header("References")]
+    [Header("引用")]
     [SerializeField] private PlayerMotor motor;
     [SerializeField] private PlayerGroundProbe groundProbe;
 
     private void Awake()
     {
-        if (motor == null)
-        {
-            motor = GetComponent<PlayerMotor>();
-        }
-
-        if (groundProbe == null)
-        {
-            groundProbe = GetComponent<PlayerGroundProbe>();
-        }
+        motor = GetComponent<PlayerMotor>();
+        groundProbe = GetComponent<PlayerGroundProbe>();
     }
-
+    /// <summary>
+    /// 时刻更新当前的动画数据
+    /// </summary>
+    /// <returns>返回可用的动画数据结构体</returns>
     public PlayerAnimationFrame Capture()
     {
         groundProbe.Refresh(motor.VerticalSpeed, motor.IsGrounded);
-
-        float normalizedMoveSpeed = motor.MoveSpeed <= 0.01f
-            ? 0f
-            : Mathf.Clamp01(motor.HorizontalSpeed / motor.MoveSpeed);
-
+        float normalizedMoveSpeed;
+        if (motor.MoveSpeed <= 0.01f)
+        {
+            normalizedMoveSpeed = 0f;
+        }
+        else
+        {
+            float speedRatio = motor.HorizontalSpeed / motor.MoveSpeed;
+            normalizedMoveSpeed = Mathf.Clamp01(speedRatio);
+        }
         return new PlayerAnimationFrame(
             normalizedMoveSpeed,
             motor.VerticalSpeed,

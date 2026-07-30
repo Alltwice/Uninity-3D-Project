@@ -581,6 +581,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
+    - target: {fileID: 2473045430462521836, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: locomotionTransition._Speeds.Array.size
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2473045430462521836, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: locomotionTransition._SynchronizeChildren.Array.size
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3024637014286927144, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -619,6 +627,26 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3024637014286927144, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5475201016139151011, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: airMoveSpeed
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 5475201016139151011, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: airAcceleration
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 5475201016139151011, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: groundAcceleration
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 5475201016139151011, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: groundDeceleration
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 7329895692276201690, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: m_ApplyRootMotion
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7418034704001290420, guid: a74b765abd4140c479f1c698562ce026, type: 3}
