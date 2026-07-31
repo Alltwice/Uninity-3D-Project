@@ -5,20 +5,35 @@ using UnityEngine;
 public struct PlayerAnimationFrame
 {
     public PlayerAnimationFrame(
-        float normalizedMoveSpeed,
+        float horizontalSpeed,
+        float targetMoveSpeed,
+        PlayerLocomotionMode locomotionMode,
         float verticalSpeed,
         bool isGrounded,
+        bool justLanded,
+        float landingImpactSpeed,
+        bool isHardLandingImpact,
         bool isNearGround)
     {
-        NormalizedMoveSpeed = normalizedMoveSpeed;
+        HorizontalSpeed = horizontalSpeed;
+        TargetMoveSpeed = targetMoveSpeed;
+        LocomotionMode = locomotionMode;
         VerticalSpeed = verticalSpeed;
         IsGrounded = isGrounded;
+        JustLanded = justLanded;
+        LandingImpactSpeed = landingImpactSpeed;
+        IsHardLandingImpact = isHardLandingImpact;
         IsNearGround = isNearGround;
     }
 
-    public float NormalizedMoveSpeed { get; }
+    public float HorizontalSpeed { get; }
+    public float TargetMoveSpeed { get; }
+    public PlayerLocomotionMode LocomotionMode { get; }
     public float VerticalSpeed { get; }
     public bool IsGrounded { get; }
+    public bool JustLanded { get; }
+    public float LandingImpactSpeed { get; }
+    public bool IsHardLandingImpact { get; }
     public bool IsNearGround { get; }
 }
 /// <summary>
@@ -41,21 +56,15 @@ public class PlayerAnimationDataSource : MonoBehaviour
     /// <returns>返回可用的动画数据结构体</returns>
     public PlayerAnimationFrame Capture()
     {
-        groundProbe.Refresh(motor.VerticalSpeed, motor.IsGrounded);
-        float normalizedMoveSpeed;
-        if (motor.MoveSpeed <= 0.01f)
-        {
-            normalizedMoveSpeed = 0f;
-        }
-        else
-        {
-            float speedRatio = motor.HorizontalSpeed / motor.MoveSpeed;
-            normalizedMoveSpeed = Mathf.Clamp01(speedRatio);
-        }
         return new PlayerAnimationFrame(
-            normalizedMoveSpeed,
+            motor.HorizontalSpeed,
+            motor.CurrentTargetSpeed,
+            motor.CurrentLocomotionMode,
             motor.VerticalSpeed,
             motor.IsGrounded,
-            groundProbe.IsNearGround);
+            motor.JustLanded,
+            motor.LandingImpactSpeed,
+            motor.IsHardLandingImpact,
+            groundProbe.IsNearGround(motor.VerticalSpeed, motor.IsGrounded));
     }
 }

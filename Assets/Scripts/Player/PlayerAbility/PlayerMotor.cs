@@ -1,5 +1,15 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
+
+public enum PlayerLocomotionMode
+{
+    Idle,
+    Walk,
+    Run,
+    FastRun,
+    Air
+}
 
 /// <summary>
 /// 在拿到输入数据之后具体要处理的输入内容
@@ -7,7 +17,9 @@ using UnityEngine;
 public class PlayerMotor : MonoBehaviour
 {
     [Header("移动速度")]
-    [SerializeField] private float moveSpeed = 5f;
+    [SerializeField] private float walkSpeed = 2.5f;
+    [SerializeField] private float runSpeed = 5f;
+    [SerializeField] private float fastRunSpeed = 7.5f;
     [SerializeField] private float airMoveSpeed = 2f;
     [Header("移动加速度")] 
     [SerializeField] private float groundAcceleration = 35f;
@@ -19,8 +31,11 @@ public class PlayerMotor : MonoBehaviour
     [SerializeField] private float gravity = -20f;
     [Tooltip("为了让角色稳稳压在地上给一个向下的速度")]
     [SerializeField] private float groundedVerticalVelocity = -2f;
+    [Header("落地判定")]
+    [SerializeField] private float hardLandingMinImpactSpeed = 10f;
     //能够处理碰撞，斜坡，台阶，贴地
     private CharacterController characterController;
+    private PlayerGroundProbe groundProbe;
     private IPlayerInputSource inputSource;
     private Transform cameraTransform;
     //主要用于处理角色竖直方向上的下落和跳跃
@@ -28,11 +43,16 @@ public class PlayerMotor : MonoBehaviour
     private Vector3 horizontalVelocity;
     private bool isGrounded;
     //给外部暴露读取的数据
-    public float MoveSpeed => moveSpeed;
+    public float MoveSpeed => CurrentTargetSpeed;
+    public float CurrentTargetSpeed { get; private set; }
+    public PlayerLocomotionMode CurrentLocomotionMode { get; private set; } = PlayerLocomotionMode.Idle;
     //获取向量长度
     public float HorizontalSpeed => new Vector3(horizontalVelocity.x, 0, horizontalVelocity.z).magnitude;
     public IPlayerInputSource InputSource => inputSource;
     public float VerticalSpeed => verticalVelocity.y;
+    public bool JustLanded { get; private set; }
+    public float LandingImpactSpeed { get; private set; }
+    public bool IsHardLandingImpact => JustLanded && LandingImpactSpeed >= hardLandingMinImpactSpeed;
 
     /// <summary>
     /// 给外部暴露修改高度和应用重力
@@ -47,11 +67,15 @@ public class PlayerMotor : MonoBehaviour
     private void Awake()
     {
         characterController=GetComponent<CharacterController>();
-        isGrounded = characterController != null && characterController.isGrounded;
-        if (cameraTransform == null && Camera.main != null)
-        {
-            cameraTransform = Camera.main.transform;
-        }
+        groundProbe = GetComponent<PlayerGroundProbe>();
+        isGrounded = characterController.isGrounded;
+        cameraTransform = Camera.main.transform;
+    }
+
+    private void Start()
+    {
+        groundProbe.Refresh();
+        isGrounded = characterController.isGrounded || groundProbe.CanSnapToGround;
     }
     /// <summary>
     /// 对外部暴露主动依赖函数，等待被组合脚本调用后注入
@@ -62,16 +86,18 @@ public class PlayerMotor : MonoBehaviour
         this.inputSource = inputSource;
     }
     //——————————————————————————————————————主要方法————————————————————————————————————————————————
-    
+
     /// <summary>
     /// 处理移动逻辑
     /// </summary>
     public void Move()
     {
         Vector3 moveDirection = GetInputDirection();
+        CurrentLocomotionMode = ResolveGroundLocomotionMode();
+        CurrentTargetSpeed = GetSpeed(CurrentLocomotionMode);
         ApplyGravity();
         //确定水平速度
-        Vector3 targetHorizontalVelocity = moveDirection * moveSpeed;
+        Vector3 targetHorizontalVelocity = moveDirection * CurrentTargetSpeed;
         //实现加速效果，每帧向目标位置移动参数个单位
         horizontalVelocity=Vector3.MoveTowards(horizontalVelocity, targetHorizontalVelocity, groundAcceleration * Time.deltaTime);
         //确定最后速度方向
@@ -88,9 +114,11 @@ public class PlayerMotor : MonoBehaviour
     public void AirMove()
     {
         Vector3 moveDirection = GetInputDirection();
+        CurrentLocomotionMode = PlayerLocomotionMode.Air;
+        CurrentTargetSpeed = GetSpeed(CurrentLocomotionMode);
         ApplyGravity();
-        Vector3 targetVerticalVelocity = moveDirection * airMoveSpeed;
-        horizontalVelocity=Vector3.MoveTowards(horizontalVelocity, targetVerticalVelocity, airAcceleration * Time.deltaTime);
+        Vector3 targetHorizontalVelocity = moveDirection * CurrentTargetSpeed;
+        horizontalVelocity=Vector3.MoveTowards(horizontalVelocity, targetHorizontalVelocity, airAcceleration * Time.deltaTime);
         Vector3 finalVelocity = horizontalVelocity + verticalVelocity;
         MoveCharacter(finalVelocity);
         RotateToMoveDirection(moveDirection);
@@ -100,6 +128,8 @@ public class PlayerMotor : MonoBehaviour
     /// </summary>
     public void IdleMove()
     {
+        CurrentLocomotionMode = PlayerLocomotionMode.Idle;
+        CurrentTargetSpeed = 0f;
         horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, Vector3.zero, groundDeceleration * Time.deltaTime);
         ApplyGravity();
         Vector3 finalVelocity = horizontalVelocity + verticalVelocity;
@@ -148,10 +178,36 @@ public class PlayerMotor : MonoBehaviour
     /// <param name="velocity">传入最终真实移动速度</param>
     private void MoveCharacter(Vector3 velocity)
     {
+        //判断角色先前是否接地
+        bool wasGrounded = isGrounded;
+        float downwardSpeedBeforeMove = Mathf.Max(0f, -verticalVelocity.y);
+        JustLanded = false;
+
         //CC移动时会返回一个是否有碰撞的信息
         CollisionFlags collisionFlags = characterController.Move(velocity * Time.deltaTime);
+        bool controllerGrounded = (collisionFlags & CollisionFlags.Below) != 0 || characterController.isGrounded;
+
+        groundProbe.Refresh();
+        bool snappedToGround =
+            !controllerGrounded &&
+            wasGrounded &&
+            verticalVelocity.y <= 0f &&
+            groundProbe.CanSnapToGround;
+
+        if (snappedToGround)
+        {
+            characterController.Move(-transform.up * groundProbe.GroundDistance);
+            groundProbe.Refresh();
+        }
+
         //确认是接地才会将isGround设定为地面并持续施加向下的力
-        isGrounded = (collisionFlags & CollisionFlags.Below) != 0 || characterController.isGrounded;
+        isGrounded = controllerGrounded || snappedToGround;
+        if (!wasGrounded && isGrounded)
+        {
+            JustLanded = true;
+            LandingImpactSpeed = downwardSpeedBeforeMove;
+        }
+
         if (isGrounded && verticalVelocity.y < groundedVerticalVelocity)
         {
             verticalVelocity.y = groundedVerticalVelocity;
@@ -188,5 +244,34 @@ public class PlayerMotor : MonoBehaviour
         }
         Vector3 moveDirection = GetCameraMoveDir(inputDirection);
         return moveDirection;
+    }
+
+    private PlayerLocomotionMode ResolveGroundLocomotionMode()
+    {
+        if (inputSource.IsSprintHeld)
+        {
+            return PlayerLocomotionMode.FastRun;
+        }
+
+        return inputSource.IsWalkMode
+            ? PlayerLocomotionMode.Walk
+            : PlayerLocomotionMode.Run;
+    }
+
+    private float GetSpeed(PlayerLocomotionMode locomotionMode)
+    {
+        switch (locomotionMode)
+        {
+            case PlayerLocomotionMode.Walk:
+                return walkSpeed;
+            case PlayerLocomotionMode.FastRun:
+                return fastRunSpeed;
+            case PlayerLocomotionMode.Run:
+                return runSpeed;
+            case PlayerLocomotionMode.Air:
+                return airMoveSpeed;
+            default:
+                return 0f;
+        }
     }
 }

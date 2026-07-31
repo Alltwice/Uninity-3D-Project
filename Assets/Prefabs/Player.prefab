@@ -63,6 +63,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 7404670789746101255}
   - {fileID: 1377887980339806687}
   - {fileID: 6442418630859194707}
   m_Father: {fileID: 0}
@@ -97,7 +98,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 3700034333746406048}
+  m_Father: {fileID: 3024637014286927144}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &7418034704001290420
 MonoBehaviour:
@@ -351,10 +352,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects:
-    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 9e9dd8d32cf76fa43941fa1ff36e6b86, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 7404670789746101255}
+    m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 9e9dd8d32cf76fa43941fa1ff36e6b86, type: 3}
       insertIndex: -1
@@ -428,7 +426,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d65275f97a22934e9267fb784f674d0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMotor
-  moveSpeed: 5
+  walkSpeed: 2.5
+  runSpeed: 5
+  fastRunSpeed: 7.5
   airMoveSpeed: 2
   groundAcceleration: 35
   groundDeceleration: 45
@@ -436,6 +436,7 @@ MonoBehaviour:
   rotationSmoothSpeed: 12
   gravity: -20
   groundedVerticalVelocity: -2
+  hardLandingMinImpactSpeed: 10
 --- !u!114 &672409224435667858
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -487,19 +488,28 @@ MonoBehaviour:
       _Names: []
     _Animations:
     - {fileID: -203655887218126122, guid: 6db65dc7632dc5247abaf1d0011dc35d, type: 3}
+    - {fileID: -203655887218126122, guid: a65dd7ad072999f4688ecb9fd305d279, type: 3}
     - {fileID: -203655887218126122, guid: e442121ea7d99514c9d61b2cdf9d2118, type: 3}
-    _Speeds:
-    - 1
-    - 1
-    _SynchronizeChildren: 0101
+    _Speeds: []
+    _SynchronizeChildren:
     _Thresholds:
     - 0
-    - 1
+    - 2.5
+    - 5
     _DefaultParameter: 0
     _ExtrapolateSpeed: 0
     _ParameterName: {fileID: 0}
-  jumpTransition:
-    _FadeDuration: 0
+  fastRunTransition:
+    _FadeDuration: 0.15
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -203655887218126122, guid: a25c1ff43d660f4488683183ece5914d, type: 3}
+    _NormalizedStartTime: 0
+  jumpUpTransition:
+    _FadeDuration: 0.1
     _Speed: 1
     _Events:
       _NormalizedTimes: []
@@ -507,7 +517,24 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: -203655887218126122, guid: 232463cd39406cd439534fcfa877a9bc, type: 3}
     _NormalizedStartTime: 0
-  moveSpeedDampTime: 0.1
+  jumpIdleTransition:
+    _FadeDuration: 0.15
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -203655887218126122, guid: 1fd1c5e7ba4d64045a732a5a202d728d, type: 3}
+    _NormalizedStartTime: 0
+  hardLandingTransition:
+    _FadeDuration: 0.08
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -203655887218126122, guid: d55cde1d1dfc00c47887288b0a21482f, type: 3}
+    _NormalizedStartTime: 0
   references:
     version: 2
     RefIds: []
@@ -529,6 +556,7 @@ MonoBehaviour:
     m_Bits: 8
   probeStartOffset: 0.2
   probeDistance: 1
+  groundSnapDistance: 0.3
   radiusScale: 0.9
   landingAnticipationTime: 0.12
   minAnticipationDistance: 0.15

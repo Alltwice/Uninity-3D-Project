@@ -13,11 +13,12 @@ public class PlayerInputReader : MonoBehaviour,IPlayerInputSource
     //承接接口内容
     public Vector2 MoveInput { get; private set; }
     public Vector2 LookInput { get; private set; }
+    public bool IsWalkMode { get; private set; }
+    public bool IsSprintHeld { get; private set; }
     //Awake时新建系统输入脚本
     private void Awake()
     {
         inputActions = new InputSystem_Actions();
-        ResolveActionBuffer();
     }
 
     public void Init(IPlayerActionBuffer actionBuffer)
@@ -31,8 +32,6 @@ public class PlayerInputReader : MonoBehaviour,IPlayerInputSource
         {
             inputActions = new InputSystem_Actions();
         }
-
-        ResolveActionBuffer();
         RegisterInputCallbacks();
         inputActions.Player.Enable();
     }
@@ -47,6 +46,8 @@ public class PlayerInputReader : MonoBehaviour,IPlayerInputSource
 
         MoveInput = Vector2.zero;
         LookInput = Vector2.zero;
+        IsWalkMode = false;
+        IsSprintHeld = false;
         actionBuffer?.Clear(PlayerBufferedAction.Jump);
     }
     //当前对象被销毁后系统自动创建对象同时销毁
@@ -64,6 +65,9 @@ public class PlayerInputReader : MonoBehaviour,IPlayerInputSource
         inputActions.Player.Look.performed += OnLookPerformed;
         inputActions.Player.Look.canceled += OnLookCanceled;
         inputActions.Player.Jump.started += OnJumpStarted;
+        inputActions.Player.Sprint.started += OnSprintStarted;
+        inputActions.Player.Sprint.canceled += OnSprintCanceled;
+        inputActions.Player.WalkToggle.started += OnWalkToggleStarted;
     }
     /// <summary>
     /// 解绑输入事件
@@ -75,38 +79,35 @@ public class PlayerInputReader : MonoBehaviour,IPlayerInputSource
         inputActions.Player.Look.performed -= OnLookPerformed;
         inputActions.Player.Look.canceled -= OnLookCanceled;
         inputActions.Player.Jump.started -= OnJumpStarted;
+        inputActions.Player.Sprint.started -= OnSprintStarted;
+        inputActions.Player.Sprint.canceled -= OnSprintCanceled;
+        inputActions.Player.WalkToggle.started -= OnWalkToggleStarted;
     }
     //以下为处理按下和松开时的数据
     private void OnMovePerformed(InputAction.CallbackContext ctx)=> MoveInput = ctx.ReadValue<Vector2>();
     private void OnMoveCanceled(InputAction.CallbackContext ctx)=> MoveInput = Vector2.zero;
     private void OnLookPerformed(InputAction.CallbackContext ctx)=> LookInput = ctx.ReadValue<Vector2>();
     private void OnLookCanceled(InputAction.CallbackContext ctx)=> LookInput = Vector2.zero;
+    private void OnSprintStarted(InputAction.CallbackContext ctx) => IsSprintHeld = true;
+    //奔跑结束后切换会跑步模式
+    private void OnSprintCanceled(InputAction.CallbackContext ctx)
+    {
+        IsSprintHeld = false;
+        IsWalkMode = false;
+    }
+    //切换跑步和行走同时忽略奔跑时
+    private void OnWalkToggleStarted(InputAction.CallbackContext ctx)
+    {
+        if (IsSprintHeld)
+        {
+            return;
+        }
+
+        IsWalkMode = !IsWalkMode;
+    }
+    //添加输入缓冲
     private void OnJumpStarted(InputAction.CallbackContext ctx)
     {
-        ResolveActionBuffer();
-        if (actionBuffer == null)
-        {
-            Debug.LogError(
-                $"{nameof(PlayerInputReader)} could not find a {nameof(PlayerActionBuffer)} " +
-                "in the Player hierarchy.",
-                this);
-            return;
-        }
-
         actionBuffer.Buffer(PlayerBufferedAction.Jump);
-    }
-
-    private void ResolveActionBuffer()
-    {
-        if (actionBuffer != null)
-        {
-            return;
-        }
-
-        actionBuffer = GetComponent<PlayerActionBuffer>();
-        if (actionBuffer == null && transform.parent != null)
-        {
-            actionBuffer = transform.parent.GetComponentInChildren<PlayerActionBuffer>(true);
-        }
     }
 }

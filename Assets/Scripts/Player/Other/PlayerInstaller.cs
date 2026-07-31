@@ -13,24 +13,9 @@ public class PlayerInstaller : MonoBehaviour
     private void Awake()
     {
         //调用依赖注入逻辑
-        ResolveActionBuffer();
         playerInputReader.Init(actionBuffer);
         playerMotor.Init(playerInputReader);
         playerCameraOrbitTarget.Init(playerInputReader);
         playerStateController.Init(playerInputReader, actionBuffer);
-    }
-
-    private void ResolveActionBuffer()
-    {
-        if (actionBuffer != null)
-        {
-            return;
-        }
-
-        actionBuffer = playerInputReader.GetComponent<PlayerActionBuffer>();
-        if (actionBuffer == null)
-        {
-            actionBuffer = playerInputReader.gameObject.AddComponent<PlayerActionBuffer>();
-        }
     }
 }

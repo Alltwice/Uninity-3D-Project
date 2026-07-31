@@ -8,12 +8,11 @@ public class PlayerAirState : PlayerStateBase
     public PlayerAirState(PlayerContext context) : base(context){}
     public override void Enter()
     {
-        
+
     }
 
     public override void Exit()
     {
-        
     }
 
     public override void Tick()
@@ -23,11 +22,21 @@ public class PlayerAirState : PlayerStateBase
 
     protected override Type EvaluateNextStateType()
     {
+        if (!Context.Motor.IsGrounded)
+        {
+            return null;
+        }
+
+        if (Context.Motor.IsHardLandingImpact)
+        {
+            return typeof(PlayerHardLandingState);
+        }
+
         if (Context.ActionBuffer != null
             && Context.ActionBuffer.Consume(PlayerBufferedAction.Jump)
             && Context.Jump.TryJump())
         {
-            Context.AnimationController.RequestJump();
+            Context.AnimationController.RequestJumpUp();
             return typeof(PlayerAirState);
         }
 

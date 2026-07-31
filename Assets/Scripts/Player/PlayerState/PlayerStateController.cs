@@ -71,6 +71,7 @@ public class PlayerStateController : MonoBehaviour
         AddState(new PlayerIdleState(context));
         AddState(new PlayerGroundMoveState(context));
         AddState(new PlayerAirState(context));
+        AddState(new PlayerHardLandingState(context));
     }
     /// <summary>
     /// 根据传入的类型切换状态

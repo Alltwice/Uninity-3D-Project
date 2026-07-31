@@ -2,6 +2,10 @@ using UnityEngine;
 
 public interface IPlayerAnimationController
 {
+    bool IsHardLandingComplete { get; }
+
     void RequestLocomotion();
-    void RequestJump();
+    void RequestJumpUp();
+    void RequestHardLanding();
+    void ReleaseHardLanding();
 }
