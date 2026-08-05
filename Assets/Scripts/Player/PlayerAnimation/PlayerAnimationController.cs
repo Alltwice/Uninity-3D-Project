@@ -58,12 +58,6 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
             return;
         }
 
-        if (frame.IsHardLandingImpact)
-        {
-            RequestHardLanding();
-            return;
-        }
-
         if (activeAnimation == ActiveAnimation.HardLanding)
         {
             return;
