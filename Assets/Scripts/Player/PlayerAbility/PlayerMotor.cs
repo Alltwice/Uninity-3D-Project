@@ -253,9 +253,7 @@ public class PlayerMotor : MonoBehaviour
             return PlayerLocomotionMode.FastRun;
         }
 
-        return inputSource.IsWalkMode
-            ? PlayerLocomotionMode.Walk
-            : PlayerLocomotionMode.Run;
+        return inputSource.IsWalkMode ? PlayerLocomotionMode.Walk : PlayerLocomotionMode.Run;
     }
 
     private float GetSpeed(PlayerLocomotionMode locomotionMode)

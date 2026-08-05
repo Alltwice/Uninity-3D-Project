@@ -10,6 +10,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         None,
         Locomotion,
         FastRun,
+        FastRunStop,
         JumpUp,
         JumpIdle,
         HardLanding
@@ -22,10 +23,13 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     [Header("动画参数设置")]
     [SerializeField] private LinearMixerTransition locomotionTransition = new LinearMixerTransition();
     [SerializeField] private ClipTransition fastRunTransition = new ClipTransition();
+    [SerializeField] private ClipTransition fastRunStopTransition = new ClipTransition();
+    [SerializeField] private float fastRunStopMinSpeed = 4.5f;
     [SerializeField] private ClipTransition jumpUpTransition = new ClipTransition();
     [SerializeField] private ClipTransition jumpIdleTransition = new ClipTransition();
     [SerializeField] private ClipTransition hardLandingTransition = new ClipTransition();
     private LinearMixerState locomotionState;
+    private AnimancerState fastRunStopState;
     private AnimancerState jumpUpState;
     private AnimancerState hardLandingState;
     private ActiveAnimation activeAnimation;
@@ -63,6 +67,19 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
             return;
         }
 
+        if (ShouldStartFastRunStop(frame))
+        {
+            RequestFastRunStop();
+            return;
+        }
+
+        if (activeAnimation == ActiveAnimation.FastRunStop
+            && frame.LocomotionMode == PlayerLocomotionMode.Idle
+            && fastRunStopState.NormalizedTime < 1f)
+        {
+            return;
+        }
+
         if (frame.LocomotionMode == PlayerLocomotionMode.FastRun)
         {
             RequestFastRun();
@@ -93,6 +110,18 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         }
         animancer.Play(fastRunTransition);
         activeAnimation = ActiveAnimation.FastRun;
+    }
+
+    private bool ShouldStartFastRunStop(PlayerAnimationFrame frame)
+    {
+        return activeAnimation == ActiveAnimation.FastRun && frame.IsGrounded && frame.LocomotionMode == 
+            PlayerLocomotionMode.Idle && frame.HorizontalSpeed >= fastRunStopMinSpeed;
+    }
+
+    private void RequestFastRunStop()
+    {
+        fastRunStopState = animancer.Play(fastRunStopTransition);
+        activeAnimation = ActiveAnimation.FastRunStop;
     }
 
     public void RequestJumpUp()

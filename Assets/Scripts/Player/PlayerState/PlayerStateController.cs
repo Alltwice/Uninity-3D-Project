@@ -26,11 +26,6 @@ public class PlayerStateController : MonoBehaviour
         this.playerInput = playerInput;
         this.actionBuffer = actionBuffer;
     }
-
-    public void Init(IPlayerInputSource playerInput)
-    {
-        Init(playerInput, null);
-    }
     private void Awake()
     {
         animationController = GetComponent<PlayerAnimationController>();

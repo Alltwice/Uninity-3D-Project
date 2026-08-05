@@ -192,6 +192,16 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: -203655887218126122, guid: a25c1ff43d660f4488683183ece5914d, type: 3}
     _NormalizedStartTime: 0
+  fastRunStopTransition:
+    _FadeDuration: 0.08
+    _Speed: 1.6
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -203655887218126122, guid: 9de82d4dc6faad949acbfce9c2ed90bb, type: 3}
+    _NormalizedStartTime: 0
+  fastRunStopMinSpeed: 5.5
   jumpUpTransition:
     _FadeDuration: 0.1
     _Speed: 1
