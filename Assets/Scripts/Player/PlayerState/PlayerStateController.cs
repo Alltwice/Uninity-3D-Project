@@ -34,11 +34,6 @@ public class PlayerStateController : MonoBehaviour
     }
     private void Start()
     {
-        if (playerInput == null)
-        {
-            playerInput = playerMotor.InputSource;
-        }
-
         //存入引用即可
         context = new PlayerContext(
             playerMotor,

@@ -26,9 +26,7 @@ public class PlayerIdleState : PlayerStateBase
             return typeof(PlayerAirState);
         }
 
-        if (Context.ActionBuffer != null
-            && Context.ActionBuffer.Consume(PlayerBufferedAction.Jump)
-            && Context.Jump.TryJump())
+        if (Context.ActionBuffer.Consume(PlayerBufferedAction.Jump) && Context.Jump.TryJump())
         {
             Context.AnimationController.RequestJumpUp();
             return typeof(PlayerAirState);
