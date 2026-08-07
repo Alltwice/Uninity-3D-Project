@@ -46,6 +46,7 @@ public class PlayerActionBuffer : MonoBehaviour, IPlayerActionBuffer
     {
         if (!HasBuffered(action))
         {
+            bufferedActions.Remove(action);
             return false;
         }
 
@@ -104,13 +105,7 @@ public class PlayerActionBuffer : MonoBehaviour, IPlayerActionBuffer
         {
             return false;
         }
-        //如果时间小于持续时间缓冲还存在
-        if (Time.time - bufferedAction.StartTime <= bufferedAction.Duration)
-        {
-            return true;
-        }
-        //否则移除缓冲
-        bufferedActions.Remove(action);
-        return false;
+        //判断只读取缓存状态；清理由消费、覆盖写入或显式 Clear 负责。
+        return Time.time - bufferedAction.StartTime <= bufferedAction.Duration;
     }
 }

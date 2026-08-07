@@ -1,20 +1,18 @@
 using System;
 using UnityEngine;
 
+/// <summary>
+/// 玩家硬着陆锁定状态。
+/// </summary>
 public class PlayerHardLandingState : PlayerStateBase
 {
     public PlayerHardLandingState(PlayerContext context) : base(context)
     {
     }
 
-    public override void Enter()
+    public override void Enter(PlayerStateTransition transition)
     {
         Context.AnimationController.RequestHardLanding();
-    }
-
-    public override void Exit()
-    {
-        Context.AnimationController.ReleaseHardLanding();
     }
 
     public override void Tick()
@@ -22,18 +20,31 @@ public class PlayerHardLandingState : PlayerStateBase
         Context.Motor.IdleMove();
     }
 
-    protected override Type EvaluateNextStateType()
+    public override PlayerStateTransitionRequest EvaluateResultTransition()
     {
         if (!Context.Motor.IsGrounded)
         {
-            return typeof(PlayerAirState);
+            return new PlayerStateTransitionRequest(
+                typeof(PlayerAirState),
+                PlayerStateTransitionReason.Fell);
         }
 
-        return Context.InputSource.MoveInput != Vector2.zero ? typeof(PlayerGroundMoveState) : typeof(PlayerIdleState);
+        if (!Context.AnimationController.IsHardLandingComplete)
+        {
+            return null;
+        }
+
+        Type targetStateType = Context.InputSource.MoveInput != Vector2.zero
+            ? typeof(PlayerGroundMoveState)
+            : typeof(PlayerIdleState);
+
+        return new PlayerStateTransitionRequest(
+            targetStateType,
+            PlayerStateTransitionReason.HardLandingRecovered);
     }
 
-    public override bool CanExit()
+    public override void Exit(PlayerStateTransition transition)
     {
-        return !Context.Motor.IsGrounded || Context.AnimationController.IsHardLandingComplete;
+        Context.AnimationController.ReleaseHardLanding();
     }
 }

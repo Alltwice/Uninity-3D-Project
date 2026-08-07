@@ -24,7 +24,6 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     [SerializeField] private LinearMixerTransition locomotionTransition = new LinearMixerTransition();
     [SerializeField] private ClipTransition fastRunTransition = new ClipTransition();
     [SerializeField] private ClipTransition fastRunStopTransition = new ClipTransition();
-    [SerializeField] private float fastRunStopMinSpeed = 4.5f;
     [SerializeField] private ClipTransition jumpUpTransition = new ClipTransition();
     [SerializeField] private ClipTransition jumpIdleTransition = new ClipTransition();
     [SerializeField] private ClipTransition hardLandingTransition = new ClipTransition();
@@ -67,12 +66,6 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
             return;
         }
 
-        if (ShouldStartFastRunStop(frame))
-        {
-            RequestFastRunStop();
-            return;
-        }
-
         if (activeAnimation == ActiveAnimation.FastRunStop
             && frame.LocomotionMode == PlayerLocomotionMode.Idle
             && fastRunStopState.NormalizedTime < 1f)
@@ -112,13 +105,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         activeAnimation = ActiveAnimation.FastRun;
     }
 
-    private bool ShouldStartFastRunStop(PlayerAnimationFrame frame)
-    {
-        return activeAnimation == ActiveAnimation.FastRun && frame.IsGrounded && frame.LocomotionMode == 
-            PlayerLocomotionMode.Idle && frame.HorizontalSpeed >= fastRunStopMinSpeed;
-    }
-
-    private void RequestFastRunStop()
+    public void RequestFastRunStop()
     {
         fastRunStopState = animancer.Play(fastRunStopTransition);
         activeAnimation = ActiveAnimation.FastRunStop;

@@ -1,46 +1,61 @@
-using System;
 using UnityEngine;
+
 /// <summary>
-/// 玩家待机状态
+/// 玩家待机状态。
 /// </summary>
 public class PlayerIdleState : PlayerStateBase
 {
-    //base，默认调用父类构造函数
-    public PlayerIdleState(PlayerContext context) : base(context){}
+    public PlayerIdleState(PlayerContext context) : base(context)
+    {
+    }
 
-    public override void Enter()
-    {
-
-    }
-    public override void Exit()
-    {
-    }
-    public override void Tick()
-    {
-        Context.Motor.IdleMove(); 
-    }
-    protected override Type EvaluateNextStateType()
+    public override PlayerStateTransitionRequest EvaluateInputTransition()
     {
         if (!Context.Motor.IsGrounded)
         {
-            return typeof(PlayerAirState);
+            return null;
         }
 
-        if (Context.ActionBuffer.Consume(PlayerBufferedAction.Jump) && Context.Jump.TryJump())
+        if (Context.ActionBuffer.HasBuffered(PlayerBufferedAction.Jump) && Context.Jump.CanJump)
         {
-            Context.AnimationController.RequestJumpUp();
-            return typeof(PlayerAirState);
+            return new PlayerStateTransitionRequest(
+                typeof(PlayerAirState),
+                PlayerStateTransitionReason.Jumped);
         }
 
         if (Context.InputSource.MoveInput != Vector2.zero)
         {
-            return typeof(PlayerGroundMoveState);
+            return new PlayerStateTransitionRequest(
+                typeof(PlayerGroundMoveState),
+                PlayerStateTransitionReason.StartedMoving);
         }
 
         return null;
     }
-    public override bool CanExit()
+
+    public override void Enter(PlayerStateTransition transition)
     {
-        return true;
+        if (transition.Reason == PlayerStateTransitionReason.StoppedMoving
+            && transition.PreviousLocomotionMode == PlayerLocomotionMode.FastRun)
+        {
+            Context.AnimationController.RequestFastRunStop();
+        }
+    }
+
+    public override void Tick()
+    {
+        Context.Motor.IdleMove();
+    }
+
+    public override PlayerStateTransitionRequest EvaluateResultTransition()
+    {
+        if (Context.Motor.IsGrounded)
+        {
+            return null;
+        }
+
+        return new PlayerStateTransitionRequest(
+            typeof(PlayerAirState),
+            PlayerStateTransitionReason.Fell);
     }
 }

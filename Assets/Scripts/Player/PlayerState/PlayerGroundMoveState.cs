@@ -1,18 +1,36 @@
-using System;
 using UnityEngine;
+
 /// <summary>
-/// 玩家在地面移动逻辑
+/// 玩家地面移动状态。
 /// </summary>
 public class PlayerGroundMoveState : PlayerStateBase
 {
-    public PlayerGroundMoveState(PlayerContext context) : base(context){}
-    public override void Enter()
+    public PlayerGroundMoveState(PlayerContext context) : base(context)
     {
-
     }
-    public override void Exit()
-    {
 
+    public override PlayerStateTransitionRequest EvaluateInputTransition()
+    {
+        if (!Context.Motor.IsGrounded)
+        {
+            return null;
+        }
+
+        if (Context.ActionBuffer.HasBuffered(PlayerBufferedAction.Jump) && Context.Jump.CanJump)
+        {
+            return new PlayerStateTransitionRequest(
+                typeof(PlayerAirState),
+                PlayerStateTransitionReason.Jumped);
+        }
+
+        if (Context.InputSource.MoveInput == Vector2.zero)
+        {
+            return new PlayerStateTransitionRequest(
+                typeof(PlayerIdleState),
+                PlayerStateTransitionReason.StoppedMoving);
+        }
+
+        return null;
     }
 
     public override void Tick()
@@ -20,29 +38,15 @@ public class PlayerGroundMoveState : PlayerStateBase
         Context.Motor.Move();
     }
 
-    protected override Type EvaluateNextStateType()
+    public override PlayerStateTransitionRequest EvaluateResultTransition()
     {
-        if (!Context.Motor.IsGrounded)
+        if (Context.Motor.IsGrounded)
         {
-            return typeof(PlayerAirState);
+            return null;
         }
 
-        if (Context.ActionBuffer.Consume(PlayerBufferedAction.Jump) && Context.Jump.TryJump())
-        {
-            Context.AnimationController.RequestJumpUp();
-            return typeof(PlayerAirState);
-        }
-
-        if (Context.InputSource.MoveInput == Vector2.zero)
-        {
-            return typeof(PlayerIdleState);
-        }
-
-        return null;
-    }
-
-    public override bool CanExit()
-    {
-        return true;
+        return new PlayerStateTransitionRequest(
+            typeof(PlayerAirState),
+            PlayerStateTransitionReason.Fell);
     }
 }

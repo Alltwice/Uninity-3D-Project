@@ -1,18 +1,25 @@
 using System;
 using UnityEngine;
+
 /// <summary>
-/// 玩家空中状态
+/// 玩家空中状态。
 /// </summary>
 public class PlayerAirState : PlayerStateBase
 {
-    public PlayerAirState(PlayerContext context) : base(context){}
-    public override void Enter()
+    public PlayerAirState(PlayerContext context) : base(context)
     {
-
     }
 
-    public override void Exit()
+    public override void Enter(PlayerStateTransition transition)
     {
+        if (transition.Reason != PlayerStateTransitionReason.Jumped)
+        {
+            return;
+        }
+
+        Context.ActionBuffer.Consume(PlayerBufferedAction.Jump);
+        Context.Jump.ExecuteJump();
+        Context.AnimationController.RequestJumpUp();
     }
 
     public override void Tick()
@@ -20,7 +27,7 @@ public class PlayerAirState : PlayerStateBase
         Context.Motor.AirMove();
     }
 
-    protected override Type EvaluateNextStateType()
+    public override PlayerStateTransitionRequest EvaluateResultTransition()
     {
         if (!Context.Motor.IsGrounded)
         {
@@ -29,25 +36,25 @@ public class PlayerAirState : PlayerStateBase
 
         if (Context.Motor.IsHardLandingImpact)
         {
-            return typeof(PlayerHardLandingState);
+            return new PlayerStateTransitionRequest(
+                typeof(PlayerHardLandingState),
+                PlayerStateTransitionReason.HardLanded);
         }
 
-        if (Context.ActionBuffer.Consume(PlayerBufferedAction.Jump) && Context.Jump.TryJump())
+        if (Context.ActionBuffer.HasBuffered(PlayerBufferedAction.Jump) && Context.Jump.CanJump)
         {
-            Context.AnimationController.RequestJumpUp();
-            return typeof(PlayerAirState);
+            return new PlayerStateTransitionRequest(
+                typeof(PlayerAirState),
+                PlayerStateTransitionReason.Jumped,
+                true);
         }
 
-        if (Context.InputSource.MoveInput != Vector2.zero)
-        {
-            return typeof(PlayerGroundMoveState);
-        }
+        Type targetStateType = Context.InputSource.MoveInput != Vector2.zero
+            ? typeof(PlayerGroundMoveState)
+            : typeof(PlayerIdleState);
 
-        return typeof(PlayerIdleState);
-    }
-
-    public override bool CanExit()
-    {
-        return true;
+        return new PlayerStateTransitionRequest(
+            targetStateType,
+            PlayerStateTransitionReason.Landed);
     }
 }
