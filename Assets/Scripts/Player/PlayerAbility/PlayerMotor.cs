@@ -24,6 +24,7 @@ public class PlayerMotor : MonoBehaviour
     [Header("移动加速度")] 
     [SerializeField] private float groundAcceleration = 35f;
     [SerializeField] private float groundDeceleration = 45f;
+    [SerializeField] private float groundTurnAcceleration = 80f;
     [SerializeField] private float airAcceleration = 8f;
     [Header("其他")]
     [Tooltip("变向时旋转速度")]
@@ -86,27 +87,58 @@ public class PlayerMotor : MonoBehaviour
         this.inputSource = inputSource;
     }
     //——————————————————————————————————————主要方法————————————————————————————————————————————————
+    /// <summary>
+    /// 处理角大角度变相的速度问题
+    /// </summary>
+    /// <param name="moveDirection"></param>
+    private void UpdateGroundHorizontalVelocity(Vector3 moveDirection)
+    {
+        Vector3 targetVelocity = moveDirection * CurrentTargetSpeed;
 
+        float acceleration = groundAcceleration;
+
+        if (horizontalVelocity.sqrMagnitude > 0.001f &&
+            targetVelocity.sqrMagnitude > 0.001f)
+        {
+            float alignment = Vector3.Dot(
+                horizontalVelocity.normalized,
+                targetVelocity.normalized);
+
+            if (alignment < 0.8f)
+            {
+                // 明显变向时快速修正速度方向。
+                acceleration = groundTurnAcceleration;
+            }
+            else if (horizontalVelocity.magnitude > targetVelocity.magnitude)
+            {
+                // 例如 FastRun 7.5 -> Run 5。
+                acceleration = groundDeceleration;
+            }
+        }
+
+        horizontalVelocity = Vector3.MoveTowards(
+            horizontalVelocity,
+            targetVelocity,
+            acceleration * Time.deltaTime);
+    }
     /// <summary>
     /// 处理移动逻辑
     /// </summary>
     public void Move()
     {
         Vector3 moveDirection = GetInputDirection();
+
         CurrentLocomotionMode = ResolveGroundLocomotionMode();
         CurrentTargetSpeed = GetSpeed(CurrentLocomotionMode);
-        ApplyGravity();
-        //确定水平速度
-        Vector3 targetHorizontalVelocity = moveDirection * CurrentTargetSpeed;
-        //实现加速效果，每帧向目标位置移动参数个单位
-        horizontalVelocity=Vector3.MoveTowards(horizontalVelocity, targetHorizontalVelocity, groundAcceleration * Time.deltaTime);
-        //确定最后速度方向
-        Vector3 finalVelocity = horizontalVelocity+verticalVelocity;
-        //移动
-        MoveCharacter(finalVelocity);
-        //旋转角色向移动方向
-        RotateToMoveDirection(moveDirection);
 
+        ApplyGravity();
+
+        UpdateGroundHorizontalVelocity(moveDirection);
+
+        Vector3 finalVelocity = horizontalVelocity + verticalVelocity;
+
+        MoveCharacter(finalVelocity);
+        RotateToMoveDirection(moveDirection);
     }
     /// <summary>
     /// 处理空中移动
