@@ -711,6 +711,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: fastRunTransition._Clip
+      value: 
+      objectReference: {fileID: 7400000, guid: fb75b189fc2466a4e8b48842767cc015, type: 3}
+    - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: jumpUpTransition._FadeDuration
       value: 0.3
       objectReference: {fileID: 0}
@@ -718,6 +722,18 @@ PrefabInstance:
       propertyPath: jumpIdleTransition._FadeDuration
       value: 0.5
       objectReference: {fileID: 0}
+    - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: 'locomotionTransition._Animations.Array.data[0]'
+      value: 
+      objectReference: {fileID: 7400000, guid: cade6b1b52efe224fb1faf39dec5f059, type: 3}
+    - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: 'locomotionTransition._Animations.Array.data[1]'
+      value: 
+      objectReference: {fileID: 7400000, guid: 595c32df8a7904f46b06b0690a6e3824, type: 3}
+    - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: 'locomotionTransition._Animations.Array.data[2]'
+      value: 
+      objectReference: {fileID: 7400000, guid: 9de8752cb0752f14b87973ceb9390ac5, type: 3}
     - target: {fileID: 7418034704001290420, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: thirdPersonFollow
       value: 

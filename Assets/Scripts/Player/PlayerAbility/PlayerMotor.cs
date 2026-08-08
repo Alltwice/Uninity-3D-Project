@@ -1,6 +1,4 @@
-using System;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public enum PlayerLocomotionMode
 {
@@ -16,24 +14,8 @@ public enum PlayerLocomotionMode
 /// </summary>
 public class PlayerMotor : MonoBehaviour
 {
-    [Header("移动速度")]
-    [SerializeField] private float walkSpeed = 2.5f;
-    [SerializeField] private float runSpeed = 5f;
-    [SerializeField] private float fastRunSpeed = 7.5f;
-    [SerializeField] private float airMoveSpeed = 2f;
-    [Header("移动加速度")] 
-    [SerializeField] private float groundAcceleration = 35f;
-    [SerializeField] private float groundDeceleration = 45f;
-    [SerializeField] private float groundTurnAcceleration = 80f;
-    [SerializeField] private float airAcceleration = 8f;
-    [Header("其他")]
-    [Tooltip("变向时旋转速度")]
-    [SerializeField] private float rotationSmoothSpeed = 12f;
-    [SerializeField] private float gravity = -20f;
-    [Tooltip("为了让角色稳稳压在地上给一个向下的速度")]
-    [SerializeField] private float groundedVerticalVelocity = -2f;
-    [Header("落地判定")]
-    [SerializeField] private float hardLandingMinImpactSpeed = 10f;
+    [Header("配置")]
+    [SerializeField] private PlayerMotorConfig config;
     //能够处理碰撞，斜坡，台阶，贴地
     private CharacterController characterController;
     private PlayerGroundProbe groundProbe;
@@ -53,7 +35,7 @@ public class PlayerMotor : MonoBehaviour
     public float VerticalSpeed => verticalVelocity.y;
     public bool JustLanded { get; private set; }
     public float LandingImpactSpeed { get; private set; }
-    public bool IsHardLandingImpact => JustLanded && LandingImpactSpeed >= hardLandingMinImpactSpeed;
+    public bool IsHardLandingImpact => JustLanded && LandingImpactSpeed >= config.HardLandingMinImpactSpeed;
 
     /// <summary>
     /// 给外部暴露修改高度和应用重力
@@ -64,7 +46,7 @@ public class PlayerMotor : MonoBehaviour
         verticalVelocity.y =value;
     }
     public bool IsGrounded => isGrounded;
-    public float Gravity => gravity;
+    public float Gravity => config.Gravity;
     private void Awake()
     {
         characterController=GetComponent<CharacterController>();
@@ -95,7 +77,7 @@ public class PlayerMotor : MonoBehaviour
     {
         Vector3 targetVelocity = moveDirection * CurrentTargetSpeed;
 
-        float acceleration = groundAcceleration;
+        float acceleration = config.GroundAcceleration;
 
         if (horizontalVelocity.sqrMagnitude > 0.001f &&
             targetVelocity.sqrMagnitude > 0.001f)
@@ -107,12 +89,12 @@ public class PlayerMotor : MonoBehaviour
             if (alignment < 0.8f)
             {
                 // 明显变向时快速修正速度方向。
-                acceleration = groundTurnAcceleration;
+                acceleration = config.GroundTurnAcceleration;
             }
             else if (horizontalVelocity.magnitude > targetVelocity.magnitude)
             {
                 // 例如 FastRun 7.5 -> Run 5。
-                acceleration = groundDeceleration;
+                acceleration = config.GroundDeceleration;
             }
         }
 
@@ -150,7 +132,7 @@ public class PlayerMotor : MonoBehaviour
         CurrentTargetSpeed = GetSpeed(CurrentLocomotionMode);
         ApplyGravity();
         Vector3 targetHorizontalVelocity = moveDirection * CurrentTargetSpeed;
-        horizontalVelocity=Vector3.MoveTowards(horizontalVelocity, targetHorizontalVelocity, airAcceleration * Time.deltaTime);
+        horizontalVelocity=Vector3.MoveTowards(horizontalVelocity, targetHorizontalVelocity, config.AirAcceleration * Time.deltaTime);
         Vector3 finalVelocity = horizontalVelocity + verticalVelocity;
         MoveCharacter(finalVelocity);
         RotateToMoveDirection(moveDirection);
@@ -162,7 +144,7 @@ public class PlayerMotor : MonoBehaviour
     {
         CurrentLocomotionMode = PlayerLocomotionMode.Idle;
         CurrentTargetSpeed = 0f;
-        horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, Vector3.zero, groundDeceleration * Time.deltaTime);
+        horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, Vector3.zero, config.GroundDeceleration * Time.deltaTime);
         ApplyGravity();
         Vector3 finalVelocity = horizontalVelocity + verticalVelocity;
         MoveCharacter(finalVelocity);
@@ -199,10 +181,10 @@ public class PlayerMotor : MonoBehaviour
         //确保当前始终有力压着角色且不会累计
         if (isGrounded && verticalVelocity.y < 0)
         {
-            verticalVelocity.y = groundedVerticalVelocity;
+            verticalVelocity.y = config.GroundedVerticalVelocity;
             return;
         }
-        verticalVelocity.y += gravity * Time.deltaTime;
+        verticalVelocity.y += config.Gravity * Time.deltaTime;
     }
     /// <summary>
     /// 移动辅助方法
@@ -240,9 +222,9 @@ public class PlayerMotor : MonoBehaviour
             LandingImpactSpeed = downwardSpeedBeforeMove;
         }
 
-        if (isGrounded && verticalVelocity.y < groundedVerticalVelocity)
+        if (isGrounded && verticalVelocity.y < config.GroundedVerticalVelocity)
         {
-            verticalVelocity.y = groundedVerticalVelocity;
+            verticalVelocity.y = config.GroundedVerticalVelocity;
         }
     }
     /// <summary>
@@ -259,7 +241,7 @@ public class PlayerMotor : MonoBehaviour
         //创建旋转让角色方向对准moveDirection
         Quaternion targetRotation=Quaternion.LookRotation(moveDirection);
         //做线性插值旋转，最后一个参数值越大越接近于b值
-        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSmoothSpeed * Time.deltaTime);
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, config.RotationSmoothSpeed * Time.deltaTime);
     }
     /// <summary>
     /// 从输入源中获取输入方向并将其向量化
@@ -293,13 +275,13 @@ public class PlayerMotor : MonoBehaviour
         switch (locomotionMode)
         {
             case PlayerLocomotionMode.Walk:
-                return walkSpeed;
+                return config.WalkSpeed;
             case PlayerLocomotionMode.FastRun:
-                return fastRunSpeed;
+                return config.FastRunSpeed;
             case PlayerLocomotionMode.Run:
-                return runSpeed;
+                return config.RunSpeed;
             case PlayerLocomotionMode.Air:
-                return airMoveSpeed;
+                return config.AirMoveSpeed;
             default:
                 return 0f;
         }

@@ -85,17 +85,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d65275f97a22934e9267fb784f674d0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMotor
-  walkSpeed: 2.5
-  runSpeed: 5
-  fastRunSpeed: 7.5
-  airMoveSpeed: 3
-  groundAcceleration: 20
-  groundDeceleration: 15
-  airAcceleration: 10
-  rotationSmoothSpeed: 12
-  gravity: -20
-  groundedVerticalVelocity: -2
-  hardLandingMinImpactSpeed: 10
+  config: {fileID: 11400000, guid: 93505299fac80c0408a13d633270ccef, type: 2}
 --- !u!143 &6092154827029769203
 CharacterController:
   m_ObjectHideFlags: 0
@@ -148,7 +138,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d03af1d7a526a57478c9ec6f044719a7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerJump
-  jumpHeight: 1.5
+  config: {fileID: 11400000, guid: 1a2099a29094bf44190f6e50a31d6cae, type: 2}
 --- !u!114 &6278883182571625512
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -163,6 +153,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimationController
   animancer: {fileID: 650439676384453668}
   dataSource: {fileID: 6445166632289159917}
+  config: {fileID: 11400000, guid: 615b36e347ec7e94dbbfa4e0b31f0692, type: 2}
   locomotionTransition:
     _FadeDuration: 0.15
     _Speed: 1
@@ -201,7 +192,6 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: -203655887218126122, guid: 9de82d4dc6faad949acbfce9c2ed90bb, type: 3}
     _NormalizedStartTime: 0
-  fastRunStopMinSpeed: 5.5
   jumpUpTransition:
     _FadeDuration: 0.1
     _Speed: 1
@@ -245,16 +235,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerGroundProbe
   characterController: {fileID: 6092154827029769203}
-  groundMask:
-    serializedVersion: 2
-    m_Bits: 8
-  probeStartOffset: 0.2
-  probeDistance: 1
-  groundSnapDistance: 0.3
-  radiusScale: 0.9
-  landingAnticipationTime: 0.12
-  minAnticipationDistance: 0.15
-  maxAnticipationDistance: 0.8
+  config: {fileID: 11400000, guid: 319daab6f9ad1b244988e52024efa46c, type: 2}
 --- !u!114 &650439676384453668
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -296,7 +277,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c6e041f0be05ab045adc4273b5097ddf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerActionBuffer
-  jumpBufferTime: 0.12
+  config: {fileID: 11400000, guid: 638f36ddd44ab9c44af6929d119af1ff, type: 2}
 --- !u!1 &2375787102420044932
 GameObject:
   m_ObjectHideFlags: 0
@@ -342,13 +323,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCameraOrbitTarget
   thirdPersonFollow: {fileID: 0}
-  mouseSensitivity: 0.12
-  minPitch: -50
-  maxPitch: 60
-  normalDistance: 4
-  topViewDistance: 6.5
-  distanceSmoothSpeed: 8
-  begainToTopViewDistance: 10
+  config: {fileID: 11400000, guid: 03cfa2797b3e6054abf5abaf6f92b1dd, type: 2}
 --- !u!1 &7417975393300269812
 GameObject:
   m_ObjectHideFlags: 0

@@ -5,9 +5,7 @@ using UnityEngine;
 /// </summary>
 public class PlayerGroundMoveState : PlayerStateBase
 {
-    public PlayerGroundMoveState(PlayerContext context) : base(context)
-    {
-    }
+    public PlayerGroundMoveState(PlayerContext context) : base(context) { }
 
     public override PlayerStateTransitionRequest EvaluateInputTransition()
     {
@@ -15,21 +13,14 @@ public class PlayerGroundMoveState : PlayerStateBase
         {
             return null;
         }
-
         if (Context.ActionBuffer.HasBuffered(PlayerBufferedAction.Jump) && Context.Jump.CanJump)
         {
-            return new PlayerStateTransitionRequest(
-                typeof(PlayerAirState),
-                PlayerStateTransitionReason.Jumped);
+            return new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Jumped);
         }
-
         if (Context.InputSource.MoveInput == Vector2.zero)
         {
-            return new PlayerStateTransitionRequest(
-                typeof(PlayerIdleState),
-                PlayerStateTransitionReason.StoppedMoving);
+            return new PlayerStateTransitionRequest(typeof(PlayerIdleState), PlayerStateTransitionReason.StoppedMoving);
         }
-
         return null;
     }
 
@@ -44,9 +35,6 @@ public class PlayerGroundMoveState : PlayerStateBase
         {
             return null;
         }
-
-        return new PlayerStateTransitionRequest(
-            typeof(PlayerAirState),
-            PlayerStateTransitionReason.Fell);
+        return new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Fell);
     }
 }

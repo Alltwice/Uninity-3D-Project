@@ -19,6 +19,8 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     [Header("引用")]
     [SerializeField] private AnimancerComponent animancer;
     [SerializeField] private PlayerAnimationDataSource dataSource;
+    [Header("配置")]
+    [SerializeField] private PlayerAnimationConfig config;
 
     [Header("动画参数设置")]
     [SerializeField] private LinearMixerTransition locomotionTransition = new LinearMixerTransition();
@@ -33,7 +35,9 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     private AnimancerState hardLandingState;
     private ActiveAnimation activeAnimation;
 
-    public bool IsHardLandingComplete => activeAnimation == ActiveAnimation.HardLanding && hardLandingState.NormalizedTime >= 0.6f;
+
+    public bool IsHardLandingComplete => activeAnimation == ActiveAnimation.HardLanding && hardLandingState.NormalizedTime >= 1f;
+    public bool CanInterruptHardLanding => activeAnimation == ActiveAnimation.HardLanding && hardLandingState.NormalizedTime >= config.HardLandingInterruptNormalizedTime;
 
     private void Awake()
     {

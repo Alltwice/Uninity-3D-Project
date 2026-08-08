@@ -6,9 +6,7 @@ using UnityEngine;
 /// </summary>
 public class PlayerAirState : PlayerStateBase
 {
-    public PlayerAirState(PlayerContext context) : base(context)
-    {
-    }
+    public PlayerAirState(PlayerContext context) : base(context) { }
 
     public override void Enter(PlayerStateTransition transition)
     {
@@ -33,28 +31,15 @@ public class PlayerAirState : PlayerStateBase
         {
             return null;
         }
-
         if (Context.Motor.IsHardLandingImpact)
         {
-            return new PlayerStateTransitionRequest(
-                typeof(PlayerHardLandingState),
-                PlayerStateTransitionReason.HardLanded);
+            return new PlayerStateTransitionRequest(typeof(PlayerHardLandingState), PlayerStateTransitionReason.HardLanded);
         }
-
         if (Context.ActionBuffer.HasBuffered(PlayerBufferedAction.Jump) && Context.Jump.CanJump)
         {
-            return new PlayerStateTransitionRequest(
-                typeof(PlayerAirState),
-                PlayerStateTransitionReason.Jumped,
-                true);
+            return new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Jumped, true);
         }
-
-        Type targetStateType = Context.InputSource.MoveInput != Vector2.zero
-            ? typeof(PlayerGroundMoveState)
-            : typeof(PlayerIdleState);
-
-        return new PlayerStateTransitionRequest(
-            targetStateType,
-            PlayerStateTransitionReason.Landed);
+        Type targetStateType = Context.InputSource.MoveInput != Vector2.zero ? typeof(PlayerGroundMoveState) : typeof(PlayerIdleState);
+        return new PlayerStateTransitionRequest(targetStateType, PlayerStateTransitionReason.Landed);
     }
 }

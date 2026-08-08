@@ -5,9 +5,7 @@ using UnityEngine;
 /// </summary>
 public class PlayerIdleState : PlayerStateBase
 {
-    public PlayerIdleState(PlayerContext context) : base(context)
-    {
-    }
+    public PlayerIdleState(PlayerContext context) : base(context) { }
 
     public override PlayerStateTransitionRequest EvaluateInputTransition()
     {
@@ -15,28 +13,20 @@ public class PlayerIdleState : PlayerStateBase
         {
             return null;
         }
-
         if (Context.ActionBuffer.HasBuffered(PlayerBufferedAction.Jump) && Context.Jump.CanJump)
         {
-            return new PlayerStateTransitionRequest(
-                typeof(PlayerAirState),
-                PlayerStateTransitionReason.Jumped);
+            return new PlayerStateTransitionRequest(typeof(PlayerAirState),PlayerStateTransitionReason.Jumped);
         }
-
         if (Context.InputSource.MoveInput != Vector2.zero)
         {
-            return new PlayerStateTransitionRequest(
-                typeof(PlayerGroundMoveState),
-                PlayerStateTransitionReason.StartedMoving);
+            return new PlayerStateTransitionRequest(typeof(PlayerGroundMoveState), PlayerStateTransitionReason.StartedMoving);
         }
-
         return null;
     }
 
     public override void Enter(PlayerStateTransition transition)
     {
-        if (transition.Reason == PlayerStateTransitionReason.StoppedMoving
-            && transition.PreviousLocomotionMode == PlayerLocomotionMode.FastRun)
+        if (transition.Reason == PlayerStateTransitionReason.StoppedMoving && transition.PreviousLocomotionMode == PlayerLocomotionMode.FastRun)
         {
             Context.AnimationController.RequestFastRunStop();
         }
@@ -54,8 +44,6 @@ public class PlayerIdleState : PlayerStateBase
             return null;
         }
 
-        return new PlayerStateTransitionRequest(
-            typeof(PlayerAirState),
-            PlayerStateTransitionReason.Fell);
+        return new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Fell);
     }
 }

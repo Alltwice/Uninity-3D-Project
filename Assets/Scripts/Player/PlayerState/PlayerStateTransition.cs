@@ -13,15 +13,11 @@ public enum PlayerStateTransitionReason
 }
 
 /// <summary>
-/// 状态控制器已经接受并执行的转换结果。
+/// 状态控制器已经接受并执行的转换结果
 /// </summary>
-public sealed class PlayerStateTransition
+public class PlayerStateTransition
 {
-    public PlayerStateTransition(
-        Type previousStateType,
-        Type currentStateType,
-        PlayerStateTransitionReason reason,
-        PlayerLocomotionMode previousLocomotionMode)
+    public PlayerStateTransition(Type previousStateType, Type currentStateType, PlayerStateTransitionReason reason, PlayerLocomotionMode previousLocomotionMode)
     {
         PreviousStateType = previousStateType;
         CurrentStateType = currentStateType;

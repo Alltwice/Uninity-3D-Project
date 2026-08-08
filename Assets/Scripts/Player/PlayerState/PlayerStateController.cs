@@ -45,9 +45,7 @@ public class PlayerStateController : MonoBehaviour
             actionBuffer);
 
         RegisterStates();
-        TryChangeState(new PlayerStateTransitionRequest(
-            typeof(PlayerIdleState),
-            PlayerStateTransitionReason.Initialized));
+        TryChangeState(new PlayerStateTransitionRequest(typeof(PlayerIdleState),PlayerStateTransitionReason.Initialized));
     }
 
     private void Update()
@@ -74,14 +72,14 @@ public class PlayerStateController : MonoBehaviour
         AddState(new PlayerAirState(context));
         AddState(new PlayerHardLandingState(context));
     }
-
+    //拿到意图后进行切换判断并写入最终切换结果
     private bool TryChangeState(PlayerStateTransitionRequest request)
     {
         if (request == null)
         {
             return false;
         }
-
+        
         if (!states.TryGetValue(request.TargetStateType, out PlayerStateBase nextState))
         {
             return false;

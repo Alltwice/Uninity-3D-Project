@@ -9,8 +9,8 @@ public enum PlayerBufferedAction
 
 public class PlayerActionBuffer : MonoBehaviour, IPlayerActionBuffer
 {
-    //各个按键输入缓冲时间
-    [SerializeField] private float jumpBufferTime = 0.12f;
+    [Header("配置")]
+    [SerializeField] private PlayerActionBufferConfig config;
     /// <summary>
     /// 输入缓冲结构体，由开始时间和持续时间组成
     /// </summary>
@@ -89,7 +89,7 @@ public class PlayerActionBuffer : MonoBehaviour, IPlayerActionBuffer
         switch (action)
         {
             case PlayerBufferedAction.Jump:
-                return jumpBufferTime;
+                return config.JumpBufferTime;
             default:
                 return 0f;
         }

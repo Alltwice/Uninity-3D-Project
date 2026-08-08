@@ -4,8 +4,8 @@ using UnityEngine;
 /// </summary>
 public class PlayerJump : MonoBehaviour
 {
-    [Header("跳跃设置")] 
-    [SerializeField] private float jumpHeight = 1.5f;
+    [Header("配置")]
+    [SerializeField] private PlayerJumpConfig config;
     private PlayerMotor playerMotor;
 
     public bool CanJump => playerMotor.IsGrounded;
@@ -21,7 +21,7 @@ public class PlayerJump : MonoBehaviour
     public void ExecuteJump()
     {
         //经典v2=2gh，开方后得到速度
-        float jumpVelocity = Mathf.Sqrt(jumpHeight * -2f * playerMotor.Gravity);
+        float jumpVelocity = Mathf.Sqrt(config.JumpHeight * -2f * playerMotor.Gravity);
         playerMotor.ChangeVerticalVelocity_y(jumpVelocity);
     }
 }

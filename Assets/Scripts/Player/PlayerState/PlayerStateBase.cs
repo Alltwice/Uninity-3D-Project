@@ -1,5 +1,5 @@
 /// <summary>
-/// 玩家状态基类。转换判断只读取状态，副作用由状态生命周期方法执行。
+/// 玩家状态基类。转换判断只读取状态，副作用由状态生命周期方法执行
 /// </summary>
 public abstract class PlayerStateBase
 {
@@ -9,7 +9,9 @@ public abstract class PlayerStateBase
     {
         Context = context;
     }
-
+    /// <summary>
+    /// 判断输入意图提前执行
+    /// </summary>
     public virtual PlayerStateTransitionRequest EvaluateInputTransition()
     {
         return null;
@@ -22,7 +24,9 @@ public abstract class PlayerStateBase
     public virtual void Tick()
     {
     }
-
+    /// <summary>
+    /// 判断执行结果后执行
+    /// </summary>
     public virtual PlayerStateTransitionRequest EvaluateResultTransition()
     {
         return null;
