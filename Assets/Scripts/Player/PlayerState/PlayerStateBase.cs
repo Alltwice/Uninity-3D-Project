@@ -1,5 +1,8 @@
+using System;
+using UnityEngine;
+
 /// <summary>
-/// 玩家状态基类。转换判断只读取状态，副作用由状态生命周期方法执行
+/// 玩家状态基类。转换评估只读取事实，副作用由 Enter、Tick、Exit 执行。
 /// </summary>
 public abstract class PlayerStateBase
 {
@@ -9,9 +12,7 @@ public abstract class PlayerStateBase
     {
         Context = context;
     }
-    /// <summary>
-    /// 判断输入意图提前执行
-    /// </summary>
+
     public virtual PlayerStateTransitionRequest EvaluateInputTransition()
     {
         return null;
@@ -24,9 +25,7 @@ public abstract class PlayerStateBase
     public virtual void Tick()
     {
     }
-    /// <summary>
-    /// 判断执行结果后执行
-    /// </summary>
+
     public virtual PlayerStateTransitionRequest EvaluateResultTransition()
     {
         return null;
@@ -34,5 +33,15 @@ public abstract class PlayerStateBase
 
     public virtual void Exit(PlayerStateTransition transition)
     {
+    }
+
+    protected Type ResolveGroundStateType()
+    {
+        if (Context.InputSource.MoveInput == Vector2.zero)
+        {
+            return typeof(PlayerIdleState);
+        }
+
+        return Context.InputSource.IsWalkMode ? typeof(PlayerWalkState) : typeof(PlayerRunState);
     }
 }

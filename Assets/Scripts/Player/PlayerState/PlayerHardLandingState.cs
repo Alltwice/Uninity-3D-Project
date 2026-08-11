@@ -1,17 +1,11 @@
-using System;
 using UnityEngine;
 
 /// <summary>
-/// 玩家硬着陆锁定状态。
+/// 重落地期间锁定地面移动，恢复条件由专用动画播放进度决定。
 /// </summary>
-public class PlayerHardLandingState : PlayerStateBase
+public sealed class PlayerHardLandingState : PlayerStateBase
 {
     public PlayerHardLandingState(PlayerContext context) : base(context) { }
-
-    public override void Enter(PlayerStateTransition transition)
-    {
-        Context.AnimationController.RequestHardLanding();
-    }
 
     public override void Tick()
     {
@@ -26,22 +20,8 @@ public class PlayerHardLandingState : PlayerStateBase
         }
         if (Context.InputSource.MoveInput != Vector2.zero)
         {
-            if (!Context.AnimationController.CanInterruptHardLanding)
-            {
-                return null;
-            }
-
-            return new PlayerStateTransitionRequest(typeof(PlayerGroundMoveState), PlayerStateTransitionReason.HardLandingRecovered);
+            return Context.AnimationController.CanInterruptHardLanding ? new PlayerStateTransitionRequest(ResolveGroundStateType(), PlayerStateTransitionReason.HardLandingRecovered) : null;
         }
-        if (!Context.AnimationController.IsHardLandingComplete)
-        {
-            return null;
-        }
-        return new PlayerStateTransitionRequest(typeof(PlayerIdleState), PlayerStateTransitionReason.HardLandingRecovered);
-    }
-
-    public override void Exit(PlayerStateTransition transition)
-    {
-        Context.AnimationController.ReleaseHardLanding();
+        return Context.AnimationController.IsHardLandingComplete ? new PlayerStateTransitionRequest(typeof(PlayerIdleState), PlayerStateTransitionReason.HardLandingRecovered) : null;
     }
 }

@@ -1,9 +1,9 @@
 using UnityEngine;
 
 /// <summary>
-/// 接地且没有已接受移动意图时的状态。
+/// 接地且没有移动意图的状态。
 /// </summary>
-public class PlayerIdleState : PlayerStateBase
+public sealed class PlayerIdleState : PlayerStateBase
 {
     public PlayerIdleState(PlayerContext context) : base(context) { }
 
@@ -13,23 +13,15 @@ public class PlayerIdleState : PlayerStateBase
         {
             return null;
         }
-
         if (Context.ActionBuffer.HasBuffered(PlayerBufferedAction.Jump) && Context.Jump.CanJump)
         {
             return new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Jumped);
         }
-
         if (Context.ActionBuffer.HasBuffered(PlayerBufferedAction.Dodge) && Context.Dodge.CanDodge)
         {
-            return new PlayerStateTransitionRequest(typeof(PlayerGroundMoveState), PlayerStateTransitionReason.DodgeStarted);
+            return new PlayerStateTransitionRequest(typeof(PlayerDodgeState), PlayerStateTransitionReason.DodgeStarted);
         }
-
-        if (Context.InputSource.MoveInput != Vector2.zero)
-        {
-            return new PlayerStateTransitionRequest(typeof(PlayerGroundMoveState), PlayerStateTransitionReason.StartedMoving);
-        }
-
-        return null;
+        return Context.InputSource.MoveInput == Vector2.zero ? null : new PlayerStateTransitionRequest(ResolveGroundStateType(), PlayerStateTransitionReason.StartedMoving);
     }
 
     public override void Tick()
@@ -39,11 +31,6 @@ public class PlayerIdleState : PlayerStateBase
 
     public override PlayerStateTransitionRequest EvaluateResultTransition()
     {
-        if (Context.Motor.IsGrounded)
-        {
-            return null;
-        }
-
-        return new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Fell);
+        return Context.Motor.IsGrounded ? null : new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Fell);
     }
 }

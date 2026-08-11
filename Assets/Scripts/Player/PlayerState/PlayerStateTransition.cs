@@ -5,6 +5,8 @@ public enum PlayerStateTransitionReason
     Initialized,
     StartedMoving,
     StoppedMoving,
+    Accelerated,
+    Decelerated,
     DodgeStarted,
     DodgeCompleted,
     Jumped,
@@ -15,20 +17,18 @@ public enum PlayerStateTransitionReason
 }
 
 /// <summary>
-/// 状态控制器已经接受并执行的转换结果
+/// 状态控制器已经接受并执行的转换事实
 /// </summary>
-public class PlayerStateTransition
+public readonly struct PlayerStateTransition
 {
-    public PlayerStateTransition(Type previousStateType, Type currentStateType, PlayerStateTransitionReason reason, PlayerLocomotionMode previousLocomotionMode)
+    public PlayerStateTransition(Type previousStateType, Type currentStateType, PlayerStateTransitionReason reason)
     {
         PreviousStateType = previousStateType;
         CurrentStateType = currentStateType;
         Reason = reason;
-        PreviousLocomotionMode = previousLocomotionMode;
     }
 
     public Type PreviousStateType { get; }
     public Type CurrentStateType { get; }
     public PlayerStateTransitionReason Reason { get; }
-    public PlayerLocomotionMode PreviousLocomotionMode { get; }
 }

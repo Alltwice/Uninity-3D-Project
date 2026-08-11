@@ -18,7 +18,6 @@ GameObject:
   - component: {fileID: 6362648940182492809}
   - component: {fileID: 7995786446155648417}
   - component: {fileID: 650439676384453668}
-  - component: {fileID: 6445166632289159917}
   - component: {fileID: 5541972601699860746}
   - component: {fileID: 2015852515768995489}
   m_Layer: 0
@@ -58,63 +57,78 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimationController
   animancer: {fileID: 650439676384453668}
-  dataSource: {fileID: 6445166632289159917}
   config: {fileID: 11400000, guid: 615b36e347ec7e94dbbfa4e0b31f0692, type: 2}
-  locomotionTransition:
+  idleLoopTransition:
     _FadeDuration: 0.15
     _Speed: 1
     _Events:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Animations:
-    - {fileID: -203655887218126122, guid: 6db65dc7632dc5247abaf1d0011dc35d, type: 3}
-    - {fileID: -203655887218126122, guid: a65dd7ad072999f4688ecb9fd305d279, type: 3}
-    - {fileID: -203655887218126122, guid: e442121ea7d99514c9d61b2cdf9d2118, type: 3}
-    _Speeds: []
-    _SynchronizeChildren: 
-    _Thresholds:
-    - 0
-    - 2.5
-    - 5
-    _DefaultParameter: 0
-    _ExtrapolateSpeed: 0
-    _ParameterName: {fileID: 0}
-  fastRunTransition:
-    _FadeDuration: 0.15
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: -203655887218126122, guid: a25c1ff43d660f4488683183ece5914d, type: 3}
+    _Clip: {fileID: 7400002, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
     _NormalizedStartTime: 0
-  fastRunStopTransition:
+  walkLoopTransition:
+    _FadeDuration: 0.15
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400016, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+    _NormalizedStartTime: 0
+  runLoopTransition:
+    _FadeDuration: 0.15
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400098, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+    _NormalizedStartTime: 0
+  fastRunLoopTransition:
+    _FadeDuration: 0.15
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400124, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+    _NormalizedStartTime: 0
+  airLoopTransition:
+    _FadeDuration: 0.1
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400148, guid: dd4bc59541169e34ead96f0310ddc7bd, type: 3}
+    _NormalizedStartTime: 0
+  dodgeTransition:
     _FadeDuration: 0.08
-    _Speed: 1.6
+    _Speed: 1.944444
     _Events:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: -203655887218126122, guid: 9de82d4dc6faad949acbfce9c2ed90bb, type: 3}
+    _Clip: {fileID: 1827226128182048838, guid: 8075947faf7c38248be70d9862842e49, type: 3}
     _NormalizedStartTime: 0
-  jumpUpTransition:
+  jumpStartTransition:
     _FadeDuration: 0.1
     _Speed: 1
     _Events:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: -203655887218126122, guid: 232463cd39406cd439534fcfa877a9bc, type: 3}
+    _Clip: {fileID: 7400146, guid: dd4bc59541169e34ead96f0310ddc7bd, type: 3}
     _NormalizedStartTime: 0
-  jumpIdleTransition:
-    _FadeDuration: 0.1
+  landingTransition:
+    _FadeDuration: 0.08
     _Speed: 1
     _Events:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: -203655887218126122, guid: 1fd1c5e7ba4d64045a732a5a202d728d, type: 3}
+    _Clip: {fileID: 7400120, guid: dd4bc59541169e34ead96f0310ddc7bd, type: 3}
     _NormalizedStartTime: 0
   hardLandingTransition:
     _FadeDuration: 0.08
@@ -123,7 +137,52 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: -203655887218126122, guid: d55cde1d1dfc00c47887288b0a21482f, type: 3}
+    _Clip: {fileID: 7400152, guid: dd4bc59541169e34ead96f0310ddc7bd, type: 3}
+    _NormalizedStartTime: 0
+  idleToWalkTransition:
+    _FadeDuration: 0.1
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400044, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+    _NormalizedStartTime: 0
+  walkToIdleTransition:
+    _FadeDuration: 0.08
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400054, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+    _NormalizedStartTime: 0
+  idleToRunTransition:
+    _FadeDuration: 0.1
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400120, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+    _NormalizedStartTime: 0
+  runToIdleTransition:
+    _FadeDuration: 0.08
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400142, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+    _NormalizedStartTime: 0
+  fastRunToIdleTransition:
+    _FadeDuration: 0.08
+    _Speed: 1.6
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400142, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
     _NormalizedStartTime: 0
   references:
     version: 2
@@ -154,7 +213,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInstaller
   playerInputReader: {fileID: 1394597851570776537}
   actionBuffer: {fileID: 5541972601699860746}
-  playerMotor: {fileID: 573905703597778420}
   playerStateController: {fileID: 3309462947939137736}
   playerCameraOrbitTarget: {fileID: 7418034704001290420}
 --- !u!114 &573905703597778420
@@ -207,10 +265,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac2aa542d7dc3ea439e3057964b49d6d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerStateController
-  playerMotor: {fileID: 573905703597778420}
-  playerJump: {fileID: 6362648940182492809}
-  playerDodge: {fileID: 2015852515768995489}
-  animationController: {fileID: 6278883182571625512}
 --- !u!114 &6362648940182492809
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -253,21 +307,6 @@ MonoBehaviour:
   _Animator: {fileID: 7329895692276201690}
   _Transitions: {fileID: 0}
   _ActionOnDisable: 0
---- !u!114 &6445166632289159917
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1659824287227001794}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8fdfbf9bfe9348b42888d1b3dbfd396b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimationDataSource
-  motor: {fileID: 573905703597778420}
-  dodge: {fileID: 2015852515768995489}
-  groundProbe: {fileID: 7995786446155648417}
 --- !u!114 &5541972601699860746
 MonoBehaviour:
   m_ObjectHideFlags: 0

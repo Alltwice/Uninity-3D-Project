@@ -1,21 +1,17 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 /// <summary>
-/// 管理玩家状态注册，并按输入转换、状态行为、结果转换三个阶段更新状态机。
+/// 注册并按输入转换、状态 Tick、结果转换三个阶段更新唯一的玩家 Gameplay 状态。
 /// </summary>
 public class PlayerStateController : MonoBehaviour
 {
-    [Header("引用")]
-    [SerializeField] private PlayerMotor playerMotor;
-    [SerializeField] private PlayerJump playerJump;
-    [SerializeField] private PlayerDodge playerDodge;
-    [FormerlySerializedAs("animationDriver")]
-    [SerializeField] private PlayerAnimationController animationController;
-
     private readonly Dictionary<Type, PlayerStateBase> states = new Dictionary<Type, PlayerStateBase>();
+    private PlayerMotor playerMotor;
+    private PlayerJump playerJump;
+    private PlayerDodge playerDodge;
+    private PlayerAnimationController animationController;
     private PlayerContext context;
     private PlayerStateBase currentState;
     private IPlayerInputSource playerInput;
@@ -31,10 +27,10 @@ public class PlayerStateController : MonoBehaviour
 
     private void Awake()
     {
-        animationController = GetComponent<PlayerAnimationController>();
         playerMotor = GetComponent<PlayerMotor>();
         playerJump = GetComponent<PlayerJump>();
         playerDodge = GetComponent<PlayerDodge>();
+        animationController = GetComponent<PlayerAnimationController>();
     }
 
     private void Start()
@@ -64,12 +60,14 @@ public class PlayerStateController : MonoBehaviour
     private void RegisterStates()
     {
         AddState(new PlayerIdleState(context));
-        AddState(new PlayerGroundMoveState(context));
+        AddState(new PlayerWalkState(context));
+        AddState(new PlayerRunState(context));
+        AddState(new PlayerFastRunState(context));
+        AddState(new PlayerDodgeState(context));
         AddState(new PlayerAirState(context));
         AddState(new PlayerHardLandingState(context));
     }
 
-    // 拿到候选意图后进行切换判断，并写入最终切换结果。
     private bool TryChangeState(PlayerStateTransitionRequest request)
     {
         if (request == null)
@@ -80,27 +78,25 @@ public class PlayerStateController : MonoBehaviour
         {
             return false;
         }
-
         if (currentState == nextState && !request.AllowReentry)
         {
             return false;
         }
 
-        PlayerStateTransition transition = new PlayerStateTransition(currentState?.GetType(), nextState.GetType(), request.Reason, playerMotor.CurrentLocomotionMode);
+        PlayerStateTransition transition = new PlayerStateTransition(currentState?.GetType(), nextState.GetType(), request.Reason);
         currentState?.Exit(transition);
         currentState = nextState;
         currentState.Enter(transition);
+        animationController.PlayTransition(transition);
         return true;
     }
 
     private void AddState<TState>(TState state) where TState : PlayerStateBase
     {
         Type stateType = state.GetType();
-        if (states.ContainsKey(stateType))
+        if (!states.ContainsKey(stateType))
         {
-            return;
+            states.Add(stateType, state);
         }
-
-        states.Add(stateType, state);
     }
 }

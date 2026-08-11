@@ -1,153 +1,128 @@
+using System;
 using Animancer;
 using UnityEngine;
+using UnityEngine.Serialization;
+
 /// <summary>
-/// 动画播放控制器
+/// 将已经提交的 Gameplay 状态转换翻译为 Animancer 播放请求。
 /// </summary>
 public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationController
 {
-    private enum ActiveAnimation
-    {
-        None,
-        Locomotion,
-        FastRun,
-        FastRunStop,
-        JumpUp,
-        JumpIdle,
-        HardLanding
-    }
-
     [Header("引用")]
     [SerializeField] private AnimancerComponent animancer;
-    [SerializeField] private PlayerAnimationDataSource dataSource;
-    [Header("配置")]
     [SerializeField] private PlayerAnimationConfig config;
 
-    [Header("动画参数设置")]
-    [SerializeField] private LinearMixerTransition locomotionTransition = new LinearMixerTransition();
-    [SerializeField] private ClipTransition fastRunTransition = new ClipTransition();
-    [SerializeField] private ClipTransition fastRunStopTransition = new ClipTransition();
-    [SerializeField] private ClipTransition jumpUpTransition = new ClipTransition();
-    [SerializeField] private ClipTransition jumpIdleTransition = new ClipTransition();
+    [Header("稳定循环")]
+    [SerializeField] private ClipTransition idleLoopTransition = new ClipTransition();
+    [SerializeField] private ClipTransition walkLoopTransition = new ClipTransition();
+    [SerializeField] private ClipTransition runLoopTransition = new ClipTransition();
+    [FormerlySerializedAs("fastRunTransition")]
+    [SerializeField] private ClipTransition fastRunLoopTransition = new ClipTransition();
+    [FormerlySerializedAs("jumpIdleTransition")]
+    [SerializeField] private ClipTransition airLoopTransition = new ClipTransition();
+
+    [Header("能力与落地")]
+    [SerializeField] private ClipTransition dodgeTransition = new ClipTransition();
+    [FormerlySerializedAs("jumpUpTransition")]
+    [SerializeField] private ClipTransition jumpStartTransition = new ClipTransition();
+    [SerializeField] private ClipTransition landingTransition = new ClipTransition();
     [SerializeField] private ClipTransition hardLandingTransition = new ClipTransition();
-    private LinearMixerState locomotionState;
-    private AnimancerState fastRunStopState;
-    private AnimancerState jumpUpState;
+
+    [Header("地面状态边")]
+    [SerializeField] private ClipTransition idleToWalkTransition = new ClipTransition();
+    [SerializeField] private ClipTransition walkToIdleTransition = new ClipTransition();
+    [SerializeField] private ClipTransition idleToRunTransition = new ClipTransition();
+    [SerializeField] private ClipTransition runToIdleTransition = new ClipTransition();
+    [SerializeField] private ClipTransition walkToRunTransition = new ClipTransition();
+    [SerializeField] private ClipTransition runToWalkTransition = new ClipTransition();
+    [FormerlySerializedAs("fastRunStopTransition")]
+    [SerializeField] private ClipTransition fastRunToIdleTransition = new ClipTransition();
+    [SerializeField] private ClipTransition dodgeToFastRunTransition = new ClipTransition();
+
+    private ulong playbackSequence;
     private AnimancerState hardLandingState;
-    private ActiveAnimation activeAnimation;
 
-
-    public bool IsHardLandingComplete => activeAnimation == ActiveAnimation.HardLanding && hardLandingState.NormalizedTime >= 1f;
-    public bool CanInterruptHardLanding => activeAnimation == ActiveAnimation.HardLanding && hardLandingState.NormalizedTime >= config.HardLandingInterruptNormalizedTime;
+    public bool IsHardLandingComplete => hardLandingState.NormalizedTime >= 1f;
+    public bool CanInterruptHardLanding => hardLandingState.NormalizedTime >= config.HardLandingInterruptNormalizedTime;
 
     private void Awake()
     {
         animancer = GetComponent<AnimancerComponent>();
-        dataSource = GetComponent<PlayerAnimationDataSource>();
     }
 
-    private void Start()
+    public void PlayTransition(PlayerStateTransition transition)
     {
-        RequestLocomotion();
-    }
-
-    private void LateUpdate()
-    {
-        PlayerAnimationFrame frame = dataSource.Capture();
-        //防止CC首帧出现触地从而导致无法正常触发动画
-        bool shouldUseAirAnimation = !frame.IsGrounded || (activeAnimation == ActiveAnimation.JumpUp && frame.VerticalSpeed > 0f);
-
-        if (shouldUseAirAnimation)
+        ulong requestSequence = ++playbackSequence;
+        if (transition.CurrentStateType == typeof(PlayerHardLandingState))
         {
-            if (activeAnimation != ActiveAnimation.JumpUp || jumpUpState.NormalizedTime >= 1f)
+            hardLandingState = animancer.Play(hardLandingTransition);
+            return;
+        }
+        if (transition.CurrentStateType == typeof(PlayerDodgeState))
+        {
+            PlayOptionalTransition(dodgeTransition, null, requestSequence);
+            return;
+        }
+        if (transition.CurrentStateType == typeof(PlayerAirState))
+        {
+            if (transition.Reason == PlayerStateTransitionReason.Jumped)
             {
-                RequestJumpIdle();
+                PlayOptionalTransition(jumpStartTransition, airLoopTransition, requestSequence);
+            }
+            else
+            {
+                animancer.Play(airLoopTransition);
             }
             return;
         }
 
-        if (activeAnimation == ActiveAnimation.HardLanding)
+        ClipTransition targetLoop = ResolveLoop(transition.CurrentStateType);
+        PlayOptionalTransition(ResolveEdge(transition), targetLoop, requestSequence);
+    }
+
+    private void PlayOptionalTransition(ClipTransition edge, ClipTransition targetLoop, ulong requestSequence)
+    {
+        if (edge == null || edge.Clip == null)
         {
+            if (targetLoop != null)
+            {
+                animancer.Play(targetLoop);
+            }
             return;
         }
 
-        if (activeAnimation == ActiveAnimation.FastRunStop
-            && frame.LocomotionMode == PlayerLocomotionMode.Idle
-            && fastRunStopState.NormalizedTime < 1f)
+        edge.Events.OnEnd = targetLoop == null ? null : () =>
         {
-            return;
-        }
-
-        if (frame.LocomotionMode == PlayerLocomotionMode.FastRun)
-        {
-            RequestFastRun();
-            return;
-        }
-
-        RequestLocomotion();
-        locomotionState.Parameter = frame.HorizontalSpeed;
+            if (requestSequence == playbackSequence)
+            {
+                animancer.Play(targetLoop);
+            }
+        };
+        animancer.Play(edge);
     }
 
-    public void RequestLocomotion()
+    private ClipTransition ResolveLoop(Type stateType)
     {
-        if (activeAnimation == ActiveAnimation.Locomotion)
-        {
-            return;
-        }
-
-        //将父类AnimancerState转换为具体的LinearMixerState
-        locomotionState = (LinearMixerState)animancer.Play(locomotionTransition);
-        activeAnimation = ActiveAnimation.Locomotion;
+        if (stateType == typeof(PlayerIdleState)) return idleLoopTransition;
+        if (stateType == typeof(PlayerWalkState)) return walkLoopTransition;
+        if (stateType == typeof(PlayerRunState)) return runLoopTransition;
+        if (stateType == typeof(PlayerFastRunState)) return fastRunLoopTransition;
+        return null;
     }
 
-    private void RequestFastRun()
+    private ClipTransition ResolveEdge(PlayerStateTransition transition)
     {
-        if (activeAnimation == ActiveAnimation.FastRun)
-        {
-            return;
-        }
-        animancer.Play(fastRunTransition);
-        activeAnimation = ActiveAnimation.FastRun;
-    }
-
-    public void RequestFastRunStop()
-    {
-        fastRunStopState = animancer.Play(fastRunStopTransition);
-        activeAnimation = ActiveAnimation.FastRunStop;
-    }
-
-    public void RequestJumpUp()
-    {
-        jumpUpState = animancer.Play(jumpUpTransition);
-        activeAnimation = ActiveAnimation.JumpUp;
-    }
-
-    private void RequestJumpIdle()
-    {
-        if (activeAnimation == ActiveAnimation.JumpIdle)
-        {
-            return;
-        }
-
-        animancer.Play(jumpIdleTransition);
-        activeAnimation = ActiveAnimation.JumpIdle;
-    }
-
-    public void RequestHardLanding()
-    {
-        if (activeAnimation == ActiveAnimation.HardLanding)
-        {
-            return;
-        }
-
-        hardLandingState = animancer.Play(hardLandingTransition);
-        activeAnimation = ActiveAnimation.HardLanding;
-    }
-
-    public void ReleaseHardLanding()
-    {
-        if (activeAnimation == ActiveAnimation.HardLanding)
-        {
-            activeAnimation = ActiveAnimation.None;
-        }
+        Type previous = transition.PreviousStateType;
+        Type current = transition.CurrentStateType;
+        if (previous == typeof(PlayerAirState)) return landingTransition;
+        if (previous == typeof(PlayerDodgeState) && current == typeof(PlayerFastRunState)) return dodgeToFastRunTransition;
+        if (previous == typeof(PlayerIdleState) && current == typeof(PlayerWalkState)) return idleToWalkTransition;
+        if (previous == typeof(PlayerWalkState) && current == typeof(PlayerIdleState)) return walkToIdleTransition;
+        if (previous == typeof(PlayerIdleState) && current == typeof(PlayerRunState)) return idleToRunTransition;
+        if (previous == typeof(PlayerRunState) && current == typeof(PlayerIdleState)) return runToIdleTransition;
+        if (previous == typeof(PlayerWalkState) && current == typeof(PlayerRunState)) return walkToRunTransition;
+        if (previous == typeof(PlayerRunState) && current == typeof(PlayerWalkState)) return runToWalkTransition;
+        if (previous == typeof(PlayerFastRunState) && current == typeof(PlayerIdleState)) return fastRunToIdleTransition;
+        return null;
     }
 }
