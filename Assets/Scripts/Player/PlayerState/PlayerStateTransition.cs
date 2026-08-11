@@ -5,6 +5,8 @@ public enum PlayerStateTransitionReason
     Initialized,
     StartedMoving,
     StoppedMoving,
+    DodgeStarted,
+    DodgeCompleted,
     Jumped,
     Fell,
     Landed,

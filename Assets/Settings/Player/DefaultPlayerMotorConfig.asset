@@ -23,4 +23,4 @@ MonoBehaviour:
   rotationSmoothSpeed: 12
   gravity: -20
   groundedVerticalVelocity: -2
-  hardLandingMinImpactSpeed: 10
+  hardLandingMinImpactSpeed: 5

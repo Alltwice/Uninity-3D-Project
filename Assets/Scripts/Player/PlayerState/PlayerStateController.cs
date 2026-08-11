@@ -11,6 +11,7 @@ public class PlayerStateController : MonoBehaviour
     [Header("引用")]
     [SerializeField] private PlayerMotor playerMotor;
     [SerializeField] private PlayerJump playerJump;
+    [SerializeField] private PlayerDodge playerDodge;
     [FormerlySerializedAs("animationDriver")]
     [SerializeField] private PlayerAnimationController animationController;
 
@@ -33,19 +34,14 @@ public class PlayerStateController : MonoBehaviour
         animationController = GetComponent<PlayerAnimationController>();
         playerMotor = GetComponent<PlayerMotor>();
         playerJump = GetComponent<PlayerJump>();
+        playerDodge = GetComponent<PlayerDodge>();
     }
 
     private void Start()
     {
-        context = new PlayerContext(
-            playerMotor,
-            playerJump,
-            animationController,
-            playerInput,
-            actionBuffer);
-
+        context = new PlayerContext(playerMotor, playerJump, playerDodge, animationController, playerInput, actionBuffer);
         RegisterStates();
-        TryChangeState(new PlayerStateTransitionRequest(typeof(PlayerIdleState),PlayerStateTransitionReason.Initialized));
+        TryChangeState(new PlayerStateTransitionRequest(typeof(PlayerIdleState), PlayerStateTransitionReason.Initialized));
     }
 
     private void Update()
@@ -72,14 +68,14 @@ public class PlayerStateController : MonoBehaviour
         AddState(new PlayerAirState(context));
         AddState(new PlayerHardLandingState(context));
     }
-    //拿到意图后进行切换判断并写入最终切换结果
+
+    // 拿到候选意图后进行切换判断，并写入最终切换结果。
     private bool TryChangeState(PlayerStateTransitionRequest request)
     {
         if (request == null)
         {
             return false;
         }
-        
         if (!states.TryGetValue(request.TargetStateType, out PlayerStateBase nextState))
         {
             return false;
@@ -90,12 +86,7 @@ public class PlayerStateController : MonoBehaviour
             return false;
         }
 
-        PlayerStateTransition transition = new PlayerStateTransition(
-            currentState?.GetType(),
-            nextState.GetType(),
-            request.Reason,
-            playerMotor.CurrentLocomotionMode);
-
+        PlayerStateTransition transition = new PlayerStateTransition(currentState?.GetType(), nextState.GetType(), request.Reason, playerMotor.CurrentLocomotionMode);
         currentState?.Exit(transition);
         currentState = nextState;
         currentState.Enter(transition);

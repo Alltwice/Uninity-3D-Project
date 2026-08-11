@@ -13,3 +13,4 @@ MonoBehaviour:
   m_Name: DefaultPlayerActionBufferConfig
   m_EditorClassIdentifier: Assembly-CSharp::PlayerActionBufferConfig
   jumpBufferTime: 0.12
+  dodgeBufferTime: 0.12

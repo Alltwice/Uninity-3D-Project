@@ -1,18 +1,20 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-//输入类型枚举
+// 输入类型枚举。
 public enum PlayerBufferedAction
 {
-    Jump
+    Jump,
+    Dodge
 }
 
 public class PlayerActionBuffer : MonoBehaviour, IPlayerActionBuffer
 {
     [Header("配置")]
     [SerializeField] private PlayerActionBufferConfig config;
+
     /// <summary>
-    /// 输入缓冲结构体，由开始时间和持续时间组成
+    /// 输入缓冲结构体，由开始时间和持续时间组成。
     /// </summary>
     private readonly struct BufferedAction
     {
@@ -25,23 +27,24 @@ public class PlayerActionBuffer : MonoBehaviour, IPlayerActionBuffer
             Duration = duration;
         }
     }
-    //字典加枚举管理输入缓冲，对应为动作和缓冲时间
+
+    // 字典通过动作枚举管理对应的缓冲时间。
     private readonly Dictionary<PlayerBufferedAction, BufferedAction> bufferedActions = new Dictionary<PlayerBufferedAction, BufferedAction>();
-    //——————————————————————————————————————————————————————主要方法——————————————————————————————————————
+
     /// <summary>
-    /// 输入枚举类型，供外部调用，更具类型给予缓冲时间
+    /// 根据动作类型写入默认时长的缓冲。
     /// </summary>
-    /// <param name="action">输入枚举</param>
+    /// <param name="action">输入动作枚举。</param>
     public void Buffer(PlayerBufferedAction action)
     {
-        //存入字典缓冲管理
         BufferInternal(action, GetDefaultDuration(action));
     }
+
     /// <summary>
-    /// 消耗缓冲
+    /// 消耗缓冲。
     /// </summary>
-    /// <param name="action">缓冲类型</param>
-    /// <returns>是否被消耗</returns>
+    /// <param name="action">缓冲类型。</param>
+    /// <returns>是否成功消费。</returns>
     public bool Consume(PlayerBufferedAction action)
     {
         if (!HasBuffered(action))
@@ -53,59 +56,65 @@ public class PlayerActionBuffer : MonoBehaviour, IPlayerActionBuffer
         bufferedActions.Remove(action);
         return true;
     }
-/// <summary>
-/// 移除缓冲
-/// </summary>
-/// <param name="action">行为枚举</param>
+
+    /// <summary>
+    /// 移除指定缓冲。
+    /// </summary>
+    /// <param name="action">行为枚举。</param>
     public void Clear(PlayerBufferedAction action)
     {
         bufferedActions.Remove(action);
     }
-/// <summary>
-/// 移除所有缓冲
-/// </summary>
+
+    /// <summary>
+    /// 移除全部缓冲。
+    /// </summary>
     public void ClearAll()
     {
         bufferedActions.Clear();
     }
-//——————————————————————————————————————————————————辅助方法——————————————————————————————————————————
+
     /// <summary>
-    /// 调用该方法存入字典管理
+    /// 以指定持续时间写入缓冲。
     /// </summary>
-    /// <param name="action">行为枚举类型</param>
-    /// <param name="duration">缓冲持续时间</param>
+    /// <param name="action">行为枚举类型。</param>
+    /// <param name="duration">缓冲持续时间。</param>
     public void BufferInternal(PlayerBufferedAction action, float duration)
     {
-        //记录开始时间和缓冲时间
         bufferedActions[action] = new BufferedAction(Time.time, Mathf.Max(0f, duration));
     }
+
     /// <summary>
-    /// 通过不同的枚举类型给不同的缓冲时间
+    /// 返回不同动作的默认缓冲时间。
     /// </summary>
-    /// <param name="action">枚举类型</param>
-    /// <returns>缓冲时间</returns>
+    /// <param name="action">动作枚举。</param>
+    /// <returns>缓冲时间。</returns>
     private float GetDefaultDuration(PlayerBufferedAction action)
     {
         switch (action)
         {
             case PlayerBufferedAction.Jump:
                 return config.JumpBufferTime;
+            case PlayerBufferedAction.Dodge:
+                return config.DodgeBufferTime;
             default:
                 return 0f;
         }
     }
+
     /// <summary>
-    /// 检测是否存在缓冲
+    /// 检测是否存在尚未过期的缓冲。
     /// </summary>
-    /// <param name="action">行为枚举类型</param>
-    /// <returns>是否存在缓冲</returns>
+    /// <param name="action">行为枚举类型。</param>
+    /// <returns>是否存在缓冲。</returns>
     public bool HasBuffered(PlayerBufferedAction action)
     {
         if (!bufferedActions.TryGetValue(action, out BufferedAction bufferedAction))
         {
             return false;
         }
-        //判断只读取缓存状态；清理由消费、覆盖写入或显式 Clear 负责。
+
+        // 这里只读取缓存状态；清理由消费、覆盖写入或显式 Clear 负责。
         return Time.time - bufferedAction.StartTime <= bufferedAction.Duration;
     }
 }

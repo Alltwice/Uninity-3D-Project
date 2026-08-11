@@ -1,24 +1,20 @@
-using UnityEngine;
 /// <summary>
-/// 存放具体状态类需要脚本供状态类引用
+/// 玩家状态共享的稳定依赖。
 /// </summary>
 public class PlayerContext
 {
-    // ===== 稳定引用 =====
-    public PlayerMotor Motor { get; private set; }
-    public PlayerJump Jump { get; private set; }
-    public IPlayerAnimationController AnimationController { get; private set; }
-    public IPlayerInputSource InputSource { get; private set; }
-    public IPlayerActionBuffer ActionBuffer { get; private set; }
-    public PlayerContext(
-        PlayerMotor motor,
-        PlayerJump jump,
-        IPlayerAnimationController animationController,
-        IPlayerInputSource inputSource,
-        IPlayerActionBuffer actionBuffer)
+    public PlayerMotor Motor { get; }
+    public PlayerJump Jump { get; }
+    public PlayerDodge Dodge { get; }
+    public IPlayerAnimationController AnimationController { get; }
+    public IPlayerInputSource InputSource { get; }
+    public IPlayerActionBuffer ActionBuffer { get; }
+
+    public PlayerContext(PlayerMotor motor, PlayerJump jump, PlayerDodge dodge, IPlayerAnimationController animationController, IPlayerInputSource inputSource, IPlayerActionBuffer actionBuffer)
     {
         Motor = motor;
         Jump = jump;
+        Dodge = dodge;
         AnimationController = animationController;
         InputSource = inputSource;
         ActionBuffer = actionBuffer;
