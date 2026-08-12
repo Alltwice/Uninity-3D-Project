@@ -49,10 +49,14 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     {
         animancer = GetComponent<AnimancerComponent>();
     }
-
+    /// <summary>
+    /// 拿到状态机数据快照后开始处理动画
+    /// </summary>
     public void PlayTransition(PlayerStateTransition transition)
     {
+        //给予编号，确保在未发生变化时不会重复处理内容
         ulong requestSequence = ++playbackSequence;
+        //优先处理特殊状态
         if (transition.CurrentStateType == typeof(PlayerHardLandingState))
         {
             hardLandingState = animancer.Play(hardLandingTransition);
@@ -75,13 +79,13 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
             }
             return;
         }
-
-        ClipTransition targetLoop = ResolveLoop(transition.CurrentStateType);
-        PlayOptionalTransition(ResolveEdge(transition), targetLoop, requestSequence);
+        
+        PlayOptionalTransition(ResolveEdge(transition), ResolveLoop(transition.CurrentStateType), requestSequence);
     }
 
     private void PlayOptionalTransition(ClipTransition edge, ClipTransition targetLoop, ulong requestSequence)
     {
+        //没有edgeloop
         if (edge == null || edge.Clip == null)
         {
             if (targetLoop != null)
@@ -90,7 +94,8 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
             }
             return;
         }
-
+        //有edge播edge并在结尾处依据是否还有loop选播放loop
+        //这里是一个回调，最终执行顺序在edge执行完毕和后
         edge.Events.OnEnd = targetLoop == null ? null : () =>
         {
             if (requestSequence == playbackSequence)
@@ -100,7 +105,9 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         };
         animancer.Play(edge);
     }
-
+    /// <summary>
+    /// 依据当前状态选择循环
+    /// </summary>
     private ClipTransition ResolveLoop(Type stateType)
     {
         if (stateType == typeof(PlayerIdleState)) return idleLoopTransition;
@@ -109,7 +116,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         if (stateType == typeof(PlayerFastRunState)) return fastRunLoopTransition;
         return null;
     }
-
+    //通过前后状态比对触发过渡动画
     private ClipTransition ResolveEdge(PlayerStateTransition transition)
     {
         Type previous = transition.PreviousStateType;

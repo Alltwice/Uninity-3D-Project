@@ -45,9 +45,13 @@ public sealed class PlayerDodge : MonoBehaviour
         {
             currentDirection = normalizedInput;
         }
+        //记录播放时间
         elapsedTime = Mathf.Min(config.Duration, elapsedTime + deltaTime);
+        //推测播放进度
         float normalizedTime = elapsedTime / config.Duration;
+        //时间推进度
         float progress = Mathf.Clamp01(config.DistanceProgress.Evaluate(normalizedTime));
+        //移动距离
         float horizontalDistance = config.Distance * Mathf.Max(0f, progress - previousProgress);
         previousProgress = progress;
         bool justCompleted = elapsedTime >= config.Duration;

@@ -86,7 +86,7 @@ public class PlayerMotor : MonoBehaviour
         horizontalVelocity = Time.deltaTime > 0f ? actualHorizontalDisplacement / Time.deltaTime : Vector3.zero;
         if (direction.sqrMagnitude > 0.001f)
         {
-            transform.rotation = Quaternion.LookRotation(direction);
+            RotateToMoveDirection(direction);
         }
     }
 
