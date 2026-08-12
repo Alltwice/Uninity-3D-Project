@@ -67,24 +67,24 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: 7400002, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
     _NormalizedStartTime: 0
-  walkLoopTransition:
+  groundLocomotionTransition:
     _FadeDuration: 0.15
     _Speed: 1
     _Events:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 7400016, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
-    _NormalizedStartTime: 0
-  runLoopTransition:
-    _FadeDuration: 0.15
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 7400098, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
-    _NormalizedStartTime: 0
+    _Animations:
+    - {fileID: 7400016, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+    - {fileID: 7400098, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+    _Speeds: []
+    _SynchronizeChildren: 00
+    _Thresholds:
+    - 1.5
+    - 3.5
+    _DefaultParameter: 1.5
+    _ExtrapolateSpeed: 0
+    _ParameterName: {fileID: 0}
   fastRunLoopTransition:
     _FadeDuration: 0.15
     _Speed: 1
@@ -183,6 +183,51 @@ MonoBehaviour:
       _Callbacks: []
       _Names: []
     _Clip: {fileID: 7400142, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+    _NormalizedStartTime: 0
+  walkStart180Transition:
+    _FadeDuration: 0.1
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: 0
+  runStart180Transition:
+    _FadeDuration: 0.1
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: 0
+  walkTurn180Transition:
+    _FadeDuration: 0.1
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: 0
+  runTurn180Transition:
+    _FadeDuration: 0.1
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: 0
+  fastRunTurn180Transition:
+    _FadeDuration: 0.1
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
     _NormalizedStartTime: 0
   references:
     version: 2

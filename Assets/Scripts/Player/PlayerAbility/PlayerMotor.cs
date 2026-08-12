@@ -19,10 +19,14 @@ public class PlayerMotor : MonoBehaviour
     private Transform cameraTransform;
     private Vector3 verticalVelocity;
     private Vector3 horizontalVelocity;
+    private Vector3 desiredMoveDirection;
+    private bool redirectAnimationMotionToDesiredDirection;
     private bool isGrounded;
 
     public PlayerMotionMode MotionMode { get; private set; }
     public float HorizontalSpeed => new Vector3(horizontalVelocity.x, 0f, horizontalVelocity.z).magnitude;
+    public Vector3 DesiredMoveDirection => desiredMoveDirection;
+    public Vector3 HorizontalMoveDirection => horizontalVelocity.sqrMagnitude > 0.001f ? horizontalVelocity.normalized : Vector3.zero;
     public float VerticalSpeed => verticalVelocity.y;
     public bool JustLanded { get; private set; }
     public float LandingImpactSpeed { get; private set; }
@@ -51,18 +55,21 @@ public class PlayerMotor : MonoBehaviour
 
     public void WalkMove(Vector3 moveDirection)
     {
+        SetDesiredMoveDirection(moveDirection);
         if (MotionMode != PlayerMotionMode.CodeDriven) return;
         MoveGround(moveDirection, config.WalkSpeed);
     }
 
     public void RunMove(Vector3 moveDirection)
     {
+        SetDesiredMoveDirection(moveDirection);
         if (MotionMode != PlayerMotionMode.CodeDriven) return;
         MoveGround(moveDirection, config.RunSpeed);
     }
 
     public void FastRunMove(Vector3 moveDirection)
     {
+        SetDesiredMoveDirection(moveDirection);
         if (MotionMode != PlayerMotionMode.CodeDriven) return;
         MoveGround(moveDirection, config.FastRunSpeed);
     }
@@ -101,9 +108,10 @@ public class PlayerMotor : MonoBehaviour
         }
     }
 
-    public void SetMotionMode(PlayerMotionMode motionMode)
+    public void SetMotionMode(PlayerMotionMode motionMode, bool redirectToDesiredDirection = false)
     {
         MotionMode = motionMode;
+        redirectAnimationMotionToDesiredDirection = motionMode == PlayerMotionMode.AnimationDriven && redirectToDesiredDirection;
     }
 
     public void SubmitAnimationMotion(Vector3 deltaPosition, Quaternion deltaRotation)
@@ -112,7 +120,13 @@ public class PlayerMotor : MonoBehaviour
         ApplyGravity();
         Vector3 positionBeforeMove = transform.position;
         Vector3 horizontalRootMotion = new Vector3(deltaPosition.x, 0f, deltaPosition.z);
-        MoveCharacterDisplacement(horizontalRootMotion + verticalVelocity * Time.deltaTime);
+        Vector3 horizontalDisplacement = horizontalRootMotion;
+        if (redirectAnimationMotionToDesiredDirection)
+        {
+            horizontalDisplacement = desiredMoveDirection * horizontalRootMotion.magnitude;
+            RotateToMoveDirection(desiredMoveDirection);
+        }
+        MoveCharacterDisplacement(horizontalDisplacement + verticalVelocity * Time.deltaTime);
         UpdateHorizontalVelocityFromActualDisplacement(positionBeforeMove);
     }
 
@@ -132,6 +146,15 @@ public class PlayerMotor : MonoBehaviour
         UpdateGroundHorizontalVelocity(moveDirection, targetSpeed);
         MoveCharacterVelocity(horizontalVelocity + verticalVelocity);
         RotateToMoveDirection(moveDirection);
+    }
+    //获取期望输入方向
+    public void SetDesiredMoveDirection(Vector3 moveDirection)
+    {
+        moveDirection.y = 0f;
+        if (moveDirection.sqrMagnitude > 0.001f)
+        {
+            desiredMoveDirection = moveDirection.normalized;
+        }
     }
 
     private void UpdateGroundHorizontalVelocity(Vector3 moveDirection, float targetSpeed)
