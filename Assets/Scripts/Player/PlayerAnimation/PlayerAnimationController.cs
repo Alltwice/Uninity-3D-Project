@@ -35,12 +35,12 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     [SerializeField] private ClipTransition runToIdleTransition = new ClipTransition();
     [SerializeField] private ClipTransition walkToRunTransition = new ClipTransition();
     [SerializeField] private ClipTransition runToWalkTransition = new ClipTransition();
-    [FormerlySerializedAs("fastRunStopTransition")]
-    [SerializeField] private ClipTransition fastRunToIdleTransition = new ClipTransition();
+    [SerializeField] private ClipTransition fastRunDodgeToIdleTransition = new ClipTransition();
     [SerializeField] private ClipTransition dodgeToFastRunTransition = new ClipTransition();
 
     private ulong playbackSequence;
     private AnimancerState hardLandingState;
+    private PlayerMotor playerMotor;
 
     public bool IsHardLandingComplete => hardLandingState.NormalizedTime >= 1f;
     public bool CanInterruptHardLanding => hardLandingState.NormalizedTime >= config.HardLandingInterruptNormalizedTime;
@@ -48,6 +48,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     private void Awake()
     {
         animancer = GetComponent<AnimancerComponent>();
+        playerMotor = GetComponent<PlayerMotor>();
     }
     /// <summary>
     /// 拿到状态机数据快照后开始处理动画
@@ -56,6 +57,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     {
         //给予编号，确保在未发生变化时不会重复处理内容
         ulong requestSequence = ++playbackSequence;
+        playerMotor.SetMotionMode(PlayerMotionMode.CodeDriven);
         //优先处理特殊状态
         if (transition.CurrentStateType == typeof(PlayerHardLandingState))
         {
@@ -80,10 +82,18 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
             return;
         }
         
-        PlayOptionalTransition(ResolveEdge(transition), ResolveLoop(transition.CurrentStateType), requestSequence);
+        ClipTransition edge = ResolveEdge(transition);
+        bool isAnimationDriven = IsAnimationDrivenGroundEdge(edge);
+        PlayOptionalTransition(edge, ResolveLoop(transition.CurrentStateType), requestSequence, isAnimationDriven);
     }
 
-    private void PlayOptionalTransition(ClipTransition edge, ClipTransition targetLoop, ulong requestSequence)
+    private bool IsAnimationDrivenGroundEdge(ClipTransition edge)
+    {
+        if (edge == null || edge.Clip == null) return false;
+        return edge == idleToWalkTransition || edge == walkToIdleTransition || edge == idleToRunTransition || edge == runToIdleTransition || edge == walkToRunTransition || edge == runToWalkTransition || edge == fastRunDodgeToIdleTransition || edge == dodgeToFastRunTransition;
+    }
+
+    private void PlayOptionalTransition(ClipTransition edge, ClipTransition targetLoop, ulong requestSequence, bool isAnimationDriven = false)
     {
         //没有edgeloop
         if (edge == null || edge.Clip == null)
@@ -96,13 +106,24 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         }
         //有edge播edge并在结尾处依据是否还有loop选播放loop
         //这里是一个回调，最终执行顺序在edge执行完毕和后
-        edge.Events.OnEnd = targetLoop == null ? null : () =>
+        edge.Events.OnEnd = targetLoop == null && !isAnimationDriven ? null : () =>
         {
             if (requestSequence == playbackSequence)
             {
-                animancer.Play(targetLoop);
+                if (targetLoop != null)
+                {
+                    animancer.Play(targetLoop);
+                }
+                if (isAnimationDriven)
+                {
+                    playerMotor.SetMotionMode(PlayerMotionMode.CodeDriven);
+                }
             }
         };
+        if (isAnimationDriven)
+        {
+            playerMotor.SetMotionMode(PlayerMotionMode.AnimationDriven);
+        }
         animancer.Play(edge);
     }
     /// <summary>
@@ -129,7 +150,8 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         if (previous == typeof(PlayerRunState) && current == typeof(PlayerIdleState)) return runToIdleTransition;
         if (previous == typeof(PlayerWalkState) && current == typeof(PlayerRunState)) return walkToRunTransition;
         if (previous == typeof(PlayerRunState) && current == typeof(PlayerWalkState)) return runToWalkTransition;
-        if (previous == typeof(PlayerFastRunState) && current == typeof(PlayerIdleState)) return fastRunToIdleTransition;
+        if (previous == typeof(PlayerFastRunState) && current == typeof(PlayerIdleState)) return fastRunDodgeToIdleTransition;
+        if (previous == typeof(PlayerDodgeState) && current == typeof(PlayerIdleState)) return fastRunDodgeToIdleTransition;
         return null;
     }
 }

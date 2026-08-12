@@ -1,7 +1,13 @@
 using UnityEngine;
 
+public enum PlayerMotionMode
+{
+    CodeDriven,
+    AnimationDriven
+}
+
 /// <summary>
-/// 执行 CharacterController 移动、速度连续性、重力、碰撞与接地结果。
+/// 执行 CharacterController 移动、速度连续性、重力、碰撞与接地结果
 /// </summary>
 public class PlayerMotor : MonoBehaviour
 {
@@ -15,6 +21,7 @@ public class PlayerMotor : MonoBehaviour
     private Vector3 horizontalVelocity;
     private bool isGrounded;
 
+    public PlayerMotionMode MotionMode { get; private set; }
     public float HorizontalSpeed => new Vector3(horizontalVelocity.x, 0f, horizontalVelocity.z).magnitude;
     public float VerticalSpeed => verticalVelocity.y;
     public bool JustLanded { get; private set; }
@@ -44,21 +51,25 @@ public class PlayerMotor : MonoBehaviour
 
     public void WalkMove(Vector3 moveDirection)
     {
+        if (MotionMode != PlayerMotionMode.CodeDriven) return;
         MoveGround(moveDirection, config.WalkSpeed);
     }
 
     public void RunMove(Vector3 moveDirection)
     {
+        if (MotionMode != PlayerMotionMode.CodeDriven) return;
         MoveGround(moveDirection, config.RunSpeed);
     }
 
     public void FastRunMove(Vector3 moveDirection)
     {
+        if (MotionMode != PlayerMotionMode.CodeDriven) return;
         MoveGround(moveDirection, config.FastRunSpeed);
     }
 
     public void AirMove(Vector3 moveDirection)
     {
+        if (MotionMode != PlayerMotionMode.CodeDriven) return;
         ApplyGravity();
         Vector3 targetHorizontalVelocity = moveDirection * config.AirMoveSpeed;
         horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, targetHorizontalVelocity, config.AirAcceleration * Time.deltaTime);
@@ -68,6 +79,7 @@ public class PlayerMotor : MonoBehaviour
 
     public void IdleMove()
     {
+        if (MotionMode != PlayerMotionMode.CodeDriven) return;
         horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, Vector3.zero, config.GroundDeceleration * Time.deltaTime);
         ApplyGravity();
         MoveCharacterVelocity(horizontalVelocity + verticalVelocity);
@@ -75,19 +87,33 @@ public class PlayerMotor : MonoBehaviour
 
     public void DodgeMove(Vector3 direction, float horizontalDistance)
     {
+        if (MotionMode != PlayerMotionMode.CodeDriven) return;
         direction.y = 0f;
         direction.Normalize();
         ApplyGravity();
         Vector3 positionBeforeMove = transform.position;
         Vector3 displacement = direction * horizontalDistance + verticalVelocity * Time.deltaTime;
         MoveCharacterDisplacement(displacement);
-        Vector3 actualHorizontalDisplacement = transform.position - positionBeforeMove;
-        actualHorizontalDisplacement.y = 0f;
-        horizontalVelocity = Time.deltaTime > 0f ? actualHorizontalDisplacement / Time.deltaTime : Vector3.zero;
+        UpdateHorizontalVelocityFromActualDisplacement(positionBeforeMove);
         if (direction.sqrMagnitude > 0.001f)
         {
             RotateToMoveDirection(direction);
         }
+    }
+
+    public void SetMotionMode(PlayerMotionMode motionMode)
+    {
+        MotionMode = motionMode;
+    }
+
+    public void SubmitAnimationMotion(Vector3 deltaPosition, Quaternion deltaRotation)
+    {
+        if (MotionMode != PlayerMotionMode.AnimationDriven) return;
+        ApplyGravity();
+        Vector3 positionBeforeMove = transform.position;
+        Vector3 horizontalRootMotion = new Vector3(deltaPosition.x, 0f, deltaPosition.z);
+        MoveCharacterDisplacement(horizontalRootMotion + verticalVelocity * Time.deltaTime);
+        UpdateHorizontalVelocityFromActualDisplacement(positionBeforeMove);
     }
 
     public Vector3 GetWorldMoveDirection(Vector2 moveInput)
@@ -182,6 +208,15 @@ public class PlayerMotor : MonoBehaviour
         {
             verticalVelocity.y = config.GroundedVerticalVelocity;
         }
+    }
+    /// <summary>
+    /// 路程/时间＝速度
+    /// </summary>
+    private void UpdateHorizontalVelocityFromActualDisplacement(Vector3 positionBeforeMove)
+    {
+        Vector3 actualHorizontalDisplacement = transform.position - positionBeforeMove;
+        actualHorizontalDisplacement.y = 0f;
+        horizontalVelocity = Time.deltaTime > 0f ? actualHorizontalDisplacement / Time.deltaTime : Vector3.zero;
     }
 
     private void RotateToMoveDirection(Vector3 moveDirection)
