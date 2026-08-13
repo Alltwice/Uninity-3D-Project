@@ -78,7 +78,7 @@ MonoBehaviour:
     - {fileID: 7400016, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
     - {fileID: 7400098, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
     _Speeds: []
-    _SynchronizeChildren: 00
+    _SynchronizeChildren: 0101
     _Thresholds:
     - 1.5
     - 3.5

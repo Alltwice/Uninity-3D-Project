@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:VisualElement class="window-root">
+        <ui:VisualElement class="toolbar-row">
+            <uie:ObjectField name="profile-field" label="Profile" class="toolbar-field" />
+            <ui:Button name="new-profile-button" text="新建" />
+            <ui:Button name="save-profile-button" text="保存" />
+            <ui:Label name="dirty-label" class="dirty-label" />
+            <ui:VisualElement class="toolbar-spacer" />
+            <ui:Button name="refresh-button" text="刷新资源" />
+            <ui:Button name="focus-mode-button" text="专注预览" />
+        </ui:VisualElement>
+        <ui:VisualElement class="model-row">
+            <uie:ObjectField name="model-field" label="模型 FBX / Prefab" class="model-field" />
+            <ui:Label text="也可将模型直接拖到中央视口" class="hint-label" />
+        </ui:VisualElement>
+        <ui:VisualElement class="main-row">
+            <ui:VisualElement name="left-pane" class="side-pane left-pane">
+                <ui:Label text="动画资源" class="section-title" />
+                <uie:ToolbarSearchField name="search-field" />
+                <ui:Toggle name="scan-all-toggle" label="扫描整个 Assets" />
+                <ui:VisualElement name="animation-drop-zone" class="drop-zone">
+                    <ui:Label text="拖入动画 FBX、AnimationClip 或文件夹" />
+                </ui:VisualElement>
+                <uie:ObjectField name="source-field" label="动画来源" />
+                <ui:VisualElement class="source-actions">
+                    <ui:Button name="remove-source-button" text="移除" />
+                </ui:VisualElement>
+                <ui:ListView name="source-list" class="source-list" fixed-item-height="22" />
+                <ui:Label name="clip-count-label" class="clip-count" />
+                <ui:Button name="favorite-button" text="收藏" />
+                <ui:ListView name="clip-list" class="clip-list" />
+            </ui:VisualElement>
+            <ui:VisualElement class="preview-column">
+                <ui:VisualElement class="view-toolbar">
+                    <ui:Button name="front-view-button" text="正面" />
+                    <ui:Button name="side-view-button" text="侧面" />
+                    <ui:Button name="back-view-button" text="背面" />
+                    <ui:Button name="focus-button" text="聚焦" />
+                </ui:VisualElement>
+                <ui:VisualElement name="preview-container" class="preview-container" />
+            </ui:VisualElement>
+            <ui:VisualElement name="right-pane" class="side-pane right-pane">
+                <ui:Label text="模型信息" class="section-title" />
+                <ui:Label name="model-info" class="info-block" />
+                <ui:Label text="动画信息" class="section-title" />
+                <ui:Label name="clip-info" class="info-block" />
+                <ui:Label text="兼容性" class="section-title" />
+                <ui:Label name="compatibility-info" class="status-label" />
+                <ui:Label text="显示设置" class="section-title" />
+                <uie:ColorField name="background-field" label="背景" value="#1B1D21" />
+                <ui:Slider name="light-intensity-slider" label="主光强度" low-value="0" high-value="5" value="1.2" show-input-field="true" />
+                <uie:Vector2Field name="light-rotation-field" label="主光旋转" />
+                <uie:EnumField name="root-motion-field" label="Root Motion" />
+                <ui:Toggle name="grid-toggle" label="地面网格" value="true" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement class="playback-row">
+            <ui:Button name="previous-frame-button" text="|◀" />
+            <ui:Button name="play-button" text="播放" />
+            <ui:Button name="next-frame-button" text="▶|" />
+            <ui:Button name="reset-button" text="复位" />
+            <ui:Toggle name="loop-toggle" label="循环" value="true" />
+            <ui:Slider name="speed-slider" label="速度" low-value="0.1" high-value="2" value="1" show-input-field="true" class="speed-slider" />
+            <ui:Slider name="time-slider" low-value="0" high-value="1" value="0" class="time-slider" />
+            <ui:Label name="time-label" text="0.00 / 0.00" class="time-label" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

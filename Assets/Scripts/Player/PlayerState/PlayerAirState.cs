@@ -16,7 +16,7 @@ public sealed class PlayerAirState : PlayerStateBase
 
     public override void Tick()
     {
-        Context.Motor.AirMove(Context.Motor.GetWorldMoveDirection(Context.InputSource.MoveInput));
+        Context.Motor.AirMove(Context.Motor.DesiredMoveDirection);
     }
 
     public override PlayerStateTransitionRequest EvaluateResultTransition()

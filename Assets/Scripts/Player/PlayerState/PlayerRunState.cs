@@ -7,11 +7,6 @@ public sealed class PlayerRunState : PlayerStateBase
 {
     public PlayerRunState(PlayerContext context) : base(context) { }
 
-    public override void Enter(PlayerStateTransition transition)
-    {
-        Context.Motor.SetDesiredMoveDirection(Context.Motor.GetWorldMoveDirection(Context.InputSource.MoveInput));
-    }
-
     public override PlayerStateTransitionRequest EvaluateInputTransition()
     {
         if (!Context.Motor.IsGrounded)
@@ -35,7 +30,7 @@ public sealed class PlayerRunState : PlayerStateBase
 
     public override void Tick()
     {
-        Context.Motor.RunMove(Context.Motor.GetWorldMoveDirection(Context.InputSource.MoveInput));
+        Context.Motor.RunMove(Context.Motor.DesiredMoveDirection);
     }
 
     public override PlayerStateTransitionRequest EvaluateResultTransition()

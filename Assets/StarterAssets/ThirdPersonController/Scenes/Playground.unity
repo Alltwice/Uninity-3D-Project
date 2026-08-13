@@ -830,13 +830,25 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 7400150, guid: dd4bc59541169e34ead96f0310ddc7bd, type: 3}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: idleToRunTransition._Clip
+      value: 
+      objectReference: {fileID: 5687401409094618642, guid: 6e7d645661cabbd4a8f77d8540b6a65c, type: 3}
+    - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: jumpStartTransition._Clip
       value: 
       objectReference: {fileID: 7400146, guid: dd4bc59541169e34ead96f0310ddc7bd, type: 3}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: runToIdleTransition._Clip
+      value: 
+      objectReference: {fileID: 2799641648231834601, guid: c9ae8265a698b9446a5d11974c0c5ed8, type: 3}
+    - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: jumpStartTransition._Speed
       value: 0.5
       objectReference: {fileID: 0}
+    - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: runTurn180Transition._Clip
+      value: 
+      objectReference: {fileID: 8242617978284009519, guid: 2462169e1ddd86f428d10288ad06d2e0, type: 3}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: fastRunLoopTransition._Clip
       value: 
@@ -852,7 +864,7 @@ PrefabInstance:
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: runStart180Transition._Clip
       value: 
-      objectReference: {fileID: 7400128, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+      objectReference: {fileID: 8034530165171743655, guid: 689a3d6dafa61b04e9506c92552fb522, type: 3}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: fastRunStopTransition._Speed
       value: 1
@@ -860,7 +872,7 @@ PrefabInstance:
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: walkStart180Transition._Clip
       value: 
-      objectReference: {fileID: 7400070, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+      objectReference: {fileID: 7400072, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: fastRunToIdleTransition._Clip
       value: 
@@ -894,6 +906,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 178221261423805455, guid: c0f26c643df59bc42a9d32f363854e13, type: 3}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: groundLocomotionTransition._FadeDuration
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: groundLocomotionTransition._Animations.Array.size
       value: 2
       objectReference: {fileID: 0}
@@ -908,7 +924,7 @@ PrefabInstance:
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: 'groundLocomotionTransition._Animations.Array.data[1]'
       value: 
-      objectReference: {fileID: 7400098, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+      objectReference: {fileID: 1827226128182048838, guid: c30c38dc7fdbc14459a67e6610edd81b, type: 3}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: 'groundLocomotionTransition._Thresholds.Array.data[0]'
       value: 1.5
@@ -916,6 +932,10 @@ PrefabInstance:
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: 'groundLocomotionTransition._Thresholds.Array.data[1]'
       value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: groundLocomotionTransition._SynchronizeChildren.Array.size
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7418034704001290420, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: thirdPersonFollow

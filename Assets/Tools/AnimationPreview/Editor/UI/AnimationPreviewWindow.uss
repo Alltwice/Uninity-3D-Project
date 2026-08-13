@@ -1,0 +1,32 @@
+.window-root { flex-grow: 1; background-color: #202226; }
+.toolbar-row, .model-row, .view-toolbar, .playback-row, .source-actions { flex-direction: row; align-items: center; }
+.toolbar-row { height: 34px; padding-left: 6px; padding-right: 6px; border-bottom-width: 1px; border-bottom-color: #111214; }
+.toolbar-field { width: 310px; }
+.toolbar-spacer { flex-grow: 1; }
+.dirty-label { margin-left: 8px; color: #aeb3bc; }
+.model-row { min-height: 34px; padding-left: 8px; padding-right: 8px; background-color: #292c31; }
+.model-field { min-width: 380px; flex-grow: 1; }
+.hint-label { color: #9298a2; margin-left: 12px; }
+.main-row { flex-grow: 1; flex-direction: row; min-height: 300px; }
+.side-pane { padding: 8px; background-color: #272a2f; }
+.left-pane { width: 275px; min-width: 210px; border-right-width: 1px; border-right-color: #111214; }
+.right-pane { width: 245px; min-width: 210px; border-left-width: 1px; border-left-color: #111214; }
+.preview-column { flex-grow: 1; min-width: 300px; }
+.view-toolbar { height: 30px; padding-left: 5px; background-color: #25282d; }
+.preview-container, .preview-viewport { flex-grow: 1; min-height: 250px; }
+.section-title { unity-font-style: bold; font-size: 12px; margin-top: 7px; margin-bottom: 4px; color: #d9dde5; }
+.drop-zone { height: 48px; margin-top: 5px; margin-bottom: 5px; border-width: 1px; border-color: #59616d; border-radius: 4px; align-items: center; justify-content: center; background-color: #30343a; color: #aeb6c2; }
+.source-list { height: 70px; margin-top: 4px; }
+.clip-count { color: #8e98a7; margin-top: 5px; margin-bottom: 3px; }
+.clip-list { flex-grow: 1; min-height: 120px; }
+.clip-row { min-height: 38px; padding-left: 5px; padding-top: 3px; padding-bottom: 3px; border-bottom-width: 1px; border-bottom-color: #35383e; }
+#clip-name { color: #e4e7ec; }
+#clip-group { font-size: 10px; color: #858c98; }
+.info-block, .status-label { white-space: normal; padding: 6px; background-color: #202226; border-radius: 3px; color: #bbc1ca; }
+.status-label { color: #91d39b; }
+.status-error { color: #ef8b86; background-color: #382426; }
+.playback-row { min-height: 42px; padding-left: 7px; padding-right: 7px; border-top-width: 1px; border-top-color: #111214; background-color: #292c31; }
+.speed-slider { width: 185px; }
+.time-slider { flex-grow: 1; min-width: 160px; margin-left: 8px; }
+.time-label { width: 100px; unity-text-align: middle-right; }
+Button { margin-left: 2px; margin-right: 2px; }

@@ -42,9 +42,16 @@ public class PlayerStateController : MonoBehaviour
 
     private void Update()
     {
+        //一次输入采样
+        SampleMoveIntent();
         ProcessPreTickTransition();
         currentState?.Tick();
         ProcessPostTickTransition();
+    }
+
+    private void SampleMoveIntent()
+    {
+        playerMotor.SetDesiredMoveDirection(playerMotor.GetWorldMoveDirection(playerInput.MoveInput));
     }
 
     private void ProcessPreTickTransition()

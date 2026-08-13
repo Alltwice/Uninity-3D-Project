@@ -7,11 +7,6 @@ public sealed class PlayerFastRunState : PlayerStateBase
 {
     public PlayerFastRunState(PlayerContext context) : base(context) { }
 
-    public override void Enter(PlayerStateTransition transition)
-    {
-        Context.Motor.SetDesiredMoveDirection(Context.Motor.GetWorldMoveDirection(Context.InputSource.MoveInput));
-    }
-
     public override PlayerStateTransitionRequest EvaluateInputTransition()
     {
         if (!Context.Motor.IsGrounded)
@@ -31,7 +26,7 @@ public sealed class PlayerFastRunState : PlayerStateBase
 
     public override void Tick()
     {
-        Context.Motor.FastRunMove(Context.Motor.GetWorldMoveDirection(Context.InputSource.MoveInput));
+        Context.Motor.FastRunMove(Context.Motor.DesiredMoveDirection);
     }
 
     public override PlayerStateTransitionRequest EvaluateResultTransition()

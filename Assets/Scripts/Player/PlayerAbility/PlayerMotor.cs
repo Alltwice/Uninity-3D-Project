@@ -55,21 +55,18 @@ public class PlayerMotor : MonoBehaviour
 
     public void WalkMove(Vector3 moveDirection)
     {
-        SetDesiredMoveDirection(moveDirection);
         if (MotionMode != PlayerMotionMode.CodeDriven) return;
         MoveGround(moveDirection, config.WalkSpeed);
     }
 
     public void RunMove(Vector3 moveDirection)
     {
-        SetDesiredMoveDirection(moveDirection);
         if (MotionMode != PlayerMotionMode.CodeDriven) return;
         MoveGround(moveDirection, config.RunSpeed);
     }
 
     public void FastRunMove(Vector3 moveDirection)
     {
-        SetDesiredMoveDirection(moveDirection);
         if (MotionMode != PlayerMotionMode.CodeDriven) return;
         MoveGround(moveDirection, config.FastRunSpeed);
     }
@@ -147,16 +144,17 @@ public class PlayerMotor : MonoBehaviour
         MoveCharacterVelocity(horizontalVelocity + verticalVelocity);
         RotateToMoveDirection(moveDirection);
     }
-    //获取期望输入方向
+    /// <summary>
+    /// 获取期望输入方向
+    /// </summary>
     public void SetDesiredMoveDirection(Vector3 moveDirection)
     {
         moveDirection.y = 0f;
-        if (moveDirection.sqrMagnitude > 0.001f)
-        {
-            desiredMoveDirection = moveDirection.normalized;
-        }
+        desiredMoveDirection = moveDirection.sqrMagnitude > 0.001f ? moveDirection.normalized : Vector3.zero;
     }
-
+    /// <summary>
+    /// 处理移动时大角度转向
+    /// </summary>
     private void UpdateGroundHorizontalVelocity(Vector3 moveDirection, float targetSpeed)
     {
         Vector3 targetVelocity = moveDirection * targetSpeed;
@@ -206,7 +204,9 @@ public class PlayerMotor : MonoBehaviour
     {
         MoveCharacterDisplacement(velocity * Time.deltaTime);
     }
-
+    /// <summary>
+    /// 最终实际移动逻辑
+    /// </summary>
     private void MoveCharacterDisplacement(Vector3 displacement)
     {
         bool wasGrounded = isGrounded;

@@ -7,11 +7,11 @@ public enum LocomotionTurnType
 }
 
 /// <summary>
-/// 将运动事实解析为 Locomotion 动画语义，不读取输入、不修改移动，也不持有动画播放权。
+/// 将运动事实解析为 Locomotion 动画语义，不读取输入、不修改移动，也不持有动画播放权
 /// </summary>
-public sealed class PlayerLocomotionAnimationResolver
+public class PlayerLocomotionAnimationResolver
 {
-    private readonly float turn180Threshold;
+    private float turn180Threshold;
 
     public PlayerLocomotionAnimationResolver(float turn180Threshold)
     {
@@ -27,7 +27,9 @@ public sealed class PlayerLocomotionAnimationResolver
     {
         return ResolveTurn(horizontalMoveDirection, desiredMoveDirection);
     }
-
+    /// <summary>
+    /// 角度判断方法返回动画类型枚举
+    /// </summary>
     private LocomotionTurnType ResolveTurn(Vector3 referenceDirection, Vector3 targetDirection)
     {
         referenceDirection.y = 0f;

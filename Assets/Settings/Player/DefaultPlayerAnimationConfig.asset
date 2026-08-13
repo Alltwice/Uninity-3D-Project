@@ -13,4 +13,5 @@ MonoBehaviour:
   m_Name: DefaultPlayerAnimationConfig
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimationConfig
   turn180Threshold: 150
+  turnPresentationIntentTolerance: 30
   hardLandingInterruptNormalizedTime: 0.6
