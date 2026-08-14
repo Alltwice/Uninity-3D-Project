@@ -41,11 +41,19 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     [SerializeField] private ClipTransition runTurn180Transition = new ClipTransition();
     [SerializeField] private ClipTransition fastRunTurn180Transition = new ClipTransition();
 
+    //动画请求编号
     private ulong playbackSequence;
     private AnimancerState hardLandingState;
+    private AnimancerState locomotionStartState;
+    private AnimancerState locomotionHandoffState;
     private PlayerMotor playerMotor;
     private PlayerLocomotionAnimationResolver locomotionResolver;
     private Type currentGameplayStateType;
+    //开始动画编号
+    private ulong locomotionStartSequence;
+    private int locomotionHandoffStartFrame;
+    //正在混合
+    private bool isLocomotionStartHandoffActive;
     //是否还在Turn表现中
     private bool isTurnPresentationActive;
     //是否失去了Rotation的控制权
@@ -74,6 +82,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
                 groundLocomotionTransition.State.Parameter = playerMotor.HorizontalSpeed;
             }
         }
+        EvaluateLocomotionStartHandoff();
         EvaluateTurnPresentation();
     }
     /// <summary>
@@ -87,6 +96,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
             if (!IsLocomotionLoopCurrent() && !isTurnPresentationActive)
             {
                 ++playbackSequence;
+                ClearLocomotionStartHandoff();
                 playerMotor.SetMotionMode(PlayerMotionMode.CodeDriven);
                 animancer.Play(groundLocomotionTransition);
             }
@@ -95,6 +105,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         bool interruptedTurnPresentation = isTurnPresentationActive;
         //给予编号，确保在未发生变化时不会重复处理内容
         ulong requestSequence = ++playbackSequence;
+        ClearLocomotionStartHandoff();
         isTurnPresentationActive = false;
         isTurnRotationUnlocked = false;
         playerMotor.SetMotionMode(PlayerMotionMode.CodeDriven);
@@ -135,7 +146,12 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         ClipTransition edge = ResolveEdge(transition);
         if (IsStart180Transition(edge))
         {
-            PlayStart180(edge, ResolveLoop(transition.CurrentStateType), requestSequence);
+            PlayStart180(edge, requestSequence);
+            return;
+        }
+        if (IsLocomotionStartTransition(edge))
+        {
+            PlayLocomotionStart(edge, requestSequence);
             return;
         }
         bool isAnimationDriven = IsAnimationDrivenGroundEdge(edge);
@@ -193,22 +209,93 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         animancer.Play(edge);
     }
     /// <summary>
+    /// 单独处理起步动画
+    /// </summary>
+    private void PlayLocomotionStart(ClipTransition edge, ulong requestSequence)
+    {
+        if (edge == null || edge.Clip == null)
+        {
+            animancer.Play(groundLocomotionTransition);
+            return;
+        }
+        PrepareLocomotionStartHandoff(edge, requestSequence);
+        playerMotor.SetMotionMode(PlayerMotionMode.AnimationDriven, AnimationMotionChannels.Translation, true);
+        locomotionStartState = animancer.Play(edge);
+    }
+
+    private void PrepareLocomotionStartHandoff(ClipTransition edge, ulong requestSequence)
+    {
+        locomotionStartSequence = requestSequence;
+        edge.Events.OnEnd = () =>
+        {
+            //检查动画是否被新动画顶掉
+            if (requestSequence == playbackSequence && requestSequence == locomotionStartSequence && !isLocomotionStartHandoffActive)
+            {
+                BeginLocomotionStartHandoff(requestSequence);
+            }
+        };
+    }
+    /// <summary>
+    /// 每帧观察是否需要启动混合
+    /// </summary>
+    private void EvaluateLocomotionStartHandoff()
+    {
+        if (locomotionStartState == null || locomotionStartSequence != playbackSequence) return;
+        if (!isLocomotionStartHandoffActive)
+        {
+            //播放剩余时间小于规定混合时间开始混合
+            if (locomotionStartState.RemainingDuration <= config.LocomotionStartHandoffDuration)
+            {
+                BeginLocomotionStartHandoff(locomotionStartSequence);
+            }
+            return;
+        }
+        //确保混合前不会把运动切换为代码驱动
+        if (Time.frameCount <= locomotionHandoffStartFrame || locomotionHandoffState == null) return;
+        //确保Mixer彻底接管了动画
+        if (locomotionHandoffState.IsCurrent && locomotionHandoffState.Weight == 1f && locomotionHandoffState.FadeGroup == null)
+        {
+            CompleteLocomotionStartHandoff();
+        }
+    }
+
+    private void BeginLocomotionStartHandoff(ulong requestSequence)
+    {
+        if (requestSequence != playbackSequence || requestSequence != locomotionStartSequence || isLocomotionStartHandoffActive) return;
+        isLocomotionStartHandoffActive = true;
+        //记录混合是在哪一帧开始的
+        locomotionHandoffStartFrame = Time.frameCount;
+        locomotionHandoffState = animancer.Play(groundLocomotionTransition, config.LocomotionStartHandoffDuration, FadeMode.FixedDuration);
+        groundLocomotionTransition.State.Parameter = playerMotor.HorizontalSpeed;
+    }
+
+    private void CompleteLocomotionStartHandoff()
+    {
+        isTurnPresentationActive = false;
+        isTurnRotationUnlocked = false;
+        playerMotor.SetMotionMode(PlayerMotionMode.CodeDriven);
+        ClearLocomotionStartHandoff();
+    }
+
+    private void ClearLocomotionStartHandoff()
+    {
+        locomotionStartState = null;
+        locomotionHandoffState = null;
+        locomotionStartSequence = 0;
+        locomotionHandoffStartFrame = 0;
+        isLocomotionStartHandoffActive = false;
+    }
+    /// <summary>
     /// 处理转向动画
     /// </summary>
-    private void PlayStart180(ClipTransition edge, ITransition targetLoop, ulong requestSequence)
+    private void PlayStart180(ClipTransition edge, ulong requestSequence)
     {
         isTurnPresentationActive = true;
         isTurnRotationUnlocked = false;
         turnRequestDirection = playerMotor.DesiredMoveDirection;
-        edge.Events.OnEnd = () =>
-        {
-            if (requestSequence == playbackSequence)
-            {
-                CompleteTurnPresentation(targetLoop);
-            }
-        };
+        PrepareLocomotionStartHandoff(edge, requestSequence);
         playerMotor.SetMotionMode(PlayerMotionMode.AnimationDriven, AnimationMotionChannels.Translation | AnimationMotionChannels.Rotation);
-        animancer.Play(edge);
+        locomotionStartState = animancer.Play(edge);
     }
     /// <summary>
     /// 依据当前状态选择循环
@@ -291,21 +378,9 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         isTurnPresentationActive = false;
         isTurnRotationUnlocked = false;
         ++playbackSequence;
+        ClearLocomotionStartHandoff();
         playerMotor.SetMotionMode(PlayerMotionMode.CodeDriven);
         ITransition targetLoop = ResolveLoop(currentGameplayStateType);
-        if (targetLoop != null)
-        {
-            animancer.Play(targetLoop);
-        }
-    }
-    /// <summary>
-    /// 当转向动画表现结束时，转向也不再上锁，此刻回到对应loop即可
-    /// </summary>
-    private void CompleteTurnPresentation(ITransition targetLoop)
-    {
-        isTurnPresentationActive = false;
-        isTurnRotationUnlocked = false;
-        playerMotor.SetMotionMode(PlayerMotionMode.CodeDriven);
         if (targetLoop != null)
         {
             animancer.Play(targetLoop);
@@ -333,6 +408,11 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     {
         return transition == walkStart180LeftTransition || transition == walkStart180RightTransition ||
                transition == runStart180LeftTransition || transition == runStart180RightTransition;
+    }
+
+    private bool IsLocomotionStartTransition(ClipTransition transition)
+    {
+        return transition == idleToWalkTransition || transition == idleToRunTransition;
     }
     /// <summary>
     /// 如果是地面移动状态
