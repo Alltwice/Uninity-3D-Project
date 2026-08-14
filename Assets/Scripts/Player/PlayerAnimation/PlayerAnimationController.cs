@@ -46,6 +46,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     private AnimancerState hardLandingState;
     private AnimancerState locomotionStartState;
     private AnimancerState locomotionHandoffState;
+    private AnimancerState debugLocomotionTransitionState;
     private PlayerMotor playerMotor;
     private PlayerLocomotionAnimationResolver locomotionResolver;
     private Type currentGameplayStateType;
@@ -54,6 +55,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     private int locomotionHandoffStartFrame;
     //正在混合
     private bool isLocomotionStartHandoffActive;
+    private bool locomotionStartOwnsMotion;
     //是否还在Turn表现中
     private bool isTurnPresentationActive;
     //是否失去了Rotation的控制权
@@ -63,6 +65,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
 
     public bool IsHardLandingComplete => hardLandingState.NormalizedTime >= 1f;
     public bool CanInterruptHardLanding => hardLandingState.NormalizedTime >= config.HardLandingInterruptNormalizedTime;
+    public float DebugLocomotionTransitionNormalizedTime => debugLocomotionTransitionState == null ? 0f : debugLocomotionTransitionState.NormalizedTime;
 
     private void Awake()
     {
@@ -88,9 +91,17 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     /// <summary>
     /// 拿到状态机数据快照后开始处理动画
     /// </summary>
-    public void PlayTransition(PlayerStateTransition transition)
+    public bool IsRunTransitionMotionCandidate(PlayerStateTransition transition)
+    {
+        if (isTurnPresentationActive || IsGroundLocomotionSwitch(transition)) return false;
+        ClipTransition edge = ResolveEdge(transition);
+        return edge != null && edge.Clip != null && (edge == idleToRunTransition || edge == runToIdleTransition);
+    }
+
+    public void PlayTransition(PlayerStateTransition transition, bool profileDrivenRunTransition)
     {
         currentGameplayStateType = transition.CurrentStateType;
+        debugLocomotionTransitionState = null;
         if (IsGroundLocomotionSwitch(transition))
         {
             if (!IsLocomotionLoopCurrent() && !isTurnPresentationActive)
@@ -108,7 +119,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         ClearLocomotionStartHandoff();
         isTurnPresentationActive = false;
         isTurnRotationUnlocked = false;
-        playerMotor.SetMotionMode(PlayerMotionMode.CodeDriven);
+        if (!profileDrivenRunTransition) playerMotor.SetMotionMode(PlayerMotionMode.CodeDriven);
         //优先处理特殊状态
         if (transition.CurrentStateType == typeof(PlayerHardLandingState))
         {
@@ -151,19 +162,20 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         }
         if (IsLocomotionStartTransition(edge))
         {
-            PlayLocomotionStart(edge, requestSequence);
+            PlayLocomotionStart(edge, requestSequence, profileDrivenRunTransition);
             return;
         }
-        bool isAnimationDriven = IsAnimationDrivenGroundEdge(edge);
+        bool isAnimationDriven = IsAnimationDrivenGroundEdge(edge, profileDrivenRunTransition);
         //所有特殊情况处理完后的最终部分
         PlayOptionalTransition(edge, ResolveLoop(transition.CurrentStateType), requestSequence, isAnimationDriven);
     }
     /// <summary>
     /// 这里就规定了是否是动画驱动
     /// </summary>
-    private bool IsAnimationDrivenGroundEdge(ClipTransition edge)
+    private bool IsAnimationDrivenGroundEdge(ClipTransition edge, bool profileDrivenRunTransition)
     {
         if (edge == null || edge.Clip == null) return false;
+        if (profileDrivenRunTransition && (edge == idleToRunTransition || edge == runToIdleTransition)) return false;
         return edge == idleToWalkTransition || edge == walkToIdleTransition || edge == idleToRunTransition ||
                edge == runToIdleTransition || edge == fastRunDodgeToIdleTransition || edge == dodgeToFastRunTransition;
     }
@@ -206,26 +218,29 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         {
             playerMotor.SetMotionMode(PlayerMotionMode.AnimationDriven, AnimationMotionChannels.Translation, ShouldRedirectAnimationMotion(edge));
         }
-        animancer.Play(edge);
+        AnimancerState edgeState = animancer.Play(edge);
+        if (edge == idleToRunTransition || edge == runToIdleTransition) debugLocomotionTransitionState = edgeState;
     }
     /// <summary>
     /// 单独处理起步动画
     /// </summary>
-    private void PlayLocomotionStart(ClipTransition edge, ulong requestSequence)
+    private void PlayLocomotionStart(ClipTransition edge, ulong requestSequence, bool profileDrivenRunTransition)
     {
         if (edge == null || edge.Clip == null)
         {
             animancer.Play(groundLocomotionTransition);
             return;
         }
-        PrepareLocomotionStartHandoff(edge, requestSequence);
-        playerMotor.SetMotionMode(PlayerMotionMode.AnimationDriven, AnimationMotionChannels.Translation, true);
+        PrepareLocomotionStartHandoff(edge, requestSequence, !profileDrivenRunTransition);
+        if (!profileDrivenRunTransition) playerMotor.SetMotionMode(PlayerMotionMode.AnimationDriven, AnimationMotionChannels.Translation, true);
         locomotionStartState = animancer.Play(edge);
+        debugLocomotionTransitionState = locomotionStartState;
     }
 
-    private void PrepareLocomotionStartHandoff(ClipTransition edge, ulong requestSequence)
+    private void PrepareLocomotionStartHandoff(ClipTransition edge, ulong requestSequence, bool ownsMotion)
     {
         locomotionStartSequence = requestSequence;
+        locomotionStartOwnsMotion = ownsMotion;
         edge.Events.OnEnd = () =>
         {
             //检查动画是否被新动画顶掉
@@ -273,7 +288,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     {
         isTurnPresentationActive = false;
         isTurnRotationUnlocked = false;
-        playerMotor.SetMotionMode(PlayerMotionMode.CodeDriven);
+        if (locomotionStartOwnsMotion) playerMotor.SetMotionMode(PlayerMotionMode.CodeDriven);
         ClearLocomotionStartHandoff();
     }
 
@@ -284,6 +299,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         locomotionStartSequence = 0;
         locomotionHandoffStartFrame = 0;
         isLocomotionStartHandoffActive = false;
+        locomotionStartOwnsMotion = false;
     }
     /// <summary>
     /// 处理转向动画
@@ -293,7 +309,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         isTurnPresentationActive = true;
         isTurnRotationUnlocked = false;
         turnRequestDirection = playerMotor.DesiredMoveDirection;
-        PrepareLocomotionStartHandoff(edge, requestSequence);
+        PrepareLocomotionStartHandoff(edge, requestSequence, true);
         playerMotor.SetMotionMode(PlayerMotionMode.AnimationDriven, AnimationMotionChannels.Translation | AnimationMotionChannels.Rotation);
         locomotionStartState = animancer.Play(edge);
     }

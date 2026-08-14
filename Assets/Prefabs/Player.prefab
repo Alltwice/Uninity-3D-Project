@@ -20,6 +20,9 @@ GameObject:
   - component: {fileID: 650439676384453668}
   - component: {fileID: 5541972601699860746}
   - component: {fileID: 2015852515768995489}
+  - component: {fileID: 7900320262626363938}
+  - component: {fileID: 5697196930536673086}
+  - component: {fileID: 3268618394628576207}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -378,6 +381,44 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerDodge
   config: {fileID: 11400000, guid: d77a65b231b1e3e44baf045b9bc6be50, type: 2}
+--- !u!114 &7900320262626363938
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1659824287227001794}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb4148cd08ba753468ab70e6387fdae6, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerTransitionMotionController
+  config: {fileID: 11400000, guid: 3926f62d682cc804fabf03ba6c8d4cfa, type: 2}
+--- !u!114 &5697196930536673086
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1659824287227001794}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 93448b2258bca214bae5e074364bf55a, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerMotionCaptureRecorder
+--- !u!114 &3268618394628576207
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1659824287227001794}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe4626a92fbc2b64c8e87d0ea3668bac, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerMotionDebugOverlay
+  showOverlay: 1
 --- !u!1 &2375787102420044932
 GameObject:
   m_ObjectHideFlags: 0

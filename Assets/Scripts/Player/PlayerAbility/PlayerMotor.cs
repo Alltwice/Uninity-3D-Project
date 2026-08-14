@@ -3,7 +3,8 @@ using UnityEngine;
 public enum PlayerMotionMode
 {
     CodeDriven,
-    AnimationDriven
+    AnimationDriven,
+    ProfileDriven
 }
 //支持组合使用
 [System.Flags]
@@ -141,6 +142,20 @@ public class PlayerMotor : MonoBehaviour
             transform.rotation *= deltaRotation;
         }
         else if (redirectAnimationMotionToDesiredDirection)
+        {
+            RotateToMoveDirection(desiredMoveDirection);
+        }
+    }
+
+    public void SubmitProfileMotion(Vector3 planarDisplacement, bool rotateTowardsDesiredDirection)
+    {
+        if (MotionMode != PlayerMotionMode.ProfileDriven) return;
+        ApplyGravity();
+        planarDisplacement.y = 0f;
+        Vector3 positionBeforeMove = transform.position;
+        MoveCharacterDisplacement(planarDisplacement + verticalVelocity * Time.deltaTime);
+        UpdateHorizontalVelocityFromActualDisplacement(positionBeforeMove);
+        if (rotateTowardsDesiredDirection)
         {
             RotateToMoveDirection(desiredMoveDirection);
         }

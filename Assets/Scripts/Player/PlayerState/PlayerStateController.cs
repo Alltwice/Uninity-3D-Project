@@ -12,6 +12,8 @@ public class PlayerStateController : MonoBehaviour
     private PlayerJump playerJump;
     private PlayerDodge playerDodge;
     private PlayerAnimationController animationController;
+    private PlayerTransitionMotionController transitionMotionController;
+    private PlayerMotionCaptureRecorder motionCaptureRecorder;
     private PlayerContext context;
     private PlayerStateBase currentState;
     private IPlayerInputSource playerInput;
@@ -31,6 +33,8 @@ public class PlayerStateController : MonoBehaviour
         playerJump = GetComponent<PlayerJump>();
         playerDodge = GetComponent<PlayerDodge>();
         animationController = GetComponent<PlayerAnimationController>();
+        transitionMotionController = GetComponent<PlayerTransitionMotionController>();
+        motionCaptureRecorder = GetComponent<PlayerMotionCaptureRecorder>();
     }
 
     private void Start()
@@ -46,6 +50,7 @@ public class PlayerStateController : MonoBehaviour
         SampleMoveIntent();
         ProcessPreTickTransition();
         currentState?.Tick();
+        transitionMotionController.Tick(Time.deltaTime);
         ProcessPostTickTransition();
     }
 
@@ -94,7 +99,10 @@ public class PlayerStateController : MonoBehaviour
         currentState?.Exit(transition);
         currentState = nextState;
         currentState.Enter(transition);
-        animationController.PlayTransition(transition);
+        bool isStandardRunTransition = animationController.IsRunTransitionMotionCandidate(transition);
+        bool profileMotionStarted = transitionMotionController.PlayTransition(transition, isStandardRunTransition);
+        animationController.PlayTransition(transition, profileMotionStarted);
+        if (motionCaptureRecorder != null) motionCaptureRecorder.HandleTransition(transition, isStandardRunTransition);
         return true;
     }
 
