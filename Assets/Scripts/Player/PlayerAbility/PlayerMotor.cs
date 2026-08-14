@@ -5,10 +5,11 @@ public enum PlayerMotionMode
     CodeDriven,
     AnimationDriven
 }
-
+//支持组合使用
 [System.Flags]
 public enum AnimationMotionChannels
 {
+    //一次移动一位，为了确保占不同bit
     None = 0,
     Translation = 1 << 0,
     Rotation = 1 << 1
@@ -127,6 +128,7 @@ public class PlayerMotor : MonoBehaviour
         ApplyGravity();
         Vector3 positionBeforeMove = transform.position;
         Vector3 horizontalDisplacement = Vector3.zero;
+        //通过每个枚举占一位1，并通过位与运算判断你现在这个动画的权限和转向权限是否有一者没占位，如果是，最终结果为0，条件不满足
         if ((animationMotionChannels & AnimationMotionChannels.Translation) != 0)
         {
             Vector3 horizontalRootMotion = new Vector3(deltaPosition.x, 0f, deltaPosition.z);
@@ -143,7 +145,7 @@ public class PlayerMotor : MonoBehaviour
             RotateToMoveDirection(desiredMoveDirection);
         }
     }
-
+    
     public void RotateTowardsDesiredDirection()
     {
         RotateToMoveDirection(desiredMoveDirection);

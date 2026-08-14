@@ -46,8 +46,11 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     private PlayerMotor playerMotor;
     private PlayerLocomotionAnimationResolver locomotionResolver;
     private Type currentGameplayStateType;
+    //是否还在Turn表现中
     private bool isTurnPresentationActive;
+    //是否失去了Rotation的控制权
     private bool isTurnRotationUnlocked;
+    //转向动画开始时记录的玩家最终期望到达的角度
     private Vector3 turnRequestDirection;
 
     public bool IsHardLandingComplete => hardLandingState.NormalizedTime >= 1f;
@@ -118,6 +121,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
             }
             return;
         }
+        //新的动画变化来了，如果还在转身，那么必须打断
         if (interruptedTurnPresentation)
         {
             ITransition interruptedTargetLoop = ResolveLoop(transition.CurrentStateType);
@@ -127,6 +131,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
             }
             return;
         }
+        //检测edge，是否满足转身动画
         ClipTransition edge = ResolveEdge(transition);
         if (IsStart180Transition(edge))
         {
@@ -134,6 +139,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
             return;
         }
         bool isAnimationDriven = IsAnimationDrivenGroundEdge(edge);
+        //所有特殊情况处理完后的最终部分
         PlayOptionalTransition(edge, ResolveLoop(transition.CurrentStateType), requestSequence, isAnimationDriven);
     }
     /// <summary>
@@ -153,7 +159,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
 
     private void PlayOptionalTransition(ClipTransition edge, ITransition targetLoop, ulong requestSequence, bool isAnimationDriven = false)
     {
-        //没有edgeloop
+        //没有edge播loop
         if (edge == null || edge.Clip == null)
         {
             if (targetLoop != null)
@@ -162,7 +168,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
             }
             return;
         }
-        //有edge播edge并在结尾处依据是否还有loop选播放loop
+        //有edge注册edge并在结尾处依据是否还有loop选播放loop
         //这里是一个回调，最终执行顺序在edge执行完毕和后
         edge.Events.OnEnd = targetLoop == null && !isAnimationDriven ? null : () =>
         {
@@ -179,13 +185,16 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
                 }
             }
         };
+        //如果边界动画是动画驱动设置其动画性质然后播放
         if (isAnimationDriven)
         {
             playerMotor.SetMotionMode(PlayerMotionMode.AnimationDriven, AnimationMotionChannels.Translation, ShouldRedirectAnimationMotion(edge));
         }
         animancer.Play(edge);
     }
-
+    /// <summary>
+    /// 处理转向动画
+    /// </summary>
     private void PlayStart180(ClipTransition edge, ITransition targetLoop, ulong requestSequence)
     {
         isTurnPresentationActive = true;
@@ -211,7 +220,9 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         if (stateType == typeof(PlayerFastRunState)) return fastRunLoopTransition;
         return null;
     }
-    //通过前后状态比对触发过渡动画
+    /// <summary>
+    /// 处理过渡动画，包括转向
+    /// </summary>
     private ClipTransition ResolveEdge(PlayerStateTransition transition)
     {
         Type previous = transition.PreviousStateType;
@@ -242,21 +253,25 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         return null;
     }
     /// <summary>
-    /// 处理移动中转身动画
+    /// 评估转向动画各类条件
     /// </summary>
     private void EvaluateTurnPresentation()
     {
+        //确保在转向中
         if (!isTurnPresentationActive) return;
         Vector3 desiredMoveDirection = playerMotor.DesiredMoveDirection;
+        //零输入或是最终到达角度和玩家输入角度偏离过大
         if (desiredMoveDirection.sqrMagnitude < 0.001f || Vector3.Angle(turnRequestDirection, desiredMoveDirection) > config.TurnPresentationIntentTolerance)
         {
             CancelTurnPresentation();
             return;
         }
+        //旋转限制未接触的情况下，玩家面向角度和输入角度小于解锁限制角度
         if (!isTurnRotationUnlocked && Vector3.Angle(transform.forward, desiredMoveDirection) <= config.TurnRotationUnlockAngle)
         {
             UnlockTurnRotation();
         }
+        //角度解锁限制后启用输入旋转
         if (isTurnRotationUnlocked)
         {
             playerMotor.RotateTowardsDesiredDirection();
@@ -268,7 +283,9 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         isTurnRotationUnlocked = true;
         playerMotor.SetMotionMode(PlayerMotionMode.AnimationDriven, AnimationMotionChannels.Translation);
     }
-
+    /// <summary>
+    /// 取消当前转向动画
+    /// </summary>
     private void CancelTurnPresentation()
     {
         isTurnPresentationActive = false;
@@ -281,7 +298,9 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
             animancer.Play(targetLoop);
         }
     }
-
+    /// <summary>
+    /// 当转向动画表现结束时，转向也不再上锁，此刻回到对应loop即可
+    /// </summary>
     private void CompleteTurnPresentation(ITransition targetLoop)
     {
         isTurnPresentationActive = false;
@@ -326,13 +345,15 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         }
         return currentGameplayStateType == typeof(PlayerFastRunState) && fastRunLoopTransition.State != null && fastRunLoopTransition.State.IsCurrent;
     }
-
-    private static bool IsGroundLocomotionState(Type stateType)
+    /// <summary>
+    /// 如果是walk/run混合
+    /// </summary>
+    private bool IsGroundLocomotionState(Type stateType)
     {
         return stateType == typeof(PlayerWalkState) || stateType == typeof(PlayerRunState);
     }
 
-    private static bool IsGroundLocomotionSwitch(PlayerStateTransition transition)
+    private bool IsGroundLocomotionSwitch(PlayerStateTransition transition)
     {
         return IsGroundLocomotionState(transition.PreviousStateType) && IsGroundLocomotionState(transition.CurrentStateType);
     }

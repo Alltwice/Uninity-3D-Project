@@ -8,7 +8,7 @@ public enum LocomotionTurnType
 }
 
 /// <summary>
-/// 将运动事实解析为 Locomotion 动画语义，不读取输入、不修改移动，也不持有动画播放权
+/// 将用于判断转向角和左右
 /// </summary>
 public class PlayerLocomotionAnimationResolver
 {
@@ -35,15 +35,18 @@ public class PlayerLocomotionAnimationResolver
     {
         referenceDirection.y = 0f;
         targetDirection.y = 0f;
+        //无输入
         if (referenceDirection.sqrMagnitude < 0.001f || targetDirection.sqrMagnitude < 0.001f)
         {
             return LocomotionTurnType.None;
         }
         float signedAngle = Vector3.SignedAngle(referenceDirection, targetDirection, Vector3.up);
+        //小于触发转向角度
         if (Mathf.Abs(signedAngle) < turn180Threshold)
         {
             return LocomotionTurnType.None;
         }
+        //根据转向角，正为右，左为负
         return signedAngle > 0f ? LocomotionTurnType.Turn180Right : LocomotionTurnType.Turn180Left;
     }
 }
