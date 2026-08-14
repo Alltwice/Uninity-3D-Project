@@ -33,8 +33,10 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     [SerializeField] private ClipTransition dodgeToFastRunTransition = new ClipTransition();
 
     [Header("180 度 Locomotion 表现")]
-    [SerializeField] private ClipTransition walkStart180Transition = new ClipTransition();
-    [SerializeField] private ClipTransition runStart180Transition = new ClipTransition();
+    [SerializeField] private ClipTransition walkStart180LeftTransition = new ClipTransition();
+    [SerializeField] private ClipTransition walkStart180RightTransition = new ClipTransition();
+    [SerializeField] private ClipTransition runStart180LeftTransition = new ClipTransition();
+    [SerializeField] private ClipTransition runStart180RightTransition = new ClipTransition();
     [SerializeField] private ClipTransition walkTurn180Transition = new ClipTransition();
     [SerializeField] private ClipTransition runTurn180Transition = new ClipTransition();
     [SerializeField] private ClipTransition fastRunTurn180Transition = new ClipTransition();
@@ -45,6 +47,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     private PlayerLocomotionAnimationResolver locomotionResolver;
     private Type currentGameplayStateType;
     private bool isTurnPresentationActive;
+    private bool isTurnRotationUnlocked;
     private Vector3 turnRequestDirection;
 
     public bool IsHardLandingComplete => hardLandingState.NormalizedTime >= 1f;
@@ -68,7 +71,7 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
                 groundLocomotionTransition.State.Parameter = playerMotor.HorizontalSpeed;
             }
         }
-        EvaluateTurnPresentationIntent();
+        EvaluateTurnPresentation();
     }
     /// <summary>
     /// 拿到状态机数据快照后开始处理动画
@@ -86,9 +89,11 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
             }
             return;
         }
+        bool interruptedTurnPresentation = isTurnPresentationActive;
         //给予编号，确保在未发生变化时不会重复处理内容
         ulong requestSequence = ++playbackSequence;
         isTurnPresentationActive = false;
+        isTurnRotationUnlocked = false;
         playerMotor.SetMotionMode(PlayerMotionMode.CodeDriven);
         //优先处理特殊状态
         if (transition.CurrentStateType == typeof(PlayerHardLandingState))
@@ -113,12 +118,20 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
             }
             return;
         }
-        
+        if (interruptedTurnPresentation)
+        {
+            ITransition interruptedTargetLoop = ResolveLoop(transition.CurrentStateType);
+            if (interruptedTargetLoop != null)
+            {
+                animancer.Play(interruptedTargetLoop);
+            }
+            return;
+        }
         ClipTransition edge = ResolveEdge(transition);
         if (IsStart180Transition(edge))
         {
-            isTurnPresentationActive = true;
-            turnRequestDirection = playerMotor.DesiredMoveDirection;
+            PlayStart180(edge, ResolveLoop(transition.CurrentStateType), requestSequence);
+            return;
         }
         bool isAnimationDriven = IsAnimationDrivenGroundEdge(edge);
         PlayOptionalTransition(edge, ResolveLoop(transition.CurrentStateType), requestSequence, isAnimationDriven);
@@ -168,8 +181,24 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
         };
         if (isAnimationDriven)
         {
-            playerMotor.SetMotionMode(PlayerMotionMode.AnimationDriven, ShouldRedirectAnimationMotion(edge));
+            playerMotor.SetMotionMode(PlayerMotionMode.AnimationDriven, AnimationMotionChannels.Translation, ShouldRedirectAnimationMotion(edge));
         }
+        animancer.Play(edge);
+    }
+
+    private void PlayStart180(ClipTransition edge, ITransition targetLoop, ulong requestSequence)
+    {
+        isTurnPresentationActive = true;
+        isTurnRotationUnlocked = false;
+        turnRequestDirection = playerMotor.DesiredMoveDirection;
+        edge.Events.OnEnd = () =>
+        {
+            if (requestSequence == playbackSequence)
+            {
+                CompleteTurnPresentation(targetLoop);
+            }
+        };
+        playerMotor.SetMotionMode(PlayerMotionMode.AnimationDriven, AnimationMotionChannels.Translation | AnimationMotionChannels.Rotation);
         animancer.Play(edge);
     }
     /// <summary>
@@ -215,15 +244,49 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     /// <summary>
     /// 处理移动中转身动画
     /// </summary>
-    private void EvaluateTurnPresentationIntent()
+    private void EvaluateTurnPresentation()
     {
         if (!isTurnPresentationActive) return;
         Vector3 desiredMoveDirection = playerMotor.DesiredMoveDirection;
-        if (desiredMoveDirection.sqrMagnitude > 0.001f && Vector3.Angle(turnRequestDirection, desiredMoveDirection) <= config.TurnPresentationIntentTolerance) return;
+        if (desiredMoveDirection.sqrMagnitude < 0.001f || Vector3.Angle(turnRequestDirection, desiredMoveDirection) > config.TurnPresentationIntentTolerance)
+        {
+            CancelTurnPresentation();
+            return;
+        }
+        if (!isTurnRotationUnlocked && Vector3.Angle(transform.forward, desiredMoveDirection) <= config.TurnRotationUnlockAngle)
+        {
+            UnlockTurnRotation();
+        }
+        if (isTurnRotationUnlocked)
+        {
+            playerMotor.RotateTowardsDesiredDirection();
+        }
+    }
+
+    private void UnlockTurnRotation()
+    {
+        isTurnRotationUnlocked = true;
+        playerMotor.SetMotionMode(PlayerMotionMode.AnimationDriven, AnimationMotionChannels.Translation);
+    }
+
+    private void CancelTurnPresentation()
+    {
         isTurnPresentationActive = false;
+        isTurnRotationUnlocked = false;
         ++playbackSequence;
         playerMotor.SetMotionMode(PlayerMotionMode.CodeDriven);
         ITransition targetLoop = ResolveLoop(currentGameplayStateType);
+        if (targetLoop != null)
+        {
+            animancer.Play(targetLoop);
+        }
+    }
+
+    private void CompleteTurnPresentation(ITransition targetLoop)
+    {
+        isTurnPresentationActive = false;
+        isTurnRotationUnlocked = false;
+        playerMotor.SetMotionMode(PlayerMotionMode.CodeDriven);
         if (targetLoop != null)
         {
             animancer.Play(targetLoop);
@@ -234,13 +297,23 @@ public class PlayerAnimationController : MonoBehaviour, IPlayerAnimationControll
     /// </summary>
     private ClipTransition ResolveStart180(Type stateType, LocomotionTurnType turnType)
     {
-        if (turnType != LocomotionTurnType.Turn180) return null;
-        return stateType == typeof(PlayerWalkState) ? walkStart180Transition : runStart180Transition;
+        if (stateType == typeof(PlayerWalkState))
+        {
+            if (turnType == LocomotionTurnType.Turn180Left) return walkStart180LeftTransition;
+            if (turnType == LocomotionTurnType.Turn180Right) return walkStart180RightTransition;
+        }
+        if (stateType == typeof(PlayerRunState))
+        {
+            if (turnType == LocomotionTurnType.Turn180Left) return runStart180LeftTransition;
+            if (turnType == LocomotionTurnType.Turn180Right) return runStart180RightTransition;
+        }
+        return null;
     }
 
     private bool IsStart180Transition(ClipTransition transition)
     {
-        return transition == walkStart180Transition || transition == runStart180Transition;
+        return transition == walkStart180LeftTransition || transition == walkStart180RightTransition ||
+               transition == runStart180LeftTransition || transition == runStart180RightTransition;
     }
     /// <summary>
     /// 如果是地面移动状态

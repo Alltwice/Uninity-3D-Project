@@ -12,11 +12,16 @@ public sealed class PlayerAnimationConfig : ScriptableObject
     [Range(0f, 90f)]
     [SerializeField] private float turnPresentationIntentTolerance = 30f;
 
+    [Tooltip("Start180 动画执行过程中，当角色当前朝向与最新移动输入方向的夹角小于该值时，停止继续消费动画 Root Rotation，并允许代码重新控制朝向。该条件不会结束 Start180 动画，也不会恢复代码水平移动。")]
+    [Range(0f, 90f)]
+    [SerializeField] private float turnRotationUnlockAngle = 35f;
+
     [Header("重落地")]
     [Tooltip("重落地动画允许被移动打断的归一化时间")]
     [SerializeField] private float hardLandingInterruptNormalizedTime = 0.6f;
 
     public float Turn180Threshold => turn180Threshold;
     public float TurnPresentationIntentTolerance => turnPresentationIntentTolerance;
+    public float TurnRotationUnlockAngle => turnRotationUnlockAngle;
     public float HardLandingInterruptNormalizedTime => hardLandingInterruptNormalizedTime;
 }

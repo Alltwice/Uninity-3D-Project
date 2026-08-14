@@ -3,7 +3,8 @@ using UnityEngine;
 public enum LocomotionTurnType
 {
     None,
-    Turn180
+    Turn180Left,
+    Turn180Right
 }
 
 /// <summary>
@@ -38,7 +39,11 @@ public class PlayerLocomotionAnimationResolver
         {
             return LocomotionTurnType.None;
         }
-        float angle = Vector3.SignedAngle(referenceDirection, targetDirection, Vector3.up);
-        return Mathf.Abs(angle) >= turn180Threshold ? LocomotionTurnType.Turn180 : LocomotionTurnType.None;
+        float signedAngle = Vector3.SignedAngle(referenceDirection, targetDirection, Vector3.up);
+        if (Mathf.Abs(signedAngle) < turn180Threshold)
+        {
+            return LocomotionTurnType.None;
+        }
+        return signedAngle > 0f ? LocomotionTurnType.Turn180Right : LocomotionTurnType.Turn180Left;
     }
 }

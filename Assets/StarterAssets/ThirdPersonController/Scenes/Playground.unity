@@ -898,9 +898,17 @@ PrefabInstance:
       value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: walkStart180LeftTransition._Clip
+      value: 
+      objectReference: {fileID: 7400072, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+    - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: jumpStartTransition._FadeDuration
       value: 0.3
       objectReference: {fileID: 0}
+    - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: walkStart180RightTransition._Clip
+      value: 
+      objectReference: {fileID: 7400070, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: fastRunDodgeToIdleTransition._Clip
       value: 

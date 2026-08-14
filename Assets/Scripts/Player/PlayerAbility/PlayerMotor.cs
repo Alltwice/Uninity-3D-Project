@@ -6,6 +6,14 @@ public enum PlayerMotionMode
     AnimationDriven
 }
 
+[System.Flags]
+public enum AnimationMotionChannels
+{
+    None = 0,
+    Translation = 1 << 0,
+    Rotation = 1 << 1
+}
+
 /// <summary>
 /// 执行 CharacterController 移动、速度连续性、重力、碰撞与接地结果
 /// </summary>
@@ -20,6 +28,7 @@ public class PlayerMotor : MonoBehaviour
     private Vector3 verticalVelocity;
     private Vector3 horizontalVelocity;
     private Vector3 desiredMoveDirection;
+    private AnimationMotionChannels animationMotionChannels;
     private bool redirectAnimationMotionToDesiredDirection;
     private bool isGrounded;
 
@@ -105,9 +114,10 @@ public class PlayerMotor : MonoBehaviour
         }
     }
 
-    public void SetMotionMode(PlayerMotionMode motionMode, bool redirectToDesiredDirection = false)
+    public void SetMotionMode(PlayerMotionMode motionMode, AnimationMotionChannels channels = AnimationMotionChannels.None, bool redirectToDesiredDirection = false)
     {
         MotionMode = motionMode;
+        animationMotionChannels = motionMode == PlayerMotionMode.AnimationDriven ? channels : AnimationMotionChannels.None;
         redirectAnimationMotionToDesiredDirection = motionMode == PlayerMotionMode.AnimationDriven && redirectToDesiredDirection;
     }
 
@@ -116,15 +126,27 @@ public class PlayerMotor : MonoBehaviour
         if (MotionMode != PlayerMotionMode.AnimationDriven) return;
         ApplyGravity();
         Vector3 positionBeforeMove = transform.position;
-        Vector3 horizontalRootMotion = new Vector3(deltaPosition.x, 0f, deltaPosition.z);
-        Vector3 horizontalDisplacement = horizontalRootMotion;
-        if (redirectAnimationMotionToDesiredDirection)
+        Vector3 horizontalDisplacement = Vector3.zero;
+        if ((animationMotionChannels & AnimationMotionChannels.Translation) != 0)
         {
-            horizontalDisplacement = desiredMoveDirection * horizontalRootMotion.magnitude;
-            RotateToMoveDirection(desiredMoveDirection);
+            Vector3 horizontalRootMotion = new Vector3(deltaPosition.x, 0f, deltaPosition.z);
+            horizontalDisplacement = redirectAnimationMotionToDesiredDirection ? desiredMoveDirection * horizontalRootMotion.magnitude : horizontalRootMotion;
         }
         MoveCharacterDisplacement(horizontalDisplacement + verticalVelocity * Time.deltaTime);
         UpdateHorizontalVelocityFromActualDisplacement(positionBeforeMove);
+        if ((animationMotionChannels & AnimationMotionChannels.Rotation) != 0)
+        {
+            transform.rotation *= deltaRotation;
+        }
+        else if (redirectAnimationMotionToDesiredDirection)
+        {
+            RotateToMoveDirection(desiredMoveDirection);
+        }
+    }
+
+    public void RotateTowardsDesiredDirection()
+    {
+        RotateToMoveDirection(desiredMoveDirection);
     }
 
     public Vector3 GetWorldMoveDirection(Vector2 moveInput)
