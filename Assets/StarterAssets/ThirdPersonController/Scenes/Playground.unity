@@ -860,7 +860,7 @@ PrefabInstance:
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: hardLandingTransition._Clip
       value: 
-      objectReference: {fileID: 7400120, guid: dd4bc59541169e34ead96f0310ddc7bd, type: 3}
+      objectReference: {fileID: -203655887218126122, guid: a858150cb166188488b92e796b612955, type: 3}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: runStart180Transition._Clip
       value: 
@@ -894,9 +894,21 @@ PrefabInstance:
       value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: runStart180LeftTransition._Clip
+      value: 
+      objectReference: {fileID: 8034530165171743655, guid: 689a3d6dafa61b04e9506c92552fb522, type: 3}
+    - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: idleLoopTransition._FadeDuration
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: jumpIdleTransition._FadeDuration
       value: 0.5
       objectReference: {fileID: 0}
+    - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: runStart180RightTransition._Clip
+      value: 
+      objectReference: {fileID: -674942085841761895, guid: faa46bd45cb69ce4e9e5d4060ae11ab7, type: 3}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: walkStart180LeftTransition._Clip
       value: 
@@ -915,7 +927,7 @@ PrefabInstance:
       objectReference: {fileID: 178221261423805455, guid: c0f26c643df59bc42a9d32f363854e13, type: 3}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: groundLocomotionTransition._FadeDuration
-      value: 0
+      value: 0.4
       objectReference: {fileID: 0}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: groundLocomotionTransition._Animations.Array.size
@@ -939,7 +951,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: 'groundLocomotionTransition._Thresholds.Array.data[1]'
-      value: 5
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 6278883182571625512, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: groundLocomotionTransition._SynchronizeChildren.Array.size

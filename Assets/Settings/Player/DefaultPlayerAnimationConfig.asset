@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 805de6f48947ed140b32c761e67786f4, type: 3}
   m_Name: DefaultPlayerAnimationConfig
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimationConfig
-  locomotionStartHandoffDuration: 0.08
+  locomotionStartHandoffDuration: 0.1
   turn180Threshold: 150
-  turnPresentationIntentTolerance: 30
-  turnRotationUnlockAngle: 35
+  turnPresentationIntentTolerance: 180
+  turnRotationUnlockAngle: 120
   hardLandingInterruptNormalizedTime: 0.6

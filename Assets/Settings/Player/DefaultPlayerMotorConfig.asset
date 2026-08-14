@@ -13,14 +13,14 @@ MonoBehaviour:
   m_Name: DefaultPlayerMotorConfig
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMotorConfig
   walkSpeed: 1.5
-  runSpeed: 5
-  fastRunSpeed: 8
-  airMoveSpeed: 3
-  groundAcceleration: 15
-  groundDeceleration: 15
+  runSpeed: 4
+  fastRunSpeed: 7
+  airMoveSpeed: 3.5
+  groundAcceleration: 25
+  groundDeceleration: 25
   groundTurnAcceleration: 80
   airAcceleration: 10
   rotationSmoothSpeed: 12
   gravity: -20
   groundedVerticalVelocity: -2
-  hardLandingMinImpactSpeed: 1000
+  hardLandingMinImpactSpeed: 10
