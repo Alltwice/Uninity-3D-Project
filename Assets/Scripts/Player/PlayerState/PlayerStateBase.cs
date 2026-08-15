@@ -22,7 +22,7 @@ public abstract class PlayerStateBase
     {
     }
 
-    public virtual void Tick()
+    public virtual void Tick(float deltaTime, ref PlayerGameplayIntent intent)
     {
     }
 
@@ -34,6 +34,9 @@ public abstract class PlayerStateBase
     public virtual void Exit(PlayerStateTransition transition)
     {
     }
+
+    public abstract PlayerLocomotionMode LocomotionMode { get; }
+    public virtual float PresentationProgress => 0f;
 
     protected Type ResolveGroundStateType()
     {

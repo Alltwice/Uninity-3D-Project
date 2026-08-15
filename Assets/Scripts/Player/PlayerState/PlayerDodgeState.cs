@@ -5,52 +5,40 @@ using UnityEngine;
 /// </summary>
 public sealed class PlayerDodgeState : PlayerStateBase
 {
-    private bool completed;
-
     public PlayerDodgeState(PlayerContext context) : base(context) { }
+    public override PlayerLocomotionMode LocomotionMode => PlayerLocomotionMode.Dodge;
 
     public override PlayerStateTransitionRequest EvaluateInputTransition()
     {
-        if (!Context.Motor.IsGrounded)
+        if (!Context.IsGrounded)
         {
             return null;
         }
-        return Context.ActionBuffer.HasBuffered(PlayerBufferedAction.Jump) && Context.Jump.CanJump ? new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Jumped) : null;
+        return Context.ActionBuffer.HasBuffered(PlayerBufferedAction.Jump) && Context.Jump.CanJump(Context.IsGrounded) ? new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Jumped) : null;
     }
 
     public override void Enter(PlayerStateTransition transition)
     {
-        completed = false;
         Context.ActionBuffer.Consume(PlayerBufferedAction.Dodge);
-        Vector3 initialDirection = Context.Motor.GetWorldMoveDirection(Context.InputSource.MoveInput);
-        if (initialDirection.sqrMagnitude < 0.0001f)
-        {
-            initialDirection = Context.Motor.transform.forward;
-        }
-        Context.Dodge.Begin(initialDirection);
+        Context.Dodge.Begin();
     }
 
-    public override void Tick()
+    public override void Tick(float deltaTime, ref PlayerGameplayIntent intent)
     {
-        DodgeTickResult result = Context.Dodge.Tick(Time.deltaTime, Context.Motor.GetWorldMoveDirection(Context.InputSource.MoveInput));
-        Context.Motor.DodgeMove(result.Direction, result.HorizontalDistance);
-        completed = result.JustCompleted;
+        intent.LocomotionMode = PlayerLocomotionMode.Dodge;
     }
 
     public override PlayerStateTransitionRequest EvaluateResultTransition()
     {
-        if (!Context.Motor.IsGrounded)
+        if (!Context.IsGrounded)
         {
             return new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Fell);
         }
-        return completed ? new PlayerStateTransitionRequest(Context.InputSource.MoveInput == Vector2.zero ? typeof(PlayerIdleState) : typeof(PlayerFastRunState), PlayerStateTransitionReason.DodgeCompleted) : null;
+        return Context.MotionSnapshot.JustCompleted ? new PlayerStateTransitionRequest(Context.InputSource.MoveInput == Vector2.zero ? typeof(PlayerIdleState) : typeof(PlayerFastRunState), PlayerStateTransitionReason.DodgeCompleted) : null;
     }
 
     public override void Exit(PlayerStateTransition transition)
     {
-        if (!completed)
-        {
-            Context.Dodge.Cancel();
-        }
+        Context.Dodge.End();
     }
 }

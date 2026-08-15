@@ -1,7 +1,7 @@
 {
   "name": "Project.AnimationPreview.Editor",
   "rootNamespace": "ProjectTools.AnimationPreview",
-  "references": [],
+  "references": ["Project.PlayerMotion.Runtime"],
   "includePlatforms": ["Editor"],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

@@ -47,6 +47,16 @@
                 <ui:Label name="clip-info" class="info-block" />
                 <ui:Label text="兼容性" class="section-title" />
                 <ui:Label name="compatibility-info" class="status-label" />
+                <ui:Label text="Motion Tools" class="section-title" />
+                <uie:ObjectField name="motion-profile-field" label="Motion Profile" />
+                <uie:IntegerField name="motion-sample-rate-field" label="Sample Rate" value="60" />
+                <ui:VisualElement class="source-actions">
+                    <ui:Button name="motion-bake-button" text="Bake" />
+                    <ui:Button name="motion-rebake-button" text="Rebake" />
+                    <ui:Button name="motion-validate-button" text="Validate" />
+                </ui:VisualElement>
+                <ui:Button name="motion-trajectory-button" text="Show Trajectory" />
+                <ui:Label name="motion-validation-label" class="status-label" />
                 <ui:Label text="显示设置" class="section-title" />
                 <uie:ColorField name="background-field" label="背景" value="#1B1D21" />
                 <ui:Slider name="light-intensity-slider" label="主光强度" low-value="0" high-value="5" value="1.2" show-input-field="true" />

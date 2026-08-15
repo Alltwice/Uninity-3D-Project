@@ -20,9 +20,8 @@ GameObject:
   - component: {fileID: 650439676384453668}
   - component: {fileID: 5541972601699860746}
   - component: {fileID: 2015852515768995489}
-  - component: {fileID: 7900320262626363938}
-  - component: {fileID: 5697196930536673086}
-  - component: {fileID: 3268618394628576207}
+  - component: {fileID: 22041925370627772}
+  - component: {fileID: 3342417472311409365}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -60,7 +59,7 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimationController
   animancer: {fileID: 650439676384453668}
-  config: {fileID: 11400000, guid: 615b36e347ec7e94dbbfa4e0b31f0692, type: 2}
+  animationSet: {fileID: 11400000, guid: 291af5b334e506341ae14a09cd777a43, type: 2}
   idleLoopTransition:
     _FadeDuration: 0.15
     _Speed: 1
@@ -106,15 +105,6 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: 7400148, guid: dd4bc59541169e34ead96f0310ddc7bd, type: 3}
     _NormalizedStartTime: 0
-  dodgeTransition:
-    _FadeDuration: 0.08
-    _Speed: 1.944444
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 1827226128182048838, guid: 8075947faf7c38248be70d9862842e49, type: 3}
-    _NormalizedStartTime: 0
   jumpStartTransition:
     _FadeDuration: 0.1
     _Speed: 1
@@ -142,96 +132,6 @@ MonoBehaviour:
       _Names: []
     _Clip: {fileID: 7400152, guid: dd4bc59541169e34ead96f0310ddc7bd, type: 3}
     _NormalizedStartTime: 0
-  idleToWalkTransition:
-    _FadeDuration: 0.1
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 7400044, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
-    _NormalizedStartTime: 0
-  walkToIdleTransition:
-    _FadeDuration: 0.08
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 7400054, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
-    _NormalizedStartTime: 0
-  idleToRunTransition:
-    _FadeDuration: 0.1
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 7400120, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
-    _NormalizedStartTime: 0
-  runToIdleTransition:
-    _FadeDuration: 0.08
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 7400142, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
-    _NormalizedStartTime: 0
-  fastRunToIdleTransition:
-    _FadeDuration: 0.08
-    _Speed: 1.6
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 7400142, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
-    _NormalizedStartTime: 0
-  walkStart180Transition:
-    _FadeDuration: 0.1
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 0}
-    _NormalizedStartTime: 0
-  runStart180Transition:
-    _FadeDuration: 0.1
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 0}
-    _NormalizedStartTime: 0
-  walkTurn180Transition:
-    _FadeDuration: 0.1
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 0}
-    _NormalizedStartTime: 0
-  runTurn180Transition:
-    _FadeDuration: 0.1
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 0}
-    _NormalizedStartTime: 0
-  fastRunTurn180Transition:
-    _FadeDuration: 0.1
-    _Speed: 1
-    _Events:
-      _NormalizedTimes: []
-      _Callbacks: []
-      _Names: []
-    _Clip: {fileID: 0}
-    _NormalizedStartTime: 0
   references:
     version: 2
     RefIds: []
@@ -245,7 +145,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: adfe1070be51c674c9a19aab0feac976, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInputReader
 --- !u!114 &824262961013012284
 MonoBehaviour:
@@ -257,11 +157,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 443fd6a6e09fbbb488afd510618c5ec8, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInstaller
   playerInputReader: {fileID: 1394597851570776537}
   actionBuffer: {fileID: 5541972601699860746}
-  playerStateController: {fileID: 3309462947939137736}
+  simulationDriver: {fileID: 3342417472311409365}
   playerCameraOrbitTarget: {fileID: 7418034704001290420}
 --- !u!114 &573905703597778420
 MonoBehaviour:
@@ -275,7 +175,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d65275f97a22934e9267fb784f674d0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMotor
-  config: {fileID: 11400000, guid: 93505299fac80c0408a13d633270ccef, type: 2}
+  config: {fileID: 11400000, guid: 472faa1ed6176c345b92f091dabb302f, type: 2}
 --- !u!143 &6092154827029769203
 CharacterController:
   m_ObjectHideFlags: 0
@@ -313,6 +213,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac2aa542d7dc3ea439e3057964b49d6d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerStateController
+  movementConfig: {fileID: 11400000, guid: 472faa1ed6176c345b92f091dabb302f, type: 2}
 --- !u!114 &6362648940182492809
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -325,7 +226,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d03af1d7a526a57478c9ec6f044719a7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerJump
-  config: {fileID: 11400000, guid: 1a2099a29094bf44190f6e50a31d6cae, type: 2}
+  config: {fileID: 11400000, guid: 472faa1ed6176c345b92f091dabb302f, type: 2}
 --- !u!114 &7995786446155648417
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -339,7 +240,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerGroundProbe
   characterController: {fileID: 6092154827029769203}
-  config: {fileID: 11400000, guid: 319daab6f9ad1b244988e52024efa46c, type: 2}
+  config: {fileID: 11400000, guid: 472faa1ed6176c345b92f091dabb302f, type: 2}
 --- !u!114 &650439676384453668
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -381,7 +282,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerDodge
   config: {fileID: 11400000, guid: d77a65b231b1e3e44baf045b9bc6be50, type: 2}
---- !u!114 &7900320262626363938
+--- !u!114 &22041925370627772
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -390,11 +291,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1659824287227001794}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bb4148cd08ba753468ab70e6387fdae6, type: 3}
+  m_Script: {fileID: 11500000, guid: aa32803a4fe8c044e88314fe3bad3990, type: 3}
   m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerTransitionMotionController
-  config: {fileID: 11400000, guid: 3926f62d682cc804fabf03ba6c8d4cfa, type: 2}
---- !u!114 &5697196930536673086
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerMotionPlanner
+  catalog: {fileID: 11400000, guid: 7e7b584da779b5e42aac77d4ec67ea6d, type: 2}
+--- !u!114 &3342417472311409365
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -403,22 +304,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 1659824287227001794}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 93448b2258bca214bae5e074364bf55a, type: 3}
+  m_Script: {fileID: 11500000, guid: 49d63b2e38f8dcc4ea72f63bc7fd5163, type: 3}
   m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerMotionCaptureRecorder
---- !u!114 &3268618394628576207
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1659824287227001794}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe4626a92fbc2b64c8e87d0ea3668bac, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerMotionDebugOverlay
-  showOverlay: 1
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerSimulationDriver
+  movementReference: {fileID: 0}
 --- !u!1 &2375787102420044932
 GameObject:
   m_ObjectHideFlags: 0
@@ -560,33 +449,13 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 9e9dd8d32cf76fa43941fa1ff36e6b86, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 3697748392204423776}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 9e9dd8d32cf76fa43941fa1ff36e6b86, type: 3}
 --- !u!4 &3700034333746406048 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 9e9dd8d32cf76fa43941fa1ff36e6b86, type: 3}
   m_PrefabInstance: {fileID: 3806545410546812235}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &4040565817119897626 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 9e9dd8d32cf76fa43941fa1ff36e6b86, type: 3}
-  m_PrefabInstance: {fileID: 3806545410546812235}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &3697748392204423776
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4040565817119897626}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 457e366c478d75942aad7ef4dff41f7a, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimationMotionSource
 --- !u!95 &7329895692276201690 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 9e9dd8d32cf76fa43941fa1ff36e6b86, type: 3}

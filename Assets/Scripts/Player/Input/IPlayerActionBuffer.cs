@@ -4,6 +4,7 @@ using UnityEngine;
 /// </summary>
 public interface IPlayerActionBuffer
 {
+    void Tick(float deltaTime);
     void Buffer(PlayerBufferedAction action);
     void BufferInternal(PlayerBufferedAction action, float duration);
     bool Consume(PlayerBufferedAction action);

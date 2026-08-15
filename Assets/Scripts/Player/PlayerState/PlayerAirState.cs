@@ -4,32 +4,34 @@
 public sealed class PlayerAirState : PlayerStateBase
 {
     public PlayerAirState(PlayerContext context) : base(context) { }
+    public override PlayerLocomotionMode LocomotionMode => PlayerLocomotionMode.Air;
 
     public override void Enter(PlayerStateTransition transition)
     {
         if (transition.Reason == PlayerStateTransitionReason.Jumped)
         {
             Context.ActionBuffer.Consume(PlayerBufferedAction.Jump);
-            Context.Jump.ExecuteJump();
+            Context.RequestJumpImpulse();
         }
     }
 
-    public override void Tick()
+    public override void Tick(float deltaTime, ref PlayerGameplayIntent intent)
     {
-        Context.Motor.AirMove(Context.Motor.DesiredMoveDirection);
+        intent.LocomotionMode = PlayerLocomotionMode.Air;
+        Context.ApplyPendingVerticalImpulse(ref intent);
     }
 
     public override PlayerStateTransitionRequest EvaluateResultTransition()
     {
-        if (!Context.Motor.IsGrounded)
+        if (!Context.IsGrounded)
         {
             return null;
         }
-        if (Context.Motor.IsHardLandingImpact)
+        if (Context.IsHardLandingImpact)
         {
             return new PlayerStateTransitionRequest(typeof(PlayerHardLandingState), PlayerStateTransitionReason.HardLanded);
         }
-        if (Context.ActionBuffer.HasBuffered(PlayerBufferedAction.Jump) && Context.Jump.CanJump)
+        if (Context.ActionBuffer.HasBuffered(PlayerBufferedAction.Jump) && Context.Jump.CanJump(Context.IsGrounded))
         {
             return new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Jumped, true);
         }

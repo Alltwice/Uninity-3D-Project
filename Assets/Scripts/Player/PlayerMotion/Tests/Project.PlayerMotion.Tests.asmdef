@@ -1,0 +1,14 @@
+{
+  "name": "Project.PlayerMotion.Tests",
+  "rootNamespace": "",
+  "references": ["Project.PlayerMotion.Runtime"],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": ["nunit.framework.dll"],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

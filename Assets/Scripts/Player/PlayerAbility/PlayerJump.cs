@@ -5,23 +5,12 @@ using UnityEngine;
 public class PlayerJump : MonoBehaviour
 {
     [Header("配置")]
-    [SerializeField] private PlayerJumpConfig config;
-    private PlayerMotor playerMotor;
+    [SerializeField] private PlayerMovementConfig config;
 
-    public bool CanJump => playerMotor.IsGrounded;
-    //确认固定组件同根物体无需注入
-    private void Awake()
-    {
-        playerMotor = GetComponent<PlayerMotor>();
-    }
+    public bool CanJump(bool isGrounded) => isGrounded;
 
-    /// <summary>
-    /// 执行已经通过状态转换判断的跳跃
-    /// </summary>
-    public void ExecuteJump()
+    public float CalculateImpulse()
     {
-        //经典v2=2gh，开方后得到速度
-        float jumpVelocity = Mathf.Sqrt(config.JumpHeight * -2f * playerMotor.Gravity);
-        playerMotor.ChangeVerticalVelocity_y(jumpVelocity);
+        return Mathf.Sqrt(config.JumpHeight * -2f * config.MotorPhysics.Gravity);
     }
 }

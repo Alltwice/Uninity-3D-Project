@@ -14,22 +14,26 @@ public class PlayerActionBuffer : MonoBehaviour, IPlayerActionBuffer
     [SerializeField] private PlayerActionBufferConfig config;
 
     /// <summary>
-    /// 输入缓冲结构体，由开始时间和持续时间组成。
+    /// 输入缓冲结构体，记录显式 Simulation Clock 上的到期时间。
     /// </summary>
     private readonly struct BufferedAction
     {
-        public readonly float StartTime;
-        public readonly float Duration;
+        public readonly float ExpiresAt;
 
-        public BufferedAction(float startTime, float duration)
+        public BufferedAction(float expiresAt)
         {
-            StartTime = startTime;
-            Duration = duration;
+            ExpiresAt = expiresAt;
         }
     }
 
     // 字典通过动作枚举管理对应的缓冲时间。
     private readonly Dictionary<PlayerBufferedAction, BufferedAction> bufferedActions = new Dictionary<PlayerBufferedAction, BufferedAction>();
+    private float simulationTime;
+
+    public void Tick(float deltaTime)
+    {
+        simulationTime += Mathf.Max(0f, deltaTime);
+    }
 
     /// <summary>
     /// 根据动作类型写入默认时长的缓冲。
@@ -81,7 +85,7 @@ public class PlayerActionBuffer : MonoBehaviour, IPlayerActionBuffer
     /// <param name="duration">缓冲持续时间。</param>
     public void BufferInternal(PlayerBufferedAction action, float duration)
     {
-        bufferedActions[action] = new BufferedAction(Time.time, Mathf.Max(0f, duration));
+        bufferedActions[action] = new BufferedAction(simulationTime + Mathf.Max(0f, duration));
     }
 
     /// <summary>
@@ -115,6 +119,6 @@ public class PlayerActionBuffer : MonoBehaviour, IPlayerActionBuffer
         }
 
         // 这里只读取缓存状态；清理由消费、覆盖写入或显式 Clear 负责。
-        return Time.time - bufferedAction.StartTime <= bufferedAction.Duration;
+        return simulationTime <= bufferedAction.ExpiresAt;
     }
 }

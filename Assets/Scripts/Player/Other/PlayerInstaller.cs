@@ -8,13 +8,13 @@ public class PlayerInstaller : MonoBehaviour
     [Header("玩家依赖")]
     [SerializeField] private PlayerInputReader playerInputReader;
     [SerializeField] private PlayerActionBuffer actionBuffer;
-    [SerializeField] private PlayerStateController playerStateController;
+    [SerializeField] private PlayerSimulationDriver simulationDriver;
     [SerializeField] private PlayerCameraOrbitTarget playerCameraOrbitTarget;
 
     private void Awake()
     {
         playerInputReader.Init(actionBuffer);
         playerCameraOrbitTarget.Init(playerInputReader);
-        playerStateController.Init(playerInputReader, actionBuffer);
+        simulationDriver.Init(playerInputReader, actionBuffer);
     }
 }

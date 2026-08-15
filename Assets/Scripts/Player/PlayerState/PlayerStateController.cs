@@ -7,66 +7,54 @@ using UnityEngine;
 /// </summary>
 public class PlayerStateController : MonoBehaviour
 {
+    [SerializeField] private PlayerMovementConfig movementConfig;
+
     private readonly Dictionary<Type, PlayerStateBase> states = new Dictionary<Type, PlayerStateBase>();
-    private PlayerMotor playerMotor;
     private PlayerJump playerJump;
     private PlayerDodge playerDodge;
-    private PlayerAnimationController animationController;
-    private PlayerTransitionMotionController transitionMotionController;
-    private PlayerMotionCaptureRecorder motionCaptureRecorder;
     private PlayerContext context;
     private PlayerStateBase currentState;
     private IPlayerInputSource playerInput;
     private IPlayerActionBuffer actionBuffer;
 
     public PlayerStateBase CurrentState => currentState;
-
-    public void Init(IPlayerInputSource playerInput, IPlayerActionBuffer actionBuffer)
-    {
-        this.playerInput = playerInput;
-        this.actionBuffer = actionBuffer;
-    }
+    public PlayerLocomotionMode CurrentLocomotionMode => currentState?.LocomotionMode ?? PlayerLocomotionMode.Idle;
+    public float CurrentPresentationProgress => currentState?.PresentationProgress ?? 0f;
 
     private void Awake()
     {
-        playerMotor = GetComponent<PlayerMotor>();
         playerJump = GetComponent<PlayerJump>();
         playerDodge = GetComponent<PlayerDodge>();
-        animationController = GetComponent<PlayerAnimationController>();
-        transitionMotionController = GetComponent<PlayerTransitionMotionController>();
-        motionCaptureRecorder = GetComponent<PlayerMotionCaptureRecorder>();
     }
 
-    private void Start()
+    public PlayerStateTransition Initialize(IPlayerInputSource inputSource, IPlayerActionBuffer inputActionBuffer)
     {
-        context = new PlayerContext(playerMotor, playerJump, playerDodge, animationController, playerInput, actionBuffer);
+        playerInput = inputSource;
+        actionBuffer = inputActionBuffer;
+        context = new PlayerContext(playerJump, playerDodge, playerInput, actionBuffer, movementConfig);
         RegisterStates();
-        TryChangeState(new PlayerStateTransitionRequest(typeof(PlayerIdleState), PlayerStateTransitionReason.Initialized));
+        TryChangeState(new PlayerStateTransitionRequest(typeof(PlayerIdleState), PlayerStateTransitionReason.Initialized), out PlayerStateTransition transition);
+        return transition;
     }
 
-    private void Update()
+    public void SetSimulationFacts(PlayerMotorResult motorResult, PlayerMotionSnapshot motionSnapshot, Vector3 desiredMoveDirection)
     {
-        //一次输入采样
-        SampleMoveIntent();
-        ProcessPreTickTransition();
-        currentState?.Tick();
-        transitionMotionController.Tick(Time.deltaTime);
-        ProcessPostTickTransition();
+        context.SetSimulationFacts(motorResult, motionSnapshot, desiredMoveDirection);
     }
 
-    private void SampleMoveIntent()
+    public PlayerStateTransition? ProcessPreTickTransition()
     {
-        playerMotor.SetDesiredMoveDirection(playerMotor.GetWorldMoveDirection(playerInput.MoveInput));
+        return TryChangeState(currentState?.EvaluateInputTransition(), out PlayerStateTransition transition) ? transition : (PlayerStateTransition?)null;
     }
 
-    private void ProcessPreTickTransition()
+    public void Tick(float deltaTime, ref PlayerGameplayIntent intent)
     {
-        TryChangeState(currentState?.EvaluateInputTransition());
+        currentState?.Tick(deltaTime, ref intent);
     }
 
-    private void ProcessPostTickTransition()
+    public PlayerStateTransition? ProcessPostTickTransition()
     {
-        TryChangeState(currentState?.EvaluateResultTransition());
+        return TryChangeState(currentState?.EvaluateResultTransition(), out PlayerStateTransition transition) ? transition : (PlayerStateTransition?)null;
     }
 
     private void RegisterStates()
@@ -80,8 +68,9 @@ public class PlayerStateController : MonoBehaviour
         AddState(new PlayerHardLandingState(context));
     }
 
-    private bool TryChangeState(PlayerStateTransitionRequest request)
+    private bool TryChangeState(PlayerStateTransitionRequest request, out PlayerStateTransition transition)
     {
+        transition = default;
         if (request == null)
         {
             return false;
@@ -95,14 +84,10 @@ public class PlayerStateController : MonoBehaviour
             return false;
         }
 
-        PlayerStateTransition transition = new PlayerStateTransition(currentState?.GetType(), nextState.GetType(), request.Reason);
+        transition = new PlayerStateTransition(currentState?.GetType(), nextState.GetType(), request.Reason, currentState?.LocomotionMode ?? PlayerLocomotionMode.Idle, nextState.LocomotionMode);
         currentState?.Exit(transition);
         currentState = nextState;
         currentState.Enter(transition);
-        bool isStandardRunTransition = animationController.IsRunTransitionMotionCandidate(transition);
-        bool profileMotionStarted = transitionMotionController.PlayTransition(transition, isStandardRunTransition);
-        animationController.PlayTransition(transition, profileMotionStarted);
-        if (motionCaptureRecorder != null) motionCaptureRecorder.HandleTransition(transition, isStandardRunTransition);
         return true;
     }
 

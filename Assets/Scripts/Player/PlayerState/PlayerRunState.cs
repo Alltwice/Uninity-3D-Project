@@ -6,14 +6,15 @@ using UnityEngine;
 public sealed class PlayerRunState : PlayerStateBase
 {
     public PlayerRunState(PlayerContext context) : base(context) { }
+    public override PlayerLocomotionMode LocomotionMode => PlayerLocomotionMode.Run;
 
     public override PlayerStateTransitionRequest EvaluateInputTransition()
     {
-        if (!Context.Motor.IsGrounded)
+        if (!Context.IsGrounded)
         {
             return null;
         }
-        if (Context.ActionBuffer.HasBuffered(PlayerBufferedAction.Jump) && Context.Jump.CanJump)
+        if (Context.ActionBuffer.HasBuffered(PlayerBufferedAction.Jump) && Context.Jump.CanJump(Context.IsGrounded))
         {
             return new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Jumped);
         }
@@ -28,13 +29,13 @@ public sealed class PlayerRunState : PlayerStateBase
         return Context.InputSource.IsWalkMode ? new PlayerStateTransitionRequest(typeof(PlayerWalkState), PlayerStateTransitionReason.Decelerated) : null;
     }
 
-    public override void Tick()
+    public override void Tick(float deltaTime, ref PlayerGameplayIntent intent)
     {
-        Context.Motor.RunMove(Context.Motor.DesiredMoveDirection);
+        intent.LocomotionMode = PlayerLocomotionMode.Run;
     }
 
     public override PlayerStateTransitionRequest EvaluateResultTransition()
     {
-        return Context.Motor.IsGrounded ? null : new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Fell);
+        return Context.IsGrounded ? null : new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Fell);
     }
 }

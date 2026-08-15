@@ -23,6 +23,7 @@ namespace ProjectTools.AnimationPreview
         private Bounds modelBounds;
         private Vector3 modelOrigin;
         private Vector3 trajectoryEnd;
+        private readonly List<Vector3> trajectoryPoints = new List<Vector3>();
         private Quaternion modelRotation;
         private Vector2 orbit = new Vector2(135f, 12f);
         private Vector2 lightRotation = new Vector2(35f, -35f);
@@ -208,6 +209,50 @@ namespace ProjectTools.AnimationPreview
             EvaluatePose();
         }
 
+        internal PlayerMotionBakeResult SampleMotion(int requestedSampleRate)
+        {
+            if (!IsReady) throw new InvalidOperationException("请先选择有效 Model/Avatar 和 AnimationClip。");
+            int rate = Math.Max(1, requestedSampleRate);
+            int count = Math.Max(2, Mathf.CeilToInt(clip.length * rate) + 1);
+            Vector2[] positions = new Vector2[count];
+            float[] distances = new float[count];
+            float[] yaws = new float[count];
+            double previousSessionTime = time;
+            bool wasPlaying = playing;
+            playing = false;
+            previewInstance.transform.SetPositionAndRotation(modelOrigin, modelRotation);
+            clipPlayable.SetTime(0d);
+            clipPlayable.SetDone(false);
+            graph.Evaluate(0f);
+            Vector3 accumulatedPosition = Vector3.zero;
+            float accumulatedYaw = 0f;
+            double previousSampleTime = 0d;
+            trajectoryPoints.Clear();
+            trajectoryPoints.Add(modelOrigin);
+            for (int i = 1; i < count; i++)
+            {
+                double sampleTime = clip.length * i / (count - 1d);
+                graph.Evaluate((float)(sampleTime - previousSampleTime));
+                Vector3 localDelta = Quaternion.Inverse(modelRotation) * animator.deltaPosition;
+                accumulatedPosition += Vector3.ProjectOnPlane(localDelta, Vector3.up);
+                accumulatedYaw += Mathf.DeltaAngle(0f, animator.deltaRotation.eulerAngles.y);
+                positions[i] = new Vector2(accumulatedPosition.x, accumulatedPosition.z);
+                distances[i] = distances[i - 1] + Vector3.ProjectOnPlane(localDelta, Vector3.up).magnitude;
+                yaws[i] = accumulatedYaw;
+                trajectoryPoints.Add(modelOrigin + modelRotation * accumulatedPosition);
+                previousSampleTime = sampleTime;
+            }
+            trajectoryEnd = trajectoryPoints[trajectoryPoints.Count - 1];
+            previewInstance.transform.SetPositionAndRotation(modelOrigin, modelRotation);
+            time = Math.Max(0d, Math.Min(Length, previousSessionTime));
+            clipPlayable.SetTime(time);
+            clipPlayable.SetDone(time >= Length);
+            graph.Evaluate(0f);
+            if (rootMotionMode != AnimationPreviewRootMotionMode.Actual) previewInstance.transform.SetPositionAndRotation(modelOrigin, modelRotation);
+            playing = wasPlaying;
+            return new PlayerMotionBakeResult(clip.length, rate, positions, distances, yaws);
+        }
+
         public bool Update(double deltaTime)
         {
             if (!playing || !IsReady) return false;
@@ -339,7 +384,14 @@ namespace ProjectTools.AnimationPreview
                     AddLine(vertices, indices, new Vector3(offset, height, -extent), new Vector3(offset, height, extent));
                 }
             }
-            if (rootMotionMode == AnimationPreviewRootMotionMode.Trajectory && previewInstance != null) AddLine(vertices, indices, modelOrigin, trajectoryEnd);
+            if (rootMotionMode == AnimationPreviewRootMotionMode.Trajectory && previewInstance != null)
+            {
+                if (trajectoryPoints.Count > 1)
+                {
+                    for (int i = 1; i < trajectoryPoints.Count; i++) AddLine(vertices, indices, trajectoryPoints[i - 1], trajectoryPoints[i]);
+                }
+                else AddLine(vertices, indices, modelOrigin, trajectoryEnd);
+            }
             gridMesh.Clear();
             gridMesh.SetVertices(vertices);
             gridMesh.SetIndices(indices, MeshTopology.Lines, 0);

@@ -9,12 +9,12 @@ public class PlayerGroundProbe : MonoBehaviour
     [Header("引用")]
     [SerializeField] private CharacterController characterController;
     [Header("配置")]
-    [SerializeField] private PlayerGroundProbeConfig config;
+    [SerializeField] private PlayerMovementConfig config;
     public bool HasGround { get; private set; }
     public bool HasWalkableGround { get; private set; }
     public Vector3 GroundNormal { get; private set; } = Vector3.up;
     public float GroundDistance { get; private set; } = float.PositiveInfinity;
-    public bool CanSnapToGround => HasWalkableGround && GroundDistance <= config.GroundSnapDistance;
+    public bool CanSnapToGround => HasWalkableGround && GroundDistance <= config.MotorPhysics.GroundSnapDistance;
 
     private void Awake()
     {
@@ -30,15 +30,15 @@ public class PlayerGroundProbe : MonoBehaviour
 
         Vector3 worldCenter = transform.TransformPoint(characterController.center);
         float halfHeight = characterController.height * 0.5f;
-        float radius = characterController.radius * config.RadiusScale;
+        float radius = characterController.radius * config.MotorPhysics.ProbeRadiusScale;
         float radiusDifference = characterController.radius - radius;
 
         // CharacterController 下半球中心
         Vector3 bottomSphereCenter = worldCenter - up * (halfHeight - characterController.radius);
 
         // 从脚底球心上方一点开始向下检测，避免初始位置贴地导致检测不稳定
-        Vector3 origin = bottomSphereCenter + up * config.ProbeStartOffset;
-        float maxCastDistance = config.ProbeStartOffset + radiusDifference + config.ProbeDistance;
+        Vector3 origin = bottomSphereCenter + up * config.MotorPhysics.ProbeStartOffset;
+        float maxCastDistance = config.MotorPhysics.ProbeStartOffset + radiusDifference + config.MotorPhysics.ProbeDistance;
         //球形范围射线检测，参数分别为，检测中心，半径，方向，返回被碰撞体信息，最大检测范围，检测层级，是否检测trigger
         //该段代码用于时刻检测地面距离
         HasGround = Physics.SphereCast(
@@ -47,13 +47,13 @@ public class PlayerGroundProbe : MonoBehaviour
             -up,
             out RaycastHit hit,
             maxCastDistance,
-            config.GroundMask,
+            config.MotorPhysics.GroundMask,
             QueryTriggerInteraction.Ignore
         );
         //如果存在地面，设定地面距离
         if (HasGround)
         {
-            GroundDistance = Mathf.Max(0f, hit.distance - config.ProbeStartOffset - radiusDifference);
+            GroundDistance = Mathf.Max(0f, hit.distance - config.MotorPhysics.ProbeStartOffset - radiusDifference);
             //拿到法线
             GroundNormal = hit.normal;
             //计算法线和角色之间角度判断是否可以行走
@@ -73,9 +73,9 @@ public class PlayerGroundProbe : MonoBehaviour
         // 根据下落速度动态计算提前量。
         // 下落越快，越早进入落地预判。
         float anticipationDistance = Mathf.Clamp(
-            -verticalSpeed * config.LandingAnticipationTime,
-            config.MinAnticipationDistance,
-            config.MaxAnticipationDistance
+            -verticalSpeed * config.MotorPhysics.LandingAnticipationTime,
+            config.MotorPhysics.MinAnticipationDistance,
+            config.MotorPhysics.MaxAnticipationDistance
         );
         //如果正在下落，并且不在地面上，检测到了地面且地面距离小于了提前量距离
         return
@@ -99,14 +99,14 @@ public class PlayerGroundProbe : MonoBehaviour
         Vector3 up = transform.up;
         Vector3 worldCenter = transform.TransformPoint(characterController.center);
         float halfHeight = characterController.height * 0.5f;
-        float radius = characterController.radius * config.RadiusScale;
+        float radius = characterController.radius * config.MotorPhysics.ProbeRadiusScale;
         float radiusDifference = characterController.radius - radius;
         Vector3 bottomSphereCenter = worldCenter - up * (halfHeight - characterController.radius);
-        Vector3 origin = bottomSphereCenter + up * config.ProbeStartOffset;
+        Vector3 origin = bottomSphereCenter + up * config.MotorPhysics.ProbeStartOffset;
         //绘制圆形
         Gizmos.DrawWireSphere(origin, radius);
         //绘制线条
-        Gizmos.DrawLine(origin, origin - up * (config.ProbeStartOffset + radiusDifference + config.ProbeDistance));
+        Gizmos.DrawLine(origin, origin - up * (config.MotorPhysics.ProbeStartOffset + radiusDifference + config.MotorPhysics.ProbeDistance));
     }
 #endif
 }

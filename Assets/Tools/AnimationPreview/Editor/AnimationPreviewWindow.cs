@@ -22,6 +22,9 @@ namespace ProjectTools.AnimationPreview
         private ObjectField profileField;
         private ObjectField modelField;
         private ObjectField sourceField;
+        private ObjectField motionProfileField;
+        private IntegerField motionSampleRateField;
+        private Label motionValidationLabel;
         private ListView sourceList;
         private ListView clipList;
         private ToolbarSearchField searchField;
@@ -114,6 +117,9 @@ namespace ProjectTools.AnimationPreview
             profileField = rootVisualElement.Q<ObjectField>("profile-field");
             modelField = rootVisualElement.Q<ObjectField>("model-field");
             sourceField = rootVisualElement.Q<ObjectField>("source-field");
+            motionProfileField = rootVisualElement.Q<ObjectField>("motion-profile-field");
+            motionSampleRateField = rootVisualElement.Q<IntegerField>("motion-sample-rate-field");
+            motionValidationLabel = rootVisualElement.Q<Label>("motion-validation-label");
             sourceList = rootVisualElement.Q<ListView>("source-list");
             clipList = rootVisualElement.Q<ListView>("clip-list");
             searchField = rootVisualElement.Q<ToolbarSearchField>("search-field");
@@ -145,6 +151,8 @@ namespace ProjectTools.AnimationPreview
             modelField.allowSceneObjects = false;
             sourceField.objectType = typeof(UnityEngine.Object);
             sourceField.allowSceneObjects = false;
+            motionProfileField.objectType = typeof(PlayerMotionProfile);
+            motionProfileField.allowSceneObjects = false;
             rootMotionField.Init(AnimationPreviewRootMotionMode.Locked);
         }
 
@@ -214,6 +222,10 @@ namespace ProjectTools.AnimationPreview
             rootVisualElement.Q<Button>("back-view-button").clicked += () => { session.SetView(new Vector2(0f, 0f)); viewport.MarkDirtyRepaint(); };
             focusModeButton.clicked += ToggleFocusMode;
             favoriteButton.clicked += ToggleFavorite;
+            rootVisualElement.Q<Button>("motion-bake-button").clicked += () => BakeMotion(true);
+            rootVisualElement.Q<Button>("motion-rebake-button").clicked += () => BakeMotion(false);
+            rootVisualElement.Q<Button>("motion-validate-button").clicked += ValidateMotionProfile;
+            rootVisualElement.Q<Button>("motion-trajectory-button").clicked += ShowMotionTrajectory;
             RegisterSourceDropArea(rootVisualElement.Q("animation-drop-zone"));
         }
 
@@ -518,6 +530,52 @@ namespace ProjectTools.AnimationPreview
             session = new AnimationPreviewSession();
             lastEditorTime = EditorApplication.timeSinceStartup;
             if (viewport != null) BindViewport();
+        }
+
+        private void BakeMotion(bool createIfMissing)
+        {
+            if (session == null || !session.IsReady)
+            {
+                motionValidationLabel.text = "请先选择有效 Model/Avatar 和 AnimationClip。";
+                return;
+            }
+            PlayerMotionProfile target = motionProfileField.value as PlayerMotionProfile;
+            if (target == null && createIfMissing)
+            {
+                string path = EditorUtility.SaveFilePanelInProject("Create Motion Profile", session.Clip.name + "MotionProfile", "asset", "选择 MotionProfile 保存位置");
+                if (string.IsNullOrEmpty(path)) return;
+                target = CreateInstance<PlayerMotionProfile>();
+                AssetDatabase.CreateAsset(target, path);
+                motionProfileField.SetValueWithoutNotify(target);
+            }
+            if (target == null)
+            {
+                motionValidationLabel.text = "Rebake 需要先选择已有 Profile。";
+                return;
+            }
+            PlayerMotionBaker.Bake(session, Mathf.Max(1, motionSampleRateField.value), target);
+            rootMotionField.SetValueWithoutNotify(AnimationPreviewRootMotionMode.Trajectory);
+            ApplySessionSettings();
+            motionValidationLabel.text = $"已 Bake：{target.SampleCount} samples / {target.Duration:F3}s / Travel {target.EvaluateTravelDistance(1f):F3}m / Yaw {target.EvaluateYaw(1f):F1}°";
+            Selection.activeObject = target;
+        }
+
+        private void ValidateMotionProfile()
+        {
+            List<string> messages = new List<string>();
+            bool valid = PlayerMotionBaker.Validate(motionProfileField.value as PlayerMotionProfile, messages);
+            motionValidationLabel.text = valid ? "Profile 有效且 Source 未过期。" : string.Join("\n", messages);
+        }
+
+        private void ShowMotionTrajectory()
+        {
+            if (session == null || !session.IsReady) return;
+            PlayerMotionBakeResult result = session.SampleMotion(Mathf.Max(1, motionSampleRateField.value));
+            rootMotionField.SetValueWithoutNotify(AnimationPreviewRootMotionMode.Trajectory);
+            ApplySessionSettings();
+            int last = result.PlanarPosition.Length - 1;
+            motionValidationLabel.text = $"Trajectory：XZ ({result.PlanarPosition[last].x:F3}, {result.PlanarPosition[last].y:F3}) / Travel {result.TravelDistance[last]:F3}m / Yaw {result.Yaw[last]:F1}°";
+            viewport.MarkDirtyRepaint();
         }
     }
 }

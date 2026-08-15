@@ -1,22 +1,50 @@
+using UnityEngine;
+
 /// <summary>
 /// 玩家状态共享的稳定依赖。
 /// </summary>
-public class PlayerContext
+public sealed class PlayerContext
 {
-    public PlayerMotor Motor { get; }
     public PlayerJump Jump { get; }
     public PlayerDodge Dodge { get; }
-    public IPlayerAnimationController AnimationController { get; }
     public IPlayerInputSource InputSource { get; }
     public IPlayerActionBuffer ActionBuffer { get; }
+    public PlayerMovementConfig MovementConfig { get; }
+    public PlayerMotorResult MotorResult { get; private set; }
+    public PlayerMotionSnapshot MotionSnapshot { get; private set; }
+    public Vector3 DesiredMoveDirection { get; private set; }
+    public bool IsGrounded => MotorResult.IsGrounded;
+    public bool IsHardLandingImpact => MotorResult.JustLanded && MotorResult.LandingImpactSpeed >= MovementConfig.Landing.HardLandingMinImpactSpeed;
 
-    public PlayerContext(PlayerMotor motor, PlayerJump jump, PlayerDodge dodge, IPlayerAnimationController animationController, IPlayerInputSource inputSource, IPlayerActionBuffer actionBuffer)
+    private float pendingVerticalImpulse;
+    private bool hasPendingVerticalImpulse;
+
+    public PlayerContext(PlayerJump jump, PlayerDodge dodge, IPlayerInputSource inputSource, IPlayerActionBuffer actionBuffer, PlayerMovementConfig movementConfig)
     {
-        Motor = motor;
         Jump = jump;
         Dodge = dodge;
-        AnimationController = animationController;
         InputSource = inputSource;
         ActionBuffer = actionBuffer;
+        MovementConfig = movementConfig;
+    }
+
+    public void SetSimulationFacts(PlayerMotorResult motorResult, PlayerMotionSnapshot motionSnapshot, Vector3 desiredMoveDirection)
+    {
+        MotorResult = motorResult;
+        MotionSnapshot = motionSnapshot;
+        DesiredMoveDirection = desiredMoveDirection;
+    }
+
+    public void RequestJumpImpulse()
+    {
+        pendingVerticalImpulse = Jump.CalculateImpulse();
+        hasPendingVerticalImpulse = true;
+    }
+
+    public void ApplyPendingVerticalImpulse(ref PlayerGameplayIntent intent)
+    {
+        if (!hasPendingVerticalImpulse) return;
+        intent.RequestVerticalImpulse(pendingVerticalImpulse);
+        hasPendingVerticalImpulse = false;
     }
 }

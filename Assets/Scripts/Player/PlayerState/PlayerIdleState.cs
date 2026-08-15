@@ -6,14 +6,15 @@ using UnityEngine;
 public sealed class PlayerIdleState : PlayerStateBase
 {
     public PlayerIdleState(PlayerContext context) : base(context) { }
+    public override PlayerLocomotionMode LocomotionMode => PlayerLocomotionMode.Idle;
 
     public override PlayerStateTransitionRequest EvaluateInputTransition()
     {
-        if (!Context.Motor.IsGrounded)
+        if (!Context.IsGrounded)
         {
             return null;
         }
-        if (Context.ActionBuffer.HasBuffered(PlayerBufferedAction.Jump) && Context.Jump.CanJump)
+        if (Context.ActionBuffer.HasBuffered(PlayerBufferedAction.Jump) && Context.Jump.CanJump(Context.IsGrounded))
         {
             return new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Jumped);
         }
@@ -24,13 +25,13 @@ public sealed class PlayerIdleState : PlayerStateBase
         return Context.InputSource.MoveInput == Vector2.zero ? null : new PlayerStateTransitionRequest(ResolveGroundStateType(), PlayerStateTransitionReason.StartedMoving);
     }
 
-    public override void Tick()
+    public override void Tick(float deltaTime, ref PlayerGameplayIntent intent)
     {
-        Context.Motor.IdleMove();
+        intent.LocomotionMode = PlayerLocomotionMode.Idle;
     }
 
     public override PlayerStateTransitionRequest EvaluateResultTransition()
     {
-        return Context.Motor.IsGrounded ? null : new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Fell);
+        return Context.IsGrounded ? null : new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Fell);
     }
 }
