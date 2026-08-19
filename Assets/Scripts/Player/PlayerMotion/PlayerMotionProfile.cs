@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-
+/// <summary>
+/// Bake后的数据证明，用于数据校验
+/// </summary>
 [Serializable]
-public sealed class PlayerMotionProfileMetadata
+public class PlayerMotionProfileMetadata
 {
+    //bake算法版本控制，用于数据校验
     [SerializeField] private int bakeVersion;
     [SerializeField] private int sampleRate;
     [SerializeField] private string sourceClipGuid;
@@ -20,6 +23,7 @@ public sealed class PlayerMotionProfileMetadata
     public string SourceDependencyHash => sourceDependencyHash;
 
 #if UNITY_EDITOR
+    //保存设定数据
     public void Set(int version, int bakedSampleRate, string clipGuid, long clipLocalId, string bakedModelGuid, string dependencyHash)
     {
         bakeVersion = version;
@@ -31,17 +35,20 @@ public sealed class PlayerMotionProfileMetadata
     }
 #endif
 }
-
+/// <summary>
+/// 被烘焙后的动画数据文件
+/// </summary>
 [CreateAssetMenu(fileName = "PlayerMotionProfile", menuName = "Player/Motion/Profile")]
-public sealed class PlayerMotionProfile : ScriptableObject
+public class PlayerMotionProfile : ScriptableObject
 {
     public const int CurrentBakeVersion = 1;
-
+    //动画持续时间
     [Min(0f)] [SerializeField] private float duration;
     [Min(1)] [SerializeField] private int sampleRate = 60;
     [SerializeField] private Vector2[] cumulativePlanarPosition = Array.Empty<Vector2>();
     [SerializeField] private float[] cumulativeTravelDistance = Array.Empty<float>();
     [SerializeField] private float[] cumulativeYaw = Array.Empty<float>();
+    //保存元数据
     [SerializeField] private PlayerMotionProfileMetadata editorMetadata = new PlayerMotionProfileMetadata();
 
     public float Duration => duration;
@@ -51,7 +58,9 @@ public sealed class PlayerMotionProfile : ScriptableObject
     public bool HasTravelDistance => cumulativeTravelDistance != null && cumulativeTravelDistance.Length == SampleCount;
     public bool HasYaw => cumulativeYaw != null && cumulativeYaw.Length == SampleCount;
     public PlayerMotionProfileMetadata EditorMetadata => editorMetadata;
-
+    /// <summary>
+    /// 查询此刻的移动数据
+    /// </summary>
     public Vector3 EvaluatePlanarPosition(float progress)
     {
         Vector2 value = Evaluate(cumulativePlanarPosition, progress);
@@ -93,16 +102,23 @@ public sealed class PlayerMotionProfile : ScriptableObject
         editorMetadata.Set(CurrentBakeVersion, bakedSampleRate, clipGuid, clipLocalId, modelGuid, dependencyHash);
     }
 #endif
-
+    /// <summary>
+    /// 拿到实际的移动位置
+    /// </summary>
     private static Vector2 Evaluate(Vector2[] samples, float progress)
     {
         if (samples == null || samples.Length == 0) return Vector2.zero;
         if (samples.Length == 1) return samples[0];
+        //动画播放进程归一化后和采样点相乘得到更加细致的播放比例
         float sample = Mathf.Clamp01(progress) * (samples.Length - 1);
+        //拿到左右两个下标
         int index = Mathf.Min(Mathf.FloorToInt(sample), samples.Length - 2);
+        //表示在左右两个中间的第0.x的位置
         return Vector2.LerpUnclamped(samples[index], samples[index + 1], sample - index);
     }
-
+    /// <summary>
+    /// 拿到移动距离和角度
+    /// </summary>
     private static float Evaluate(float[] samples, float progress)
     {
         if (samples == null || samples.Length == 0) return 0f;
@@ -111,6 +127,8 @@ public sealed class PlayerMotionProfile : ScriptableObject
         int index = Mathf.Min(Mathf.FloorToInt(sample), samples.Length - 2);
         return Mathf.LerpUnclamped(samples[index], samples[index + 1], sample - index);
     }
-
+    /// <summary>
+    /// 验证某个数字是否是有效数据
+    /// </summary>
     private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
 }

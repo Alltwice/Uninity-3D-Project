@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.Playables;
 
 /// <summary>
-/// 只把 Gameplay/Motion/Motor 事实表现为 Pose；不拥有 Gameplay 时间或运动权限。
+/// 只把 Gameplay/Motion/Motor 事实表现为 Pose；不拥有 Gameplay 时间或运动权限
 /// </summary>
 public sealed class PlayerAnimationController : MonoBehaviour
 {
@@ -71,14 +71,17 @@ public sealed class PlayerAnimationController : MonoBehaviour
         boundaryState = null;
         handoffLoopState = null;
         activeBinding = null;
+        //没拿到绑定就去依据状态播动画
         if (!animationSet.TryGetBinding(motion.ActiveDefinition, out activeBinding))
         {
             PlayStableLoop(gameplayStateType);
             return;
         }
+        //拿到绑定播放动画，动画不自己播放，其播放进程绑定motionruntime
         boundaryState = animancer.Play(activeBinding.Transition, activeBinding.Transition.FadeDuration, FadeMode.FixedDuration);
         boundaryState.Speed = 0f;
         boundaryState.IsPlaying = false;
+        //依据motion状态判断动画现在播放到哪
         float boundaryProgress = PlayerMotionPresentationPhase.ResolveBoundaryProgress(motion);
         boundaryState.NormalizedTime = boundaryProgress;
         DebugBoundaryPhase = boundaryProgress;
@@ -120,7 +123,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
         handoffLoopState.Weight = 0f;
         if (groundLocomotionTransition.State != null) groundLocomotionTransition.State.Parameter = 0f;
     }
-
+    
     private void PlayStateTransition(PlayerStateTransition transition)
     {
         ++presentationSequence;
@@ -145,7 +148,9 @@ public sealed class PlayerAnimationController : MonoBehaviour
         }
         PlayStableLoop(transition.CurrentStateType);
     }
-
+    /// <summary>
+    /// 处理动画边
+    /// </summary>
     private void PlayPresentationEdge(ClipTransition edge, ITransition targetLoop, ulong sequence)
     {
         if (edge == null || edge.Clip == null)

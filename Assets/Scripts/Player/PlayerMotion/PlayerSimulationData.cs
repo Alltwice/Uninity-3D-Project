@@ -1,5 +1,7 @@
 using UnityEngine;
-
+/// <summary>
+/// 移动模式
+/// </summary>
 public enum PlayerLocomotionMode
 {
     Idle,
@@ -9,20 +11,28 @@ public enum PlayerLocomotionMode
     Dodge,
     Air
 }
-
+/// <summary>
+/// 实际速度还是烘焙路径
+/// </summary>
 public enum PlayerMotorTranslationMode
 {
     VelocityDriven,
     DisplacementDriven
 }
-
+/// <summary>
+/// 旋转模式
+/// </summary>
 public enum PlayerMotorRotationMode
 {
     None,
+    //平滑
     FaceDirection,
+    //直接
     YawDelta
 }
-
+/// <summary>
+/// 玩家输入意图
+/// </summary>
 public struct PlayerGameplayIntent
 {
     public PlayerLocomotionMode LocomotionMode;
@@ -30,7 +40,9 @@ public struct PlayerGameplayIntent
     public Vector3 DesiredFacingDirection;
     public float VerticalImpulse;
     public bool HasVerticalImpulse;
-
+    /// <summary>
+    /// 建立输入意图
+    /// </summary>
     public static PlayerGameplayIntent Create(Vector3 desiredMoveDirection, Vector3 currentFacing)
     {
         desiredMoveDirection.y = 0f;
@@ -38,26 +50,32 @@ public struct PlayerGameplayIntent
         if (desiredMoveDirection.sqrMagnitude > 1f) desiredMoveDirection.Normalize();
         return new PlayerGameplayIntent
         {
+            //返回的是默认安全值
             LocomotionMode = PlayerLocomotionMode.Idle,
             DesiredMoveDirection = desiredMoveDirection,
             DesiredFacingDirection = desiredMoveDirection.sqrMagnitude > 0.0001f ? desiredMoveDirection.normalized : currentFacing.normalized
         };
     }
-
+    /// <summary>
+    /// 请求一次垂直冲量
+    /// </summary>
     public void RequestVerticalImpulse(float impulse)
     {
         VerticalImpulse = impulse;
         HasVerticalImpulse = true;
     }
 }
-
-public readonly struct PlayerMotorCommand
+/// <summary>
+/// 玩家最终执行命令快照
+/// </summary>
+public struct PlayerMotorCommand
 {
     public PlayerMotorCommand(PlayerMotorTranslationMode translationMode, Vector3 targetPlanarVelocity, float planarAcceleration, Vector3 planarDisplacement, PlayerMotorRotationMode rotationMode, Vector3 desiredFacingDirection, float yawDelta, bool hasVerticalImpulse, float verticalImpulse)
     {
         TranslationMode = translationMode;
         TargetPlanarVelocity = targetPlanarVelocity;
         PlanarAcceleration = planarAcceleration;
+        //直接驱动位移
         PlanarDisplacement = planarDisplacement;
         RotationMode = rotationMode;
         DesiredFacingDirection = desiredFacingDirection;
@@ -76,18 +94,25 @@ public readonly struct PlayerMotorCommand
     public bool HasVerticalImpulse { get; }
     public float VerticalImpulse { get; }
 }
-
+/// <summary>
+/// 实际移动结果
+/// </summary>
 public readonly struct PlayerMotorResult
 {
     public PlayerMotorResult(Vector3 actualDisplacement, Vector3 actualPlanarDisplacement, Vector3 horizontalVelocity, float verticalVelocity, bool isGrounded, bool justLanded, float landingImpactSpeed, CollisionFlags collisionFlags)
     {
+        //实际移动
         ActualDisplacement = actualDisplacement;
+        //无水平分量
         ActualPlanarDisplacement = actualPlanarDisplacement;
+        //实际运动速度
         HorizontalVelocity = horizontalVelocity;
         VerticalVelocity = verticalVelocity;
         IsGrounded = isGrounded;
         JustLanded = justLanded;
+        //落地瞬间速度
         LandingImpactSpeed = landingImpactSpeed;
+        //碰撞结果
         CollisionFlags = collisionFlags;
     }
 
@@ -102,6 +127,9 @@ public readonly struct PlayerMotorResult
     public CollisionFlags CollisionFlags { get; }
 }
 
+/// <summary>
+/// 通过位移计算速度，并非单例设计，静态工具
+/// </summary>
 public static class PlayerMotorKinematics
 {
     public static Vector3 CalculateActualPlanarVelocity(Vector3 actualDisplacement, float deltaTime)

@@ -21,7 +21,9 @@ public enum PlayerMotionId
     FastRunTurn180Right,
     Dodge
 }
-
+/// <summary>
+/// 组织每一份动画数据
+/// </summary>
 [Serializable]
 public struct PlayerMotionCatalogEntry
 {
@@ -39,7 +41,7 @@ public struct PlayerMotionCatalogEntry
 }
 
 [CreateAssetMenu(fileName = "PlayerMotionCatalog", menuName = "Player/Motion/Catalog")]
-public sealed class PlayerMotionCatalog : ScriptableObject
+public class PlayerMotionCatalog : ScriptableObject
 {
     [SerializeField] private List<PlayerMotionCatalogEntry> motions = new List<PlayerMotionCatalogEntry>();
     [Range(90f, 180f)] [SerializeField] private float turn180Threshold = 150f;

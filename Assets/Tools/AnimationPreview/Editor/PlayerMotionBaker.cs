@@ -7,6 +7,9 @@ namespace ProjectTools.AnimationPreview
 {
     public static class PlayerMotionBaker
     {
+        /// <summary>
+        /// 预留的快速Bake接口，用于直接获取模型和动画，不直接执行bake
+        /// </summary>
         public static PlayerMotionProfile Bake(GameObject modelAsset, AnimationClip clip, int sampleRate, PlayerMotionProfile target)
         {
             using AnimationPreviewSession session = new AnimationPreviewSession();
@@ -25,11 +28,17 @@ namespace ProjectTools.AnimationPreview
             AnimationClip clip = session.Clip;
             string clipPath = AssetDatabase.GetAssetPath(clip);
             string modelPath = AssetDatabase.GetAssetPath(session.ModelAsset);
+            //获取其身份，后者为子asset的id
             AssetDatabase.TryGetGUIDAndLocalFileIdentifier(clip, out string clipGuid, out long clipLocalId);
+            //获取模型身份
             string modelGuid = AssetDatabase.AssetPathToGUID(modelPath);
+            //保存模型动画的hash码
             string dependencyHash = Hash128.Compute(AssetDatabase.GetAssetDependencyHash(clipPath) + ":" + AssetDatabase.GetAssetDependencyHash(modelPath)).ToString();
+            //写为永久SO，target已经是so文件
             target.SetBakedData(result.Duration, result.SampleRate, result.PlanarPosition, result.TravelDistance, result.Yaw, clipGuid, clipLocalId, modelGuid, dependencyHash);
+            //数据被更改
             EditorUtility.SetDirty(target);
+            //修改先前被保存的so文件
             AssetDatabase.SaveAssetIfDirty(target);
         }
 
@@ -60,7 +69,7 @@ namespace ProjectTools.AnimationPreview
         }
     }
 
-    internal sealed class PlayerMotionBakeResult
+    internal class PlayerMotionBakeResult
     {
         public PlayerMotionBakeResult(float duration, int sampleRate, Vector2[] planarPosition, float[] travelDistance, float[] yaw)
         {

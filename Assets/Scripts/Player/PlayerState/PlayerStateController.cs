@@ -26,7 +26,9 @@ public class PlayerStateController : MonoBehaviour
         playerJump = GetComponent<PlayerJump>();
         playerDodge = GetComponent<PlayerDodge>();
     }
-
+    /// <summary>
+    /// 状态机的初始化设定
+    /// </summary>
     public PlayerStateTransition Initialize(IPlayerInputSource inputSource, IPlayerActionBuffer inputActionBuffer)
     {
         playerInput = inputSource;
@@ -36,7 +38,9 @@ public class PlayerStateController : MonoBehaviour
         TryChangeState(new PlayerStateTransitionRequest(typeof(PlayerIdleState), PlayerStateTransitionReason.Initialized), out PlayerStateTransition transition);
         return transition;
     }
-
+    /// <summary>
+    /// 设置移动数据和事实
+    /// </summary>
     public void SetSimulationFacts(PlayerMotorResult motorResult, PlayerMotionSnapshot motionSnapshot, Vector3 desiredMoveDirection)
     {
         context.SetSimulationFacts(motorResult, motionSnapshot, desiredMoveDirection);

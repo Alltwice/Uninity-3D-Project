@@ -19,7 +19,7 @@ public enum PlayerStateTransitionReason
 /// <summary>
 /// 状态控制器已经接受并执行的转换事实
 /// </summary>
-public readonly struct PlayerStateTransition
+public struct PlayerStateTransition
 {
     public PlayerStateTransition(Type previousStateType, Type currentStateType, PlayerStateTransitionReason reason, PlayerLocomotionMode previousLocomotionMode, PlayerLocomotionMode currentLocomotionMode)
     {

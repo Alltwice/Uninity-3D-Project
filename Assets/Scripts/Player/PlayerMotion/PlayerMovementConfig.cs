@@ -1,8 +1,10 @@
 using System;
 using UnityEngine;
-
+/// <summary>
+/// 移动设置
+/// </summary>
 [CreateAssetMenu(fileName = "PlayerMovementConfig", menuName = "Player/Movement Config")]
-public sealed class PlayerMovementConfig : ScriptableObject
+public class PlayerMovementConfig : ScriptableObject
 {
     [Serializable]
     public sealed class LocomotionSettings

@@ -1,5 +1,5 @@
 /// <summary>
-/// 玩家空中状态。
+/// 玩家空中状态
 /// </summary>
 public sealed class PlayerAirState : PlayerStateBase
 {

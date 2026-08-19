@@ -536,21 +536,24 @@ namespace ProjectTools.AnimationPreview
         {
             if (session == null || !session.IsReady)
             {
-                motionValidationLabel.text = "请先选择有效 Model/Avatar 和 AnimationClip。";
+                motionValidationLabel.text = "请先选择有效 Model/Avatar 和 AnimationClip";
                 return;
             }
             PlayerMotionProfile target = motionProfileField.value as PlayerMotionProfile;
             if (target == null && createIfMissing)
             {
+                //旋转存储位置
                 string path = EditorUtility.SaveFilePanelInProject("Create Motion Profile", session.Clip.name + "MotionProfile", "asset", "选择 MotionProfile 保存位置");
                 if (string.IsNullOrEmpty(path)) return;
+                //创建SO，在内存上
                 target = CreateInstance<PlayerMotionProfile>();
+                //真正在磁盘上船舰文件
                 AssetDatabase.CreateAsset(target, path);
                 motionProfileField.SetValueWithoutNotify(target);
             }
             if (target == null)
             {
-                motionValidationLabel.text = "Rebake 需要先选择已有 Profile。";
+                motionValidationLabel.text = "Rebake 需要先选择已有 Profile";
                 return;
             }
             PlayerMotionBaker.Bake(session, Mathf.Max(1, motionSampleRateField.value), target);

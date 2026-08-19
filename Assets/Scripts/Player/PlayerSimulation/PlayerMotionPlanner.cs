@@ -2,9 +2,9 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// 将 Gameplay transition/intent 解析成唯一 MotionDefinition，不接触动画或 CharacterController。
+/// 将 Gameplay transition/intent 解析成唯一 MotionDefinition，不接触动画或 CharacterController
 /// </summary>
-public sealed class PlayerMotionPlanner : MonoBehaviour
+public class PlayerMotionPlanner : MonoBehaviour
 {
     [SerializeField] private PlayerMotionCatalog catalog;
 
@@ -25,7 +25,9 @@ public sealed class PlayerMotionPlanner : MonoBehaviour
         }
         if (runtime.Snapshot.IsActive) runtime.Cancel();
     }
-
+    /// <summary>
+    /// 处理了左右转向的动画
+    /// </summary>
     public void ResolveContinuousMotion(Type stateType, PlayerGameplayIntent intent, PlayerMotorResult motorResult)
     {
         if (runtime.Snapshot.IsActive || intent.DesiredMoveDirection.sqrMagnitude < 0.0001f) return;
@@ -57,7 +59,9 @@ public sealed class PlayerMotionPlanner : MonoBehaviour
     {
         return runtime.Advance(deltaTime, intent, transform.forward, catalog.TurnIntentTolerance, catalog.TurnRotationUnlockAngle);
     }
-
+    /// <summary>
+    /// 处理边界动画选用
+    /// </summary>
     private bool TryResolveTransitionMotion(PlayerStateTransition transition, PlayerGameplayIntent intent, out PlayerMotionDefinition definition)
     {
         Type previous = transition.PreviousStateType;
@@ -72,11 +76,15 @@ public sealed class PlayerMotionPlanner : MonoBehaviour
         else { definition = null; return false; }
         return catalog.TryGet(id, out definition);
     }
-
+    /// <summary>
+    /// 处理当前运动状态id
+    /// </summary>
     private PlayerMotionId ResolveStartId(PlayerMotionId standard, PlayerMotionId left, PlayerMotionId right, PlayerGameplayIntent intent)
     {
         float signedAngle = SignedPlanarAngle(transform.forward, intent.DesiredMoveDirection);
+        //输入角度不满转向条件就不转向
         if (Mathf.Abs(signedAngle) < catalog.Turn180Threshold) return standard;
+        //满足条件判断左右
         PlayerMotionId turnId = signedAngle < 0f ? left : right;
         return catalog.TryGet(turnId, out _) ? turnId : standard;
     }
@@ -88,7 +96,9 @@ public sealed class PlayerMotionPlanner : MonoBehaviour
         Vector3 basis = definition.BasisPolicy == PlayerMotionBasisPolicy.DesiredDirection ? desired : definition.BasisPolicy == PlayerMotionBasisPolicy.EntryVelocityDirection ? entryVelocity : transform.forward;
         runtime.Begin(definition, basis, desired, desired);
     }
-
+    /// <summary>
+    /// 角度计算
+    /// </summary>
     private static float SignedPlanarAngle(Vector3 from, Vector3 to)
     {
         from.y = 0f;

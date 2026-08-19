@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using Animancer;
 using UnityEngine;
-
+/// <summary>
+/// 动画数据和动画片段的绑定
+/// </summary>
 [Serializable]
-public sealed class PlayerMotionAnimationBinding
+public class PlayerMotionAnimationBinding
 {
     [SerializeField] private PlayerMotionDefinition definition;
     [SerializeField] private ClipTransition transition = new ClipTransition();
@@ -28,12 +30,13 @@ public sealed class PlayerMotionAnimationBinding
 }
 
 [CreateAssetMenu(fileName = "PlayerAnimationSet", menuName = "Player/Animation Set")]
-public sealed class PlayerAnimationSet : ScriptableObject
+public class PlayerAnimationSet : ScriptableObject
 {
     [SerializeField] private PlayerMotionCatalog motionCatalog;
     [SerializeField] private List<PlayerMotionAnimationBinding> motionBindings = new List<PlayerMotionAnimationBinding>();
 
     public PlayerMotionCatalog MotionCatalog => motionCatalog;
+    //只读接口泛型存储
     public IReadOnlyList<PlayerMotionAnimationBinding> MotionBindings => motionBindings;
 
     public bool TryGetBinding(PlayerMotionDefinition definition, out PlayerMotionAnimationBinding binding)

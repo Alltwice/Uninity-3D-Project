@@ -9,20 +9,31 @@ using UnityEngine.Rendering;
 
 namespace ProjectTools.AnimationPreview
 {
-    internal sealed class AnimationPreviewSession : IDisposable
+    /// <summary>
+    /// 动画预览采样数据，当继承了IDisposable意味着必须实现Dispose()，清理资源滞空引用
+    /// </summary>
+    internal class AnimationPreviewSession : IDisposable
     {
+        //独立渲染预览工具
         private PreviewRenderUtility preview;
+        //模型实例
         private GameObject previewInstance;
         private GameObject gridObject;
+        //底侧的辅助绘制
         private Mesh gridMesh;
+        //配合mesh绘制地面
         private Material lineMaterial;
+        //动画播放支持
         private Animator animator;
+        //动画播放管线，比AnimatorController更底层的动画组织方式
         private PlayableGraph graph;
         private AnimationClipPlayable clipPlayable;
         private AnimationClip clip;
+        //创建一个盒子，表示空间信息
         private Bounds modelBounds;
         private Vector3 modelOrigin;
         private Vector3 trajectoryEnd;
+        //预览窗口的坐标点
         private readonly List<Vector3> trajectoryPoints = new List<Vector3>();
         private Quaternion modelRotation;
         private Vector2 orbit = new Vector2(135f, 12f);
@@ -51,7 +62,9 @@ namespace ProjectTools.AnimationPreview
         public string ModelError { get; private set; }
         public string CompatibilityMessage { get; private set; }
         public ModelImporterAnimationType? ModelImportType { get; private set; }
-
+        /// <summary>
+        /// 清理资源，当使用using字样时异常或正常结束均会触发或被手动调用
+        /// </summary>
         public void Dispose()
         {
             DestroyGraph();
@@ -64,18 +77,23 @@ namespace ProjectTools.AnimationPreview
             previewInstance = null;
             animator = null;
         }
-
+        /// <summary>
+        /// 设定模型
+        /// </summary>
         public bool SetModel(GameObject modelAsset)
         {
             ModelAsset = modelAsset;
             ModelError = null;
             CompatibilityMessage = null;
+            //清理场地
             DestroyGraph();
             DestroyGuideGeometry();
             if (preview != null) preview.Cleanup();
             preview = new PreviewRenderUtility();
+            //摄像机视野角度
             preview.cameraFieldOfView = 30f;
             ConfigureLights();
+            //重置模型状态
             previewInstance = null;
             animator = null;
             RendererCount = 0;
@@ -84,31 +102,37 @@ namespace ProjectTools.AnimationPreview
             ModelImportType = null;
             if (modelAsset == null)
             {
-                ModelError = "请拖入一个模型 FBX 或 Prefab。";
+                ModelError = "请拖入一个模型 FBX 或 Prefab";
                 return false;
             }
+            //检查是否时持久化的Asset
             if (!EditorUtility.IsPersistent(modelAsset))
             {
-                ModelError = "只接受 Project 中的模型资源，不接受场景实例。";
+                ModelError = "只接受 Project 中的模型资源，不接受场景实例";
                 return false;
             }
+            //拿到文件路径
             string path = AssetDatabase.GetAssetPath(modelAsset);
+            //外部文件导入时会存在Importer，这里获取文件并尝试将其转为ModelImporter
             ModelImporter importer = AssetImporter.GetAtPath(path) as ModelImporter;
+            //模型类型Legacy，Humanoid等
             if (importer != null) ModelImportType = importer.animationType;
             previewInstance = preview.InstantiatePrefabInScene(modelAsset);
             if (previewInstance == null)
             {
-                ModelError = "无法在预览场景中实例化该资源。";
+                ModelError = "无法在预览场景中实例化该资源";
                 return false;
             }
+            //控制对对象的行为，HideAndDontSave表示不显示也不保存为临时对象
             previewInstance.hideFlags = HideFlags.HideAndDontSave;
             StripNonPreviewComponents(previewInstance);
+            //true表示能拿到失活节点，统计渲染数和节点数
             Renderer[] renderers = previewInstance.GetComponentsInChildren<Renderer>(true);
             RendererCount = renderers.Length;
             TransformCount = previewInstance.GetComponentsInChildren<Transform>(true).Length;
             if (RendererCount == 0)
             {
-                ModelError = "该资源不包含可渲染的模型。";
+                ModelError = "该资源不包含可渲染的模型";
                 return false;
             }
             animator = previewInstance.GetComponentInChildren<Animator>(true);
@@ -124,20 +148,23 @@ namespace ProjectTools.AnimationPreview
             }
             if (animator.avatar == null)
             {
-                ModelError = "模型没有 Avatar。请在 ModelImporter 的 Rig 页面配置动画类型和 Avatar。";
+                ModelError = "模型没有 Avatar请在 ModelImporter 的 Rig 页面配置动画类型和 Avatar";
                 return false;
             }
             if (!animator.avatar.isValid)
             {
-                ModelError = "模型 Avatar 无效，请检查骨骼映射。";
+                ModelError = "模型 Avatar 无效，请检查骨骼映射";
                 return false;
             }
+            //不使用AnimatorController
             animator.runtimeAnimatorController = null;
             animator.applyRootMotion = true;
+            //统计骨骼数量
             BoneCount = animator.isHuman ? Enumerable.Range(0, (int)HumanBodyBones.LastBone).Count(index => animator.GetBoneTransform((HumanBodyBones)index) != null) : TransformCount;
             modelOrigin = previewInstance.transform.position;
             trajectoryEnd = modelOrigin;
             modelRotation = previewInstance.transform.rotation;
+            //整个角色的总骨骼
             modelBounds = CalculateBounds(renderers);
             Focus();
             return true;
@@ -158,20 +185,24 @@ namespace ProjectTools.AnimationPreview
             }
             if (ModelImportType == ModelImporterAnimationType.Human && !animator.isHuman)
             {
-                CompatibilityMessage = "模型标记为 Humanoid，但当前 Avatar 无法生成人形 Animator。";
+                CompatibilityMessage = "模型标记为 Humanoid，但当前 Avatar 无法生成人形 Animator";
                 return false;
             }
             if (entry.ImportType == ModelImporterAnimationType.Human && !animator.isHuman)
             {
-                CompatibilityMessage = "该动画需要有效的 Humanoid 模型。";
+                CompatibilityMessage = "该动画需要有效的 Humanoid 模型";
                 return false;
             }
             graph = PlayableGraph.Create("Model Animation Preview");
+            //设置时间推进模式为手动
             graph.SetTimeUpdateMode(DirectorUpdateMode.Manual);
+            //放动画节点，关闭IK
             clipPlayable = AnimationClipPlayable.Create(graph, clip);
             clipPlayable.SetApplyFootIK(false);
             clipPlayable.SetApplyPlayableIK(false);
+            //PlayableGraph的动画输出端口
             AnimationPlayableOutput output = AnimationPlayableOutput.Create(graph, "Animation", animator);
+            //设置了数据来源
             output.SetSourcePlayable(clipPlayable);
             graph.Play();
             EvaluatePose();
@@ -208,22 +239,32 @@ namespace ProjectTools.AnimationPreview
             time = Math.Max(0d, Math.Min(Length, value));
             EvaluatePose();
         }
-
+        /// <summary>
+        /// 正真的烘焙算法
+        /// </summary>
         internal PlayerMotionBakeResult SampleMotion(int requestedSampleRate)
         {
-            if (!IsReady) throw new InvalidOperationException("请先选择有效 Model/Avatar 和 AnimationClip。");
+            if (!IsReady) throw new InvalidOperationException("请先选择有效 Model/Avatar 和 AnimationClip");
             int rate = Math.Max(1, requestedSampleRate);
+            //被采样的数量，+1意味着算上起始点，CeilToInt向上取整，确保动画非整时也能取得精确的开始点和结束点从而控制取样间隔均等
             int count = Math.Max(2, Mathf.CeilToInt(clip.length * rate) + 1);
+            //XZ
             Vector2[] positions = new Vector2[count];
+            //距离
             float[] distances = new float[count];
+            //角度
             float[] yaws = new float[count];
+            //给预览窗口用的，bake后能保持原行为
             double previousSessionTime = time;
             bool wasPlaying = playing;
             playing = false;
             previewInstance.transform.SetPositionAndRotation(modelOrigin, modelRotation);
+            //设定动画时间为0f
             clipPlayable.SetTime(0d);
             clipPlayable.SetDone(false);
+            //正真执行动画时间为0f
             graph.Evaluate(0f);
+            //变化量置0
             Vector3 accumulatedPosition = Vector3.zero;
             float accumulatedYaw = 0f;
             double previousSampleTime = 0d;
@@ -231,19 +272,29 @@ namespace ProjectTools.AnimationPreview
             trajectoryPoints.Add(modelOrigin);
             for (int i = 1; i < count; i++)
             {
-                double sampleTime = clip.length * i / (count - 1d);
+                //每一份动画长度除以采样点从而平均铺满整个动画
+                double sampleTime = clip.length * i / (count - 1);
+                //真正前进每次推进的时间
                 graph.Evaluate((float)(sampleTime - previousSampleTime));
+                //烘焙不依赖模型朝向，用于撤销模型的初始旋转
                 Vector3 localDelta = Quaternion.Inverse(modelRotation) * animator.deltaPosition;
+                //去除y轴分量影响投影到xz平面上
                 accumulatedPosition += Vector3.ProjectOnPlane(localDelta, Vector3.up);
+                //四元数转为欧拉角并用DeltaAngle始终记录有符号的最小值（350°和-10°取后者）
                 accumulatedYaw += Mathf.DeltaAngle(0f, animator.deltaRotation.eulerAngles.y);
                 positions[i] = new Vector2(accumulatedPosition.x, accumulatedPosition.z);
+                //Vector3.ProjectOnPlane将三维向量投影到法线平面上并开方以计算距离
                 distances[i] = distances[i - 1] + Vector3.ProjectOnPlane(localDelta, Vector3.up).magnitude;
                 yaws[i] = accumulatedYaw;
+                //这里不是乘法，四元数*Vector3代表将Vector3向四元数方向旋转
                 trajectoryPoints.Add(modelOrigin + modelRotation * accumulatedPosition);
                 previousSampleTime = sampleTime;
             }
+            //记录轨迹终点
             trajectoryEnd = trajectoryPoints[trajectoryPoints.Count - 1];
+            //恢复模型到起点
             previewInstance.transform.SetPositionAndRotation(modelOrigin, modelRotation);
+            //回复之前时间
             time = Math.Max(0d, Math.Min(Length, previousSessionTime));
             clipPlayable.SetTime(time);
             clipPlayable.SetDone(time >= Length);
@@ -306,11 +357,15 @@ namespace ProjectTools.AnimationPreview
         {
             distance = Mathf.Clamp(distance * Mathf.Exp(delta * 0.03f), 0.05f, 500f);
         }
-
+        /// <summary>
+        /// 设定距离
+        /// </summary>
         public void Focus()
         {
             pan = Vector3.zero;
+            //计算从中心到一个盒子角落的距离，也就是让相机在一个外接圆的范围内移动
             float radius = Math.Max(0.1f, modelBounds.extents.magnitude);
+            //tan为正切，此刻在求三角的邻边，Deg2Rad三角函数单位弧度
             distance = radius / Mathf.Tan(preview.cameraFieldOfView * 0.5f * Mathf.Deg2Rad) * 1.15f;
         }
 
@@ -331,10 +386,13 @@ namespace ProjectTools.AnimationPreview
             ConfigureLights();
             EvaluatePose();
         }
-
+        /// <summary>
+        /// 将动画设定为0秒位置
+        /// </summary>
         private void EvaluatePose()
         {
             if (!IsReady) return;
+            //不实际移动时设定其到原位置
             if (rootMotionMode != AnimationPreviewRootMotionMode.Actual)
             {
                 previewInstance.transform.SetPositionAndRotation(modelOrigin, modelRotation);
@@ -351,7 +409,9 @@ namespace ProjectTools.AnimationPreview
             if (graph.IsValid()) graph.Destroy();
             clipPlayable = default;
         }
-
+        /// <summary>
+        /// 设置灯光
+        /// </summary>
         private void ConfigureLights()
         {
             if (preview?.lights == null || preview.lights.Length < 2) return;
@@ -430,7 +490,9 @@ namespace ProjectTools.AnimationPreview
             indices.Add(index);
             indices.Add(index + 1);
         }
-
+        /// <summary>
+        /// 拿Avatar，优先模型的
+        /// </summary>
         private static Avatar FindAvatar(string assetPath, Animator existingAnimator)
         {
             if (existingAnimator != null && existingAnimator.avatar != null) return existingAnimator.avatar;
@@ -443,7 +505,7 @@ namespace ProjectTools.AnimationPreview
             for (int index = 1; index < renderers.Count; index++) bounds.Encapsulate(renderers[index].bounds);
             return bounds;
         }
-
+        //剥除所有组件，保留Animator
         private static void StripNonPreviewComponents(GameObject root)
         {
             foreach (Behaviour behaviour in root.GetComponentsInChildren<Behaviour>(true))

@@ -1,10 +1,10 @@
 using UnityEngine;
 
 /// <summary>
-/// 唯一 CharacterController 执行器。只解释 MotorCommand，不认识 Gameplay 动作或动画。
+/// 唯一 CharacterController 执行器。只解释 MotorCommand，不认识 Gameplay 动作或动画
 /// </summary>
 [RequireComponent(typeof(CharacterController), typeof(PlayerGroundProbe))]
-public sealed class PlayerMotor : MonoBehaviour
+public class PlayerMotor : MonoBehaviour
 {
     [SerializeField] private PlayerMovementConfig config;
 
@@ -23,7 +23,9 @@ public sealed class PlayerMotor : MonoBehaviour
         characterController = GetComponent<CharacterController>();
         groundProbe = GetComponent<PlayerGroundProbe>();
     }
-
+    /// <summary>
+    /// 初始化设定地面状态保存首次快照
+    /// </summary>
     public void EnsureInitialized()
     {
         if (initialized) return;
@@ -32,13 +34,18 @@ public sealed class PlayerMotor : MonoBehaviour
         CurrentResult = new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.zero, 0f, isGrounded, false, 0f, CollisionFlags.None);
         initialized = true;
     }
-
+    /// <summary>
+    /// 执行移动与动画更新
+    /// </summary>
     public PlayerMotorResult Simulate(PlayerMotorCommand command, float deltaTime)
     {
         EnsureInitialized();
         float dt = Mathf.Max(0f, deltaTime);
+        //执行跳跃
         if (command.HasVerticalImpulse) verticalVelocity = command.VerticalImpulse;
+        //压在地上
         if (isGrounded && verticalVelocity < 0f) verticalVelocity = config.MotorPhysics.GroundedVerticalVelocity;
+        //重力
         else verticalVelocity += config.MotorPhysics.Gravity * dt;
         Vector3 planarDisplacement;
         if (command.TranslationMode == PlayerMotorTranslationMode.VelocityDriven)
@@ -51,15 +58,19 @@ public sealed class PlayerMotor : MonoBehaviour
             planarDisplacement = command.PlanarDisplacement;
             planarDisplacement.y = 0f;
         }
+        //记录先前的位置
         Vector3 positionBeforeMove = transform.position;
         bool wasGrounded = isGrounded;
         float downwardSpeedBeforeMove = Mathf.Max(0f, -verticalVelocity);
+        //真正执行移动
         CollisionFlags collisionFlags = characterController.Move(planarDisplacement + Vector3.up * (verticalVelocity * dt));
+        //CollisionFlags 0001 below;0010 above;0100 aside;
         bool controllerGrounded = (collisionFlags & CollisionFlags.Below) != 0 || characterController.isGrounded;
         groundProbe.Refresh();
         bool snappedToGround = !controllerGrounded && wasGrounded && verticalVelocity <= 0f && groundProbe.CanSnapToGround;
         if (snappedToGround)
         {
+            //注意这里按位或赋值拿到碰撞信息
             collisionFlags |= characterController.Move(-transform.up * groundProbe.GroundDistance);
             groundProbe.Refresh();
         }
@@ -71,6 +82,7 @@ public sealed class PlayerMotor : MonoBehaviour
         Vector3 actualDisplacement = transform.position - positionBeforeMove;
         Vector3 actualPlanarDisplacement = Vector3.ProjectOnPlane(actualDisplacement, Vector3.up);
         horizontalVelocity = PlayerMotorKinematics.CalculateActualPlanarVelocity(actualDisplacement, dt);
+        //拿到计算结果
         CurrentResult = new PlayerMotorResult(actualDisplacement, actualPlanarDisplacement, horizontalVelocity, verticalVelocity, isGrounded, justLanded, landingImpactSpeed, collisionFlags);
         return CurrentResult;
     }
@@ -79,14 +91,18 @@ public sealed class PlayerMotor : MonoBehaviour
     {
         if (command.RotationMode == PlayerMotorRotationMode.YawDelta)
         {
+            //四元数的乘法表示角度相加，绕x轴旋转x度，适合动画驱动旋转
             transform.rotation = Quaternion.AngleAxis(command.YawDelta, Vector3.up) * transform.rotation;
             return;
         }
         Vector3 facing = command.DesiredFacingDirection;
         facing.y = 0f;
         if (command.RotationMode != PlayerMotorRotationMode.FaceDirection || facing.sqrMagnitude < 0.0001f) return;
+        //创建一个旋转
         Quaternion target = Quaternion.LookRotation(facing.normalized, Vector3.up);
+        //e的x次方的－值适合做平滑曲线，相比于简单的平滑速度在不同帧率下的稳定性更佳
         float t = 1f - Mathf.Exp(-config.Locomotion.RotationSmoothSpeed * deltaTime);
+        //平滑旋转
         transform.rotation = Quaternion.Slerp(transform.rotation, target, t);
     }
 }

@@ -7,11 +7,12 @@ using UnityEngine;
 
 namespace ProjectTools.AnimationPreview
 {
-    internal sealed class AnimationPreviewClipEntry
+    internal class AnimationPreviewClipEntry
     {
         public AnimationClip Clip { get; }
         public string AssetPath { get; }
         public string Group { get; }
+        //模型类型Generic / Humanoid / ...
         public ModelImporterAnimationType? ImportType { get; }
 
         public AnimationPreviewClipEntry(AnimationClip clip, string assetPath)

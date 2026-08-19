@@ -1,10 +1,10 @@
 using UnityEngine;
 
 /// <summary>
-/// 玩家每帧唯一执行顺序；不包含任何具体动作分支。
+/// 玩家每帧唯一执行顺序
 /// </summary>
 [RequireComponent(typeof(PlayerStateController), typeof(PlayerMotionPlanner), typeof(PlayerMotor))]
-public sealed class PlayerSimulationDriver : MonoBehaviour
+public class PlayerSimulationDriver : MonoBehaviour
 {
     [SerializeField] private Transform movementReference;
 
@@ -39,9 +39,10 @@ public sealed class PlayerSimulationDriver : MonoBehaviour
         pendingTransition = stateController.Initialize(inputSource, actionBuffer);
         animationController.InitializeManualEvaluation();
     }
-
+    
     private void Update()
     {
+        //设定标准时间供下层组件使用
         float deltaTime = Time.deltaTime;
         actionBuffer.Tick(deltaTime);
         motionPlanner.BeginFrame();
@@ -49,17 +50,26 @@ public sealed class PlayerSimulationDriver : MonoBehaviour
         Vector3 desiredMoveDirection = ResolveWorldMoveDirection(inputSource.MoveInput);
         stateController.SetSimulationFacts(motor.CurrentResult, motionPlanner.Snapshot, desiredMoveDirection);
         PlayerStateTransition? transition = stateController.ProcessPreTickTransition();
+        //建立输入意图
         PlayerGameplayIntent intent = PlayerGameplayIntent.Create(desiredMoveDirection, transform.forward);
         intent.LocomotionMode = stateController.CurrentLocomotionMode;
+        //可空类型和一般类型完全是两个东西，需要通过.value获取
         if (transition.HasValue) motionPlanner.HandleStateTransition(transition.Value, intent, motor.CurrentResult);
         else if (pendingTransition.HasValue) motionPlanner.HandleStateTransition(pendingTransition.Value, intent, motor.CurrentResult);
+        //给状态机输入意图切换当前的运动状态，ref是确保tick中的修改修改到了原值而不是副本
         stateController.Tick(deltaTime, ref intent);
         motionPlanner.ResolveContinuousMotion(stateController.CurrentState.GetType(), intent, motor.CurrentResult);
+        //依据数据真正的执行移动
         PlayerMotionFrame motionFrame = motionPlanner.Advance(deltaTime, intent);
+        //拿到动画数据驱动时的命令
         PlayerMotorCommand command = PlayerMotionComposer.Compose(intent, motionFrame, motor.CurrentResult, motor.Config, deltaTime, transform.forward);
+        //执行动画移动
         PlayerMotorResult motorResult = motor.Simulate(command, deltaTime);
+        //设置移动事实
         stateController.SetSimulationFacts(motorResult, motionPlanner.Snapshot, desiredMoveDirection);
+        //在动画执行完毕后开始帧后状态切换
         PlayerStateTransition? resultTransition = stateController.ProcessPostTickTransition();
+        //如果存在帧后切换的数据就执行一遍相同逻辑
         if (resultTransition.HasValue)
         {
             PlayerGameplayIntent postTransitionIntent = PlayerGameplayIntent.Create(desiredMoveDirection, transform.forward);
@@ -68,7 +78,9 @@ public sealed class PlayerSimulationDriver : MonoBehaviour
         }
         PlayerStateTransition? presentationTransition = resultTransition ?? transition ?? pendingTransition;
         pendingTransition = null;
+        //播放动画，以及更新参数（当前动画依附与移动）
         animationController.Present(stateController.CurrentState.GetType(), presentationTransition, motionPlanner.Snapshot, motorResult, stateController.CurrentPresentationProgress);
+        //animancer设定为手动后需要手动更新
         animationController.EvaluateGraph(deltaTime);
     }
 
