@@ -75,19 +75,32 @@ public static class PlayerMotionComposer
             return;
         }
         PlayerMotionRotationPolicy policy = frame.Definition.RotationPolicy;
-        //选用动画曲线旋转但又存在程序操作时
-        if (policy == PlayerMotionRotationPolicy.ProfileYaw && frame.RotationAuthority > 0f)
+        if (policy == PlayerMotionRotationPolicy.ProfileYaw)
         {
-            //动画旋转数据
-            float authored = frame.AuthoredYawDelta * Mathf.Clamp01(frame.RotationAuthority);
-            //程序旋转数据
-            float desired = CalculateFacingYawDelta(currentFacing, facingDirection, settings.RotationSmoothSpeed, deltaTime) * (1f - Mathf.Clamp01(frame.RotationAuthority));
-            yawDelta = authored + desired;
-            //数据平滑过了直接使用
+            //当前帧计划朝向
+            float authoredYaw = frame.AuthoredYawDelta;
+            currentFacing.y = 0f;
+            //获取本帧的理论朝向
+            Vector3 facingAfterAuthored = Quaternion.AngleAxis(authoredYaw, Vector3.up) * (currentFacing.sqrMagnitude > 0.0001f ? currentFacing.normalized : Vector3.forward);
+            yawDelta = authoredYaw;
+            facingDirection.y = 0f;
+            if (facingDirection.sqrMagnitude > 0.0001f)
+            {
+                //在动画旋转的基础上加上本帧旋转预测最终朝向
+                Vector3 predictedFinalFacing = Quaternion.AngleAxis(frame.RemainingAuthoredYaw, Vector3.up) * facingAfterAuthored;
+                //误差
+                float finalFacingError = Vector3.SignedAngle(predictedFinalFacing, facingDirection.normalized, Vector3.up);
+                //当前帧产生旋转
+                float progressDelta = Mathf.Max(0f, frame.CurrentProgress - frame.PreviousProgress);
+                //计算剩余过程
+                float remainingWindow = Mathf.Max(0.0001f, 1f - frame.PreviousProgress);
+                //一帧内修正剩余角度的1/x°
+                yawDelta += finalFacingError * Mathf.Clamp01(progressDelta / remainingWindow);
+            }
             mode = PlayerMotorRotationMode.YawDelta;
             return;
         }
-        //如果时纯动画/程序数据直接平滑旋转即可
+        //非 ProfileYaw 时，KeepFacing/None 不旋转；其余策略在存在目标朝向时交给 Motor 平滑朝向该目标
         mode = policy == PlayerMotionRotationPolicy.KeepFacing || policy == PlayerMotionRotationPolicy.None ? PlayerMotorRotationMode.None : facingDirection.sqrMagnitude > 0.0001f ? PlayerMotorRotationMode.FaceDirection : PlayerMotorRotationMode.None;
     }
     /// <summary>

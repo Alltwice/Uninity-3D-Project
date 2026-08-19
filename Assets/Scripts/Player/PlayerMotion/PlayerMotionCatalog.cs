@@ -45,13 +45,9 @@ public class PlayerMotionCatalog : ScriptableObject
 {
     [SerializeField] private List<PlayerMotionCatalogEntry> motions = new List<PlayerMotionCatalogEntry>();
     [Range(90f, 180f)] [SerializeField] private float turn180Threshold = 150f;
-    [Range(0f, 180f)] [SerializeField] private float turnIntentTolerance = 30f;
-    [Range(0f, 180f)] [SerializeField] private float turnRotationUnlockAngle = 120f;
 
     public IReadOnlyList<PlayerMotionCatalogEntry> Motions => motions;
     public float Turn180Threshold => turn180Threshold;
-    public float TurnIntentTolerance => turnIntentTolerance;
-    public float TurnRotationUnlockAngle => turnRotationUnlockAngle;
 
     public bool TryGet(PlayerMotionId id, out PlayerMotionDefinition definition)
     {
@@ -66,13 +62,11 @@ public class PlayerMotionCatalog : ScriptableObject
     }
 
 #if UNITY_EDITOR
-    public void Configure(IEnumerable<PlayerMotionCatalogEntry> entries, float turnThreshold, float intentTolerance, float rotationUnlockAngle)
+    public void Configure(IEnumerable<PlayerMotionCatalogEntry> entries, float turnThreshold)
     {
         motions.Clear();
         motions.AddRange(entries);
         turn180Threshold = turnThreshold;
-        turnIntentTolerance = intentTolerance;
-        turnRotationUnlockAngle = rotationUnlockAngle;
     }
 #endif
 }

@@ -13,10 +13,9 @@ MonoBehaviour:
   m_Name: DodgeDefinition
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMotionDefinition
   profile: {fileID: 11400000, guid: 563cf622b7f1cf84abe8d21f51af90c3, type: 2}
-  translationPolicy: 2
+  translationPolicy: 4
   rotationPolicy: 1
   basisPolicy: 0
-  controlPolicy: 2
   durationOverride: 0.8
   translationScale: 1.0319246
   handoffStartProgress: 1

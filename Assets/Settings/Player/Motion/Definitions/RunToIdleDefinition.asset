@@ -16,7 +16,6 @@ MonoBehaviour:
   translationPolicy: 3
   rotationPolicy: 3
   basisPolicy: 1
-  controlPolicy: 0
   durationOverride: 0
   translationScale: 1
   handoffStartProgress: 0.9

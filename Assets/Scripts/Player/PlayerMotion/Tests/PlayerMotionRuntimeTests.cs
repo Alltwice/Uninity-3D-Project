@@ -10,11 +10,11 @@ public sealed class PlayerMotionRuntimeTests
     {
         PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
         PlayerMotionRuntime runtime = new PlayerMotionRuntime();
-        runtime.Begin(definition, Vector3.forward, Vector3.forward, Vector3.forward);
+        runtime.Begin(definition, Vector3.forward, Vector3.forward);
         Vector3 total = Vector3.zero;
         PlayerGameplayIntent intent = PlayerGameplayIntent.Create(Vector3.forward, Vector3.forward);
         int guard = fps * 3;
-        while (!runtime.Snapshot.JustCompleted && guard-- > 0) total += runtime.Advance(1f / fps, intent, Vector3.forward, 30f, 35f).AuthoredPlanarDisplacement;
+        while (!runtime.Snapshot.JustCompleted && guard-- > 0) total += runtime.Advance(1f / fps, intent).AuthoredPlanarDisplacement;
         Assert.That(total.z, Is.EqualTo(profile.EvaluateTravelDistance(1f)).Within(0.0001f));
         Object.DestroyImmediate(definition);
         Object.DestroyImmediate(profile);
@@ -33,13 +33,13 @@ public sealed class PlayerMotionRuntimeTests
         PlayerMotionDefinition first = CreateDefinition(out PlayerMotionProfile firstProfile);
         PlayerMotionDefinition second = CreateDefinition(out PlayerMotionProfile secondProfile);
         PlayerMotionRuntime runtime = new PlayerMotionRuntime();
-        ulong oldId = runtime.Begin(first, Vector3.forward, Vector3.forward, Vector3.forward);
-        runtime.Advance(0.5f, PlayerGameplayIntent.Create(Vector3.forward, Vector3.forward), Vector3.forward, 30f, 35f);
-        ulong newId = runtime.Begin(second, Vector3.forward, Vector3.forward, Vector3.forward);
+        ulong oldId = runtime.Begin(first, Vector3.forward, Vector3.forward);
+        runtime.Advance(0.5f, PlayerGameplayIntent.Create(Vector3.forward, Vector3.forward));
+        ulong newId = runtime.Begin(second, Vector3.forward, Vector3.forward);
         Assert.That(newId, Is.Not.EqualTo(oldId));
         Assert.That(runtime.Snapshot.ActiveDefinition, Is.SameAs(second));
         Assert.That(runtime.Snapshot.JustCancelled, Is.True);
-        runtime.Advance(1f, PlayerGameplayIntent.Create(Vector3.forward, Vector3.forward), Vector3.forward, 30f, 35f);
+        runtime.Advance(1f, PlayerGameplayIntent.Create(Vector3.forward, Vector3.forward));
         Assert.That(runtime.Snapshot.InstanceId, Is.EqualTo(newId));
         Assert.That(runtime.Snapshot.JustCompleted, Is.True);
         Object.DestroyImmediate(first);
@@ -53,7 +53,7 @@ public sealed class PlayerMotionRuntimeTests
     {
         PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
         PlayerMotionRuntime runtime = new PlayerMotionRuntime();
-        runtime.Begin(definition, Vector3.forward, Vector3.forward, Vector3.forward);
+        runtime.Begin(definition, Vector3.forward, Vector3.forward);
         runtime.Cancel();
         Assert.That(runtime.Snapshot.JustCancelled, Is.True);
         runtime.BeginFrame();
@@ -71,8 +71,8 @@ public sealed class PlayerMotionRuntimeTests
         PlayerGameplayIntent intent = PlayerGameplayIntent.Create(Vector3.forward, Vector3.forward);
         intent.LocomotionMode = PlayerLocomotionMode.Run;
         PlayerMotorResult result = new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.forward * 2f, 0f, true, false, 0f, CollisionFlags.None);
-        PlayerMotorCommand authored = PlayerMotionComposer.Compose(intent, new PlayerMotionFrame(definition, Vector3.forward, 0f, 1f, 0f), result, config, 0.1f, Vector3.forward);
-        PlayerMotorCommand locomotion = PlayerMotionComposer.Compose(intent, new PlayerMotionFrame(definition, Vector3.forward, 0f, 0f, 0f), result, config, 0.1f, Vector3.forward);
+        PlayerMotorCommand authored = PlayerMotionComposer.Compose(intent, new PlayerMotionFrame(definition, Vector3.forward, 0f, 0f, 0f, 0f, 1f, 0f), result, config, 0.1f, Vector3.forward);
+        PlayerMotorCommand locomotion = PlayerMotionComposer.Compose(intent, new PlayerMotionFrame(definition, Vector3.forward, 0f, 0f, 0f, 0f, 0f, 0f), result, config, 0.1f, Vector3.forward);
         Assert.That(authored.TranslationMode, Is.EqualTo(PlayerMotorTranslationMode.DisplacementDriven));
         Assert.That(authored.PlanarDisplacement.z, Is.EqualTo(1f).Within(0.0001f));
         Assert.That(locomotion.TranslationMode, Is.EqualTo(PlayerMotorTranslationMode.VelocityDriven));
@@ -91,7 +91,7 @@ public sealed class PlayerMotionRuntimeTests
         PlayerGameplayIntent intent = PlayerGameplayIntent.Create(Vector3.forward, Vector3.forward);
         intent.LocomotionMode = PlayerLocomotionMode.Run;
         PlayerMotorResult result = new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.forward * 4f, 0f, true, false, 0f, CollisionFlags.None);
-        PlayerMotorCommand command = PlayerMotionComposer.Compose(intent, new PlayerMotionFrame(definition, Vector3.forward, 0f, 0.5f, 0f), result, config, 0.25f, Vector3.forward);
+        PlayerMotorCommand command = PlayerMotionComposer.Compose(intent, new PlayerMotionFrame(definition, Vector3.forward, 0f, 0f, 0f, 0f, 0.5f, 0f), result, config, 0.25f, Vector3.forward);
         Assert.That(command.PlanarDisplacement.z, Is.EqualTo(1f).Within(0.0001f));
         Object.DestroyImmediate(config);
         Object.DestroyImmediate(definition);
@@ -119,12 +119,12 @@ public sealed class PlayerMotionRuntimeTests
         PlayerGameplayIntent intent = PlayerGameplayIntent.Create(Vector3.forward, Vector3.forward);
         intent.LocomotionMode = PlayerLocomotionMode.Dodge;
         PlayerMotorResult result = new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.zero, 0f, true, false, 0f, CollisionFlags.None);
-        runtime.Begin(definition, Vector3.forward, Vector3.forward, Vector3.forward);
+        runtime.Begin(definition, Vector3.forward, Vector3.forward);
         Vector3 total = Vector3.zero;
         int guard = fps * 3;
         while (!runtime.Snapshot.JustCompleted && guard-- > 0)
         {
-            PlayerMotionFrame frame = runtime.Advance(1f / fps, intent, Vector3.forward, 30f, 120f);
+            PlayerMotionFrame frame = runtime.Advance(1f / fps, intent);
             PlayerMotorCommand command = PlayerMotionComposer.Compose(intent, frame, result, config, 1f / fps, Vector3.forward);
             total += command.PlanarDisplacement;
         }
@@ -149,47 +149,115 @@ public sealed class PlayerMotionRuntimeTests
     }
 
     [Test]
-    public void Turn180_ZeroInputCancelsForExactlyThisSnapshot()
+    public void TravelAlongDesiredDirection_ZeroInputKeepsCapturedDirection()
     {
         PlayerMotionDefinition definition = CreateTurnDefinition(out PlayerMotionProfile profile);
         PlayerMotionRuntime runtime = new PlayerMotionRuntime();
-        runtime.Begin(definition, Vector3.forward, Vector3.back, Vector3.back);
-        PlayerMotionFrame frame = runtime.Advance(0.1f, PlayerGameplayIntent.Create(Vector3.zero, Vector3.forward), Vector3.forward, 30f, 120f);
-        Assert.That(frame.IsValid, Is.False);
-        Assert.That(runtime.Snapshot.JustCancelled, Is.True);
-        Assert.That(runtime.Snapshot.IsActive, Is.False);
-        runtime.BeginFrame();
+        runtime.Begin(definition, Vector3.forward, Vector3.back);
+        PlayerMotionFrame frame = runtime.Advance(0.1f, PlayerGameplayIntent.Create(Vector3.zero, Vector3.forward));
+        Assert.That(frame.IsValid, Is.True);
+        Assert.That(frame.AuthoredPlanarDisplacement.z, Is.LessThan(0f));
         Assert.That(runtime.Snapshot.JustCancelled, Is.False);
-        Object.DestroyImmediate(definition);
-        Object.DestroyImmediate(profile);
-    }
-
-    [Test]
-    public void Turn180_LargeIntentChangeCancels()
-    {
-        PlayerMotionDefinition definition = CreateTurnDefinition(out PlayerMotionProfile profile);
-        PlayerMotionRuntime runtime = new PlayerMotionRuntime();
-        runtime.Begin(definition, Vector3.forward, Vector3.back, Vector3.back);
-        runtime.Advance(0.1f, PlayerGameplayIntent.Create(Vector3.right, Vector3.forward), Vector3.forward, 30f, 120f);
-        Assert.That(runtime.Snapshot.JustCancelled, Is.True);
-        Object.DestroyImmediate(definition);
-        Object.DestroyImmediate(profile);
-    }
-
-    [Test]
-    public void Turn180_RotationReleaseKeepsTranslationActive()
-    {
-        PlayerMotionDefinition definition = CreateTurnDefinition(out PlayerMotionProfile profile);
-        PlayerMotionRuntime runtime = new PlayerMotionRuntime();
-        PlayerGameplayIntent intent = PlayerGameplayIntent.Create(Vector3.back, Vector3.forward);
-        runtime.Begin(definition, Vector3.forward, Vector3.back, Vector3.back);
-        PlayerMotionFrame locked = runtime.Advance(0.25f, intent, Vector3.forward, 30f, 120f);
-        Assert.That(locked.RotationAuthority, Is.GreaterThan(0f));
-        Vector3 releasedFacing = Quaternion.AngleAxis(90f, Vector3.up) * Vector3.forward;
-        PlayerMotionFrame released = runtime.Advance(0.25f, intent, releasedFacing, 30f, 120f);
-        Assert.That(released.RotationAuthority, Is.Zero);
-        Assert.That(released.AuthoredPlanarDisplacement.sqrMagnitude, Is.GreaterThan(0f));
         Assert.That(runtime.Snapshot.IsActive, Is.True);
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void TravelAlongDesiredDirection_LargeIntentChangeSteersWithoutCancelling()
+    {
+        PlayerMotionDefinition definition = CreateTurnDefinition(out PlayerMotionProfile profile);
+        PlayerMotionRuntime runtime = new PlayerMotionRuntime();
+        runtime.Begin(definition, Vector3.forward, Vector3.back);
+        PlayerMotionFrame frame = runtime.Advance(0.1f, PlayerGameplayIntent.Create(Vector3.right, Vector3.forward));
+        Assert.That(frame.AuthoredPlanarDisplacement.x, Is.GreaterThan(0f));
+        Assert.That(runtime.Snapshot.JustCancelled, Is.False);
+        Assert.That(runtime.Snapshot.IsActive, Is.True);
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void ProfileYaw_DoesNotCorrectWhenProfileWillReachDesiredFacing()
+    {
+        PlayerMotionDefinition definition = CreateTurnDefinition(out PlayerMotionProfile profile);
+        PlayerMovementConfig config = ScriptableObject.CreateInstance<PlayerMovementConfig>();
+        PlayerGameplayIntent intent = PlayerGameplayIntent.Create(Vector3.back, Vector3.forward);
+        PlayerMotorResult result = new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.zero, 0f, true, false, 0f, CollisionFlags.None);
+        PlayerMotionRuntime runtime = new PlayerMotionRuntime();
+        runtime.Begin(definition, Vector3.forward, Vector3.back);
+        PlayerMotionFrame frame = runtime.Advance(0.25f, intent);
+        PlayerMotorCommand command = PlayerMotionComposer.Compose(intent, frame, result, config, 0.25f, Vector3.forward);
+        Assert.That(command.RotationMode, Is.EqualTo(PlayerMotorRotationMode.YawDelta));
+        Assert.That(frame.AuthoredYawDelta, Is.EqualTo(-45f).Within(0.0001f));
+        Assert.That(frame.RemainingAuthoredYaw, Is.EqualTo(-135f).Within(0.0001f));
+        Assert.That(command.YawDelta, Is.EqualTo(frame.AuthoredYawDelta).Within(0.0001f));
+        Object.DestroyImmediate(config);
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void ProfileYaw_DistributesFinalFacingCorrectionAcrossRemainingProgress()
+    {
+        PlayerMotionDefinition definition = CreateTurnDefinition(out PlayerMotionProfile profile);
+        PlayerMovementConfig config = ScriptableObject.CreateInstance<PlayerMovementConfig>();
+        PlayerMotorResult result = new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.zero, 0f, true, false, 0f, CollisionFlags.None);
+        PlayerMotionRuntime runtime = new PlayerMotionRuntime();
+        runtime.Begin(definition, Vector3.forward, Vector3.back);
+        PlayerGameplayIntent initialIntent = PlayerGameplayIntent.Create(Vector3.back, Vector3.forward);
+        PlayerMotionFrame initialFrame = runtime.Advance(0.5f, initialIntent);
+        PlayerMotorCommand initialCommand = PlayerMotionComposer.Compose(initialIntent, initialFrame, result, config, 0.5f, Vector3.forward);
+        Vector3 currentFacing = Quaternion.AngleAxis(initialCommand.YawDelta, Vector3.up) * Vector3.forward;
+        Vector3 desiredFacing = Quaternion.AngleAxis(-150f, Vector3.up) * Vector3.forward;
+        PlayerGameplayIntent changedIntent = PlayerGameplayIntent.Create(desiredFacing, currentFacing);
+        PlayerMotionFrame changedFrame = runtime.Advance(0.25f, changedIntent);
+        PlayerMotorCommand changedCommand = PlayerMotionComposer.Compose(changedIntent, changedFrame, result, config, 0.25f, currentFacing);
+        Assert.That(changedFrame.AuthoredYawDelta, Is.EqualTo(-45f).Within(0.0001f));
+        Assert.That(changedFrame.RemainingAuthoredYaw, Is.EqualTo(-45f).Within(0.0001f));
+        Assert.That(changedCommand.YawDelta, Is.EqualTo(-30f).Within(0.0001f));
+        Object.DestroyImmediate(config);
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void ProfileYaw_CorrectsOnlyOffsetBeyondProfileTarget()
+    {
+        PlayerMotionDefinition definition = CreateTurnDefinition(out PlayerMotionProfile profile);
+        PlayerMovementConfig config = ScriptableObject.CreateInstance<PlayerMovementConfig>();
+        PlayerMotorResult result = new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.zero, 0f, true, false, 0f, CollisionFlags.None);
+        PlayerMotionRuntime runtime = new PlayerMotionRuntime();
+        runtime.Begin(definition, Vector3.forward, Vector3.back);
+        PlayerGameplayIntent initialIntent = PlayerGameplayIntent.Create(Vector3.back, Vector3.forward);
+        PlayerMotionFrame initialFrame = runtime.Advance(0.5f, initialIntent);
+        PlayerMotorCommand initialCommand = PlayerMotionComposer.Compose(initialIntent, initialFrame, result, config, 0.5f, Vector3.forward);
+        Vector3 currentFacing = Quaternion.AngleAxis(initialCommand.YawDelta, Vector3.up) * Vector3.forward;
+        Vector3 desiredFacing = Quaternion.AngleAxis(-200f, Vector3.up) * Vector3.forward;
+        PlayerGameplayIntent changedIntent = PlayerGameplayIntent.Create(desiredFacing, currentFacing);
+        PlayerMotionFrame changedFrame = runtime.Advance(0.25f, changedIntent);
+        PlayerMotorCommand changedCommand = PlayerMotionComposer.Compose(changedIntent, changedFrame, result, config, 0.25f, currentFacing);
+        Assert.That(changedCommand.YawDelta, Is.EqualTo(-55f).Within(0.0001f));
+        Object.DestroyImmediate(config);
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void ProfileYaw_CompletesFinalFacingCorrectionOnLastFrame()
+    {
+        PlayerMotionDefinition definition = CreateTurnDefinition(out PlayerMotionProfile profile);
+        PlayerMovementConfig config = ScriptableObject.CreateInstance<PlayerMovementConfig>();
+        PlayerMotorResult result = new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.zero, 0f, true, false, 0f, CollisionFlags.None);
+        PlayerMotionRuntime runtime = new PlayerMotionRuntime();
+        runtime.Begin(definition, Vector3.forward, Vector3.back);
+        Vector3 desiredFacing = Quaternion.AngleAxis(-150f, Vector3.up) * Vector3.forward;
+        PlayerGameplayIntent intent = PlayerGameplayIntent.Create(desiredFacing, Vector3.forward);
+        PlayerMotionFrame frame = runtime.Advance(1f, intent);
+        PlayerMotorCommand command = PlayerMotionComposer.Compose(intent, frame, result, config, 1f, Vector3.forward);
+        Assert.That(frame.CurrentProgress, Is.EqualTo(1f));
+        Assert.That(command.YawDelta, Is.EqualTo(-150f).Within(0.0001f));
+        Object.DestroyImmediate(config);
         Object.DestroyImmediate(definition);
         Object.DestroyImmediate(profile);
     }
@@ -199,7 +267,7 @@ public sealed class PlayerMotionRuntimeTests
         profile = ScriptableObject.CreateInstance<PlayerMotionProfile>();
         profile.SetBakedData(1f, 2, new[] { Vector2.zero, new Vector2(0f, 1f), new Vector2(0f, 2f) }, new[] { 0f, 1f, 2f }, new[] { 0f, 0f, 0f }, string.Empty, 0, string.Empty, string.Empty);
         PlayerMotionDefinition definition = ScriptableObject.CreateInstance<PlayerMotionDefinition>();
-        definition.Configure(profile, PlayerMotionTranslationPolicy.TravelAlongDirection, PlayerMotionRotationPolicy.FaceDirection, PlayerMotionBasisPolicy.DesiredDirection, PlayerMotionControlPolicy.None, 0f, 1f, handoffStart, handoffEnd);
+        definition.Configure(profile, PlayerMotionTranslationPolicy.TravelAlongCapturedDirection, PlayerMotionRotationPolicy.FaceDirection, PlayerMotionBasisPolicy.DesiredDirection, 0f, 1f, handoffStart, handoffEnd);
         return definition;
     }
 
@@ -208,7 +276,7 @@ public sealed class PlayerMotionRuntimeTests
         profile = ScriptableObject.CreateInstance<PlayerMotionProfile>();
         profile.SetBakedData(1f, 2, new[] { Vector2.zero, new Vector2(0.5f, 0f), new Vector2(1f, 0f) }, new[] { 0f, 0.5f, 1f }, new[] { 0f, -90f, -180f }, string.Empty, 0, string.Empty, string.Empty);
         PlayerMotionDefinition definition = ScriptableObject.CreateInstance<PlayerMotionDefinition>();
-        definition.Configure(profile, PlayerMotionTranslationPolicy.LocalTrajectory, PlayerMotionRotationPolicy.ProfileYaw, PlayerMotionBasisPolicy.EntryFacing, PlayerMotionControlPolicy.Turn180, 0f, 1f, 0.8f, 1f);
+        definition.Configure(profile, PlayerMotionTranslationPolicy.TravelAlongDesiredDirection, PlayerMotionRotationPolicy.ProfileYaw, PlayerMotionBasisPolicy.EntryFacing, 0f, 1f, 0.8f, 1f);
         return definition;
     }
 }

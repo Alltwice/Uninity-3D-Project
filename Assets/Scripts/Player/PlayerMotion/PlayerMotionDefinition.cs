@@ -5,13 +5,15 @@ using UnityEngine;
 /// </summary>
 public enum PlayerMotionTranslationPolicy
 {
-    None,
+    None = 0,
     //速度
-    VelocityDriven,
-    //去除X/Z轨迹，只保留动画移动距离
-    TravelAlongDirection,
+    VelocityDriven = 1,
+    //使用 Motion Begin 时捕获的方向和动画移动距离
+    TravelAlongCapturedDirection = 2,
     //保留运动轨迹
-    LocalTrajectory
+    LocalTrajectory = 3,
+    //使用当前 GameplayIntent 方向和动画移动距离
+    TravelAlongDesiredDirection = 4
 }
 /// <summary>
 /// 处理旋转方式
@@ -39,15 +41,6 @@ public enum PlayerMotionBasisPolicy
     EntryFacing
 }
 /// <summary>
-/// 特殊动作处理
-/// </summary>
-public enum PlayerMotionControlPolicy
-{
-    None,
-    Turn180,
-    Dodge
-}
-/// <summary>
 /// 动画数据定义
 /// </summary>
 [CreateAssetMenu(fileName = "PlayerMotionDefinition", menuName = "Player/Motion/Definition")]
@@ -58,7 +51,6 @@ public class PlayerMotionDefinition : ScriptableObject
     [SerializeField] private PlayerMotionTranslationPolicy translationPolicy;
     [SerializeField] private PlayerMotionRotationPolicy rotationPolicy;
     [SerializeField] private PlayerMotionBasisPolicy basisPolicy;
-    [SerializeField] private PlayerMotionControlPolicy controlPolicy;
     //希望动画完成时间
     [Min(0f)] [SerializeField] private float durationOverride;
     //移动倍率
@@ -75,7 +67,6 @@ public class PlayerMotionDefinition : ScriptableObject
     public PlayerMotionTranslationPolicy TranslationPolicy => translationPolicy;
     public PlayerMotionRotationPolicy RotationPolicy => rotationPolicy;
     public PlayerMotionBasisPolicy BasisPolicy => basisPolicy;
-    public PlayerMotionControlPolicy ControlPolicy => controlPolicy;
     //可控制动画播放时间，若没设设定使用默认的动画时长
     public float Duration => durationOverride > 0f ? durationOverride : profile == null ? 0f : profile.Duration;
     public float TranslationScale => translationScale;
@@ -107,7 +98,7 @@ public class PlayerMotionDefinition : ScriptableObject
         if (handoffEndProgress < handoffStartProgress) { errors?.Add(name + ": HandoffEndProgress 不能早于 Start。"); valid = false; }
         if (rotationPolicy == PlayerMotionRotationPolicy.ProfileYaw && !profile.HasYaw) { errors?.Add(name + ": ProfileYaw 需要有效 Yaw channel。"); valid = false; }
         if (translationPolicy == PlayerMotionTranslationPolicy.LocalTrajectory && !profile.HasPlanarPosition) { errors?.Add(name + ": LocalTrajectory 需要有效 XZ channel。"); valid = false; }
-        if (translationPolicy == PlayerMotionTranslationPolicy.TravelAlongDirection && !profile.HasTravelDistance) { errors?.Add(name + ": TravelAlongDirection 需要有效 Travel channel。"); valid = false; }
+        if ((translationPolicy == PlayerMotionTranslationPolicy.TravelAlongCapturedDirection || translationPolicy == PlayerMotionTranslationPolicy.TravelAlongDesiredDirection) && !profile.HasTravelDistance) { errors?.Add(name + ": TravelAlong 需要有效 Travel channel。"); valid = false; }
         return valid;
     }
 
@@ -115,13 +106,12 @@ public class PlayerMotionDefinition : ScriptableObject
     /// <summary>
     /// Unity环境中的初始化行为
     /// </summary>
-    public void Configure(PlayerMotionProfile motionProfile, PlayerMotionTranslationPolicy translation, PlayerMotionRotationPolicy rotation, PlayerMotionBasisPolicy basis, PlayerMotionControlPolicy control, float runtimeDuration, float scale, float handoffStart, float handoffEnd, bool presentation = true)
+    public void Configure(PlayerMotionProfile motionProfile, PlayerMotionTranslationPolicy translation, PlayerMotionRotationPolicy rotation, PlayerMotionBasisPolicy basis, float runtimeDuration, float scale, float handoffStart, float handoffEnd, bool presentation = true)
     {
         profile = motionProfile;
         translationPolicy = translation;
         rotationPolicy = rotation;
         basisPolicy = basis;
-        controlPolicy = control;
         durationOverride = runtimeDuration;
         translationScale = scale;
         handoffStartProgress = handoffStart;

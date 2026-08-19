@@ -5,7 +5,7 @@ using UnityEngine;
 /// </summary>
 public struct PlayerMotionFrame
 {
-    public PlayerMotionFrame(PlayerMotionDefinition definition, Vector3 authoredPlanarDisplacement, float authoredYawDelta, float translationAuthority, float rotationAuthority)
+    public PlayerMotionFrame(PlayerMotionDefinition definition, Vector3 authoredPlanarDisplacement, float authoredYawDelta, float remainingAuthoredYaw, float previousProgress, float currentProgress, float translationAuthority, float rotationAuthority)
     {
         //定义由谁产生
         Definition = definition;
@@ -13,15 +13,21 @@ public struct PlayerMotionFrame
         AuthoredPlanarDisplacement = authoredPlanarDisplacement;
         //一帧产生旋转
         AuthoredYawDelta = authoredYawDelta;
+        RemainingAuthoredYaw = remainingAuthoredYaw;
+        PreviousProgress = previousProgress;
+        CurrentProgress = currentProgress;
         //动画移动轨迹和代码的控制权占比
         TranslationAuthority = translationAuthority;
-        //同上，控制旋转，1时完全由动画控制
+        //记录旋转授权状态
         RotationAuthority = rotationAuthority;
     }
 
     public PlayerMotionDefinition Definition { get; }
     public Vector3 AuthoredPlanarDisplacement { get; }
     public float AuthoredYawDelta { get; }
+    public float RemainingAuthoredYaw { get; }
+    public float PreviousProgress { get; }
+    public float CurrentProgress { get; }
     public float TranslationAuthority { get; }
     public float RotationAuthority { get; }
     //查找有无有效输入
@@ -65,7 +71,6 @@ public class PlayerMotionRuntime
     private Quaternion basis = Quaternion.identity;
     //玩家移动数据
     private Vector3 travelDirection;
-    private Vector3 requestDirection;
     private ulong sequence;
     private ulong instanceId;
     private float elapsedTime;
@@ -74,7 +79,6 @@ public class PlayerMotionRuntime
     private bool isActive;
     private bool justCompleted;
     private bool justCancelled;
-    private bool rotationReleased;
     private PlayerMotionFrame currentFrame;
 
     public PlayerMotionFrame CurrentFrame => currentFrame;
@@ -92,7 +96,7 @@ public class PlayerMotionRuntime
     /// <summary>
     /// 动画启动时的基础设定
     /// </summary>
-    public ulong Begin(PlayerMotionDefinition nextDefinition, Vector3 basisDirection, Vector3 initialTravelDirection, Vector3 initialRequestDirection, float startProgress = 0f)
+    public ulong Begin(PlayerMotionDefinition nextDefinition, Vector3 basisDirection, Vector3 initialTravelDirection, float startProgress = 0f)
     {
         bool replaced = isActive;
         //切换动画数据
@@ -106,11 +110,8 @@ public class PlayerMotionRuntime
         basisDirection = NormalizePlanar(basisDirection, Vector3.forward);
         //实际运动方向
         travelDirection = NormalizePlanar(initialTravelDirection, basisDirection);
-        //当前请求方向
-        requestDirection = NormalizePlanar(initialRequestDirection, travelDirection);
         //创建面向玩家前方的旋转
         basis = Quaternion.LookRotation(basisDirection, Vector3.up);
-        rotationReleased = false;
         justCompleted = false;
         justCancelled = replaced;
         isActive = definition != null && definition.Profile != null && definition.Duration > 0f;
@@ -130,26 +131,10 @@ public class PlayerMotionRuntime
     /// <summary>
     /// 按固定间隔时间推进动画演进
     /// </summary>
-    public PlayerMotionFrame Advance(float deltaTime, PlayerGameplayIntent intent, Vector3 currentFacing, float turnIntentTolerance, float turnRotationUnlockAngle)
+    public PlayerMotionFrame Advance(float deltaTime, PlayerGameplayIntent intent)
     {
         if (!isActive || definition == null) return default;
-        //旋转
-        if (definition.ControlPolicy == PlayerMotionControlPolicy.Turn180)
-        {
-            //刷新意图方向
-            Vector3 desired = NormalizePlanar(intent.DesiredMoveDirection, Vector3.zero);
-            if (desired.sqrMagnitude < 0.0001f || Vector3.Angle(requestDirection, desired) > turnIntentTolerance)
-            {
-                Cancel();
-                return default;
-            }
-            if (!rotationReleased && Vector3.Angle(NormalizePlanar(currentFacing, requestDirection), desired) <= turnRotationUnlockAngle) rotationReleased = true;
-        }
-        //闪避
-        else if (definition.ControlPolicy == PlayerMotionControlPolicy.Dodge && intent.DesiredMoveDirection.sqrMagnitude > 0.0001f)
-        {
-            travelDirection = NormalizePlanar(intent.DesiredMoveDirection, travelDirection);
-        }
+        if (definition.TranslationPolicy == PlayerMotionTranslationPolicy.TravelAlongDesiredDirection && intent.DesiredMoveDirection.sqrMagnitude > 0.0001f) travelDirection = NormalizePlanar(intent.DesiredMoveDirection, travelDirection);
         previousProgress = currentProgress;
         //推进deltatime的时间
         elapsedTime = Mathf.Min(definition.Duration, elapsedTime + Mathf.Max(0f, deltaTime));
@@ -158,13 +143,15 @@ public class PlayerMotionRuntime
         PlayerMotionProfile profile = definition.Profile;
         //拿到需要烘焙移动的位移数据
         Vector3 authoredTranslation = EvaluateTranslation(profile, definition, previousProgress, currentProgress);
-        //拿到需要的烘焙旋转位移数据
+        //一帧要转多少度
         float authoredYaw = definition.RotationPolicy == PlayerMotionRotationPolicy.ProfileYaw ? profile.EvaluateYaw(currentProgress) - profile.EvaluateYaw(previousProgress) : 0f;
+        //检查从当前开始距离旋转结束还差多少度
+        float remainingAuthoredYaw = definition.RotationPolicy == PlayerMotionRotationPolicy.ProfileYaw ? profile.EvaluateYaw(1f) - profile.EvaluateYaw(currentProgress) : 0f;
         //拿到动画控制权重
         float translationWeight = definition.EvaluateTranslationAuthority(currentProgress);
-        float rotationWeight = rotationReleased ? 0f : definition.EvaluateRotationAuthority(currentProgress);
+        float rotationWeight = definition.EvaluateRotationAuthority(currentProgress);
         //产生这一针等待消费的移动数据
-        currentFrame = new PlayerMotionFrame(definition, authoredTranslation, authoredYaw, translationWeight, rotationWeight);
+        currentFrame = new PlayerMotionFrame(definition, authoredTranslation, authoredYaw, remainingAuthoredYaw, previousProgress, currentProgress, translationWeight, rotationWeight);
         if (currentProgress >= 1f)
         {
             isActive = false;
@@ -179,7 +166,8 @@ public class PlayerMotionRuntime
     {
         switch (motionDefinition.TranslationPolicy)
         {
-            case PlayerMotionTranslationPolicy.TravelAlongDirection:
+            case PlayerMotionTranslationPolicy.TravelAlongCapturedDirection:
+            case PlayerMotionTranslationPolicy.TravelAlongDesiredDirection:
                 //方向*（移动过程比例*整体缩放）可理解为速度
                 return travelDirection * ((profile.EvaluateTravelDistance(toProgress) - profile.EvaluateTravelDistance(fromProgress)) * motionDefinition.TranslationScale);
             case PlayerMotionTranslationPolicy.LocalTrajectory:

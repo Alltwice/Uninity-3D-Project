@@ -57,7 +57,7 @@ public class PlayerMotionPlanner : MonoBehaviour
 
     public PlayerMotionFrame Advance(float deltaTime, PlayerGameplayIntent intent)
     {
-        return runtime.Advance(deltaTime, intent, transform.forward, catalog.TurnIntentTolerance, catalog.TurnRotationUnlockAngle);
+        return runtime.Advance(deltaTime, intent);
     }
     /// <summary>
     /// 处理边界动画选用
@@ -94,7 +94,7 @@ public class PlayerMotionPlanner : MonoBehaviour
         Vector3 desired = intent.DesiredMoveDirection.sqrMagnitude > 0.0001f ? intent.DesiredMoveDirection : transform.forward;
         Vector3 entryVelocity = motorResult.HorizontalVelocity.sqrMagnitude > 0.0001f ? motorResult.HorizontalVelocity : transform.forward;
         Vector3 basis = definition.BasisPolicy == PlayerMotionBasisPolicy.DesiredDirection ? desired : definition.BasisPolicy == PlayerMotionBasisPolicy.EntryVelocityDirection ? entryVelocity : transform.forward;
-        runtime.Begin(definition, basis, desired, desired);
+        runtime.Begin(definition, basis, desired);
     }
     /// <summary>
     /// 角度计算

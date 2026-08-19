@@ -46,5 +46,3 @@ MonoBehaviour:
   - id: 15
     definition: {fileID: 11400000, guid: e05c0ed7f402437499a78d5207b93b8e, type: 2}
   turn180Threshold: 150
-  turnIntentTolerance: 30
-  turnRotationUnlockAngle: 120

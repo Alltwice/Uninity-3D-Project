@@ -13,10 +13,9 @@ MonoBehaviour:
   m_Name: RunTurn180RightDefinition
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMotionDefinition
   profile: {fileID: 11400000, guid: 46b5eb3264c15dc4699bc00048de3413, type: 2}
-  translationPolicy: 3
+  translationPolicy: 4
   rotationPolicy: 2
   basisPolicy: 2
-  controlPolicy: 1
   durationOverride: 0
   translationScale: 1
   handoffStartProgress: 0.82

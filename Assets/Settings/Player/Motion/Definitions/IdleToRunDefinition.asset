@@ -13,10 +13,9 @@ MonoBehaviour:
   m_Name: IdleToRunDefinition
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMotionDefinition
   profile: {fileID: 11400000, guid: ec90e6c62bef2174aa5fb32cb43e5df6, type: 2}
-  translationPolicy: 2
+  translationPolicy: 4
   rotationPolicy: 1
   basisPolicy: 0
-  controlPolicy: 0
   durationOverride: 0
   translationScale: 1
   handoffStartProgress: 0.91176474
