@@ -136,7 +136,7 @@ public class PlayerMotionRuntime
         float remainingAuthoredYaw = definition.RotationPolicy == PlayerMotionRotationPolicy.ProfileYaw ? profile.EvaluateYaw(1f) - profile.EvaluateYaw(currentProgress) : 0f;
         //拿到动画控制权重
         float translationWeight = definition.EvaluateTranslationAuthority(currentProgress);
-        //产生这一针等待消费的移动数据
+        //产生这一帧等待消费的移动数据
         PlayerMotionFrame frame = new PlayerMotionFrame(definition, authoredTranslation, authoredYaw, remainingAuthoredYaw, previousProgress, currentProgress, translationWeight);
         if (currentProgress >= 1f)
         {

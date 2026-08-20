@@ -122,7 +122,8 @@ public class PlayerMotionDefinition : ScriptableObject
     /// </summary>
     private float EvaluateAuthority(AnimationCurve curve, float motionProgress)
     {
-        if (handoffEndProgress < handoffStartProgress) return 1f;
+        //零长度移交没有混合区间，由动画位移负责到完成帧结束
+        if (handoffEndProgress <= handoffStartProgress) return 1f;
         //未开始时完全动画掌控
         if (motionProgress < handoffStartProgress) return 1f;
         //完全结束后交给程序掌控

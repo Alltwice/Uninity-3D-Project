@@ -134,6 +134,14 @@ public sealed class PlayerMotionRuntimeTests
     }
 
     [Test]
+    public void PlayerPrefab_AllowsSubMillimeterAccelerationSteps()
+    {
+        GameObject prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab");
+        CharacterController controller = prefab.GetComponent<CharacterController>();
+        Assert.That(controller.minMoveDistance, Is.Zero, "PlayerMotor 会用实际位移回写水平速度；非零 MinMoveDistance 会在高帧率下反复丢弃从零加速的首批位移。");
+    }
+
+    [Test]
     public void TravelAlongDesiredDirection_ZeroInputKeepsCapturedDirection()
     {
         PlayerMotionDefinition definition = CreateTurnDefinition(out PlayerMotionProfile profile);
