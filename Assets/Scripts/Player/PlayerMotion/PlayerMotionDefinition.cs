@@ -20,13 +20,12 @@ public enum PlayerMotionTranslationPolicy
 /// </summary>
 public enum PlayerMotionRotationPolicy
 {
-    None,
-    //朝输入意图
-    FaceDirection,
-    //使用动画旋转曲线
-    ProfileYaw,
     //动画期间不旋转
-    KeepFacing
+    KeepFacing = 0,
+    //朝输入意图
+    FaceDirection = 1,
+    //使用动画旋转曲线
+    ProfileYaw = 2
 }
 /// <summary>
 /// 动画轨迹移动方向对应位置
@@ -59,7 +58,6 @@ public class PlayerMotionDefinition : ScriptableObject
     [Range(0f, 1f)] [SerializeField] private float handoffStartProgress = 0.8f;
     [Range(0f, 1f)] [SerializeField] private float handoffEndProgress = 1f;
     [SerializeField] private AnimationCurve translationAuthority = AnimationCurve.Linear(0f, 1f, 1f, 0f);
-    [SerializeField] private AnimationCurve rotationAuthority = AnimationCurve.Linear(0f, 1f, 1f, 0f);
     //是否需要对应的动画表现
     [SerializeField] private bool requiresPresentation = true;
 
@@ -74,7 +72,7 @@ public class PlayerMotionDefinition : ScriptableObject
     public float HandoffEndProgress => handoffEndProgress;
     public bool RequiresPresentation => requiresPresentation;
     /// <summary>
-    /// 将Handoff的过程从0，8-1.0重映射为0-1；
+    /// 将Handoff的过程从0.8-1.0重映射为0-1；
     /// </summary>
     public float CalculateHandoffProgress(float motionProgress)
     {
@@ -84,7 +82,6 @@ public class PlayerMotionDefinition : ScriptableObject
     }
 
     public float EvaluateTranslationAuthority(float motionProgress) => EvaluateAuthority(translationAuthority, motionProgress);
-    public float EvaluateRotationAuthority(float motionProgress) => EvaluateAuthority(rotationAuthority, motionProgress);
     /// <summary>
     /// 数据校验
     /// </summary>
@@ -118,7 +115,6 @@ public class PlayerMotionDefinition : ScriptableObject
         handoffEndProgress = handoffEnd;
         requiresPresentation = presentation;
         translationAuthority = AnimationCurve.Linear(0f, 1f, 1f, 0f);
-        rotationAuthority = AnimationCurve.Linear(0f, 1f, 1f, 0f);
     }
 #endif
     /// <summary>

@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f9a9a1265080c3c418d3ee199fdc73ac, type: 3}
   m_Name: DefaultPlayerCameraConfig
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCameraConfig
-  mouseSensitivity: 0.12
+  mouseSensitivity: 0.2
   minPitch: -50
   maxPitch: 60
-  normalDistance: 4
-  topViewDistance: 6.5
+  normalDistance: 6
+  topViewDistance: 8.5
   distanceSmoothSpeed: 8
   beginTopViewPitch: 10

@@ -14,37 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMotionDefinition
   profile: {fileID: 11400000, guid: 7e110b0ca99770445b6722ba1e9991ff, type: 2}
   translationPolicy: 3
-  rotationPolicy: 3
+  rotationPolicy: 0
   basisPolicy: 1
   durationOverride: 0
   translationScale: 1
-  handoffStartProgress: 0.9
+  handoffStartProgress: 1
   handoffEndProgress: 1
   translationAuthority:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: -1
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 0
-      inSlope: -1
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  rotationAuthority:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3

@@ -11,7 +11,6 @@ public class PlayerMotionPlanner : MonoBehaviour
     private readonly PlayerMotionRuntime runtime = new PlayerMotionRuntime();
 
     public PlayerMotionCatalog Catalog => catalog;
-    public PlayerMotionFrame CurrentFrame => runtime.CurrentFrame;
     public PlayerMotionSnapshot Snapshot => runtime.Snapshot;
 
     public void BeginFrame() => runtime.BeginFrame();

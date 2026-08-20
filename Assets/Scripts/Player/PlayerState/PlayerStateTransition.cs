@@ -21,18 +21,14 @@ public enum PlayerStateTransitionReason
 /// </summary>
 public struct PlayerStateTransition
 {
-    public PlayerStateTransition(Type previousStateType, Type currentStateType, PlayerStateTransitionReason reason, PlayerLocomotionMode previousLocomotionMode, PlayerLocomotionMode currentLocomotionMode)
+    public PlayerStateTransition(Type previousStateType, Type currentStateType, PlayerStateTransitionReason reason)
     {
         PreviousStateType = previousStateType;
         CurrentStateType = currentStateType;
         Reason = reason;
-        PreviousLocomotionMode = previousLocomotionMode;
-        CurrentLocomotionMode = currentLocomotionMode;
     }
 
     public Type PreviousStateType { get; }
     public Type CurrentStateType { get; }
     public PlayerStateTransitionReason Reason { get; }
-    public PlayerLocomotionMode PreviousLocomotionMode { get; }
-    public PlayerLocomotionMode CurrentLocomotionMode { get; }
 }

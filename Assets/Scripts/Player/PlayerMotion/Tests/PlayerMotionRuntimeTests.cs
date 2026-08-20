@@ -21,13 +21,6 @@ public sealed class PlayerMotionRuntimeTests
     }
 
     [Test]
-    public void YawUnwrap_CrossingSignedBoundaryRemainsContinuous()
-    {
-        float unwrapped = PlayerMotionMath.UnwrapYaw(179f, -179f, 179f);
-        Assert.That(unwrapped, Is.EqualTo(181f).Within(0.0001f));
-    }
-
-    [Test]
     public void Replacement_NewInstanceOwnsCompletion()
     {
         PlayerMotionDefinition first = CreateDefinition(out PlayerMotionProfile firstProfile);
@@ -71,8 +64,8 @@ public sealed class PlayerMotionRuntimeTests
         PlayerGameplayIntent intent = PlayerGameplayIntent.Create(Vector3.forward, Vector3.forward);
         intent.LocomotionMode = PlayerLocomotionMode.Run;
         PlayerMotorResult result = new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.forward * 2f, 0f, true, false, 0f, CollisionFlags.None);
-        PlayerMotorCommand authored = PlayerMotionComposer.Compose(intent, new PlayerMotionFrame(definition, Vector3.forward, 0f, 0f, 0f, 0f, 1f, 0f), result, config, 0.1f, Vector3.forward);
-        PlayerMotorCommand locomotion = PlayerMotionComposer.Compose(intent, new PlayerMotionFrame(definition, Vector3.forward, 0f, 0f, 0f, 0f, 0f, 0f), result, config, 0.1f, Vector3.forward);
+        PlayerMotorCommand authored = PlayerMotionComposer.Compose(intent, new PlayerMotionFrame(definition, Vector3.forward, 0f, 0f, 0f, 0f, 1f), result, config, 0.1f, Vector3.forward);
+        PlayerMotorCommand locomotion = PlayerMotionComposer.Compose(intent, new PlayerMotionFrame(definition, Vector3.forward, 0f, 0f, 0f, 0f, 0f), result, config, 0.1f, Vector3.forward);
         Assert.That(authored.TranslationMode, Is.EqualTo(PlayerMotorTranslationMode.DisplacementDriven));
         Assert.That(authored.PlanarDisplacement.z, Is.EqualTo(1f).Within(0.0001f));
         Assert.That(locomotion.TranslationMode, Is.EqualTo(PlayerMotorTranslationMode.VelocityDriven));
@@ -91,7 +84,7 @@ public sealed class PlayerMotionRuntimeTests
         PlayerGameplayIntent intent = PlayerGameplayIntent.Create(Vector3.forward, Vector3.forward);
         intent.LocomotionMode = PlayerLocomotionMode.Run;
         PlayerMotorResult result = new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.forward * 4f, 0f, true, false, 0f, CollisionFlags.None);
-        PlayerMotorCommand command = PlayerMotionComposer.Compose(intent, new PlayerMotionFrame(definition, Vector3.forward, 0f, 0f, 0f, 0f, 0.5f, 0f), result, config, 0.25f, Vector3.forward);
+        PlayerMotorCommand command = PlayerMotionComposer.Compose(intent, new PlayerMotionFrame(definition, Vector3.forward, 0f, 0f, 0f, 0f, 0.5f), result, config, 0.25f, Vector3.forward);
         Assert.That(command.PlanarDisplacement.z, Is.EqualTo(1f).Within(0.0001f));
         Object.DestroyImmediate(config);
         Object.DestroyImmediate(definition);
@@ -103,7 +96,6 @@ public sealed class PlayerMotionRuntimeTests
     {
         PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile, 1f, 1f);
         Assert.That(definition.EvaluateTranslationAuthority(1f), Is.EqualTo(1f));
-        Assert.That(definition.EvaluateRotationAuthority(1f), Is.EqualTo(1f));
         Object.DestroyImmediate(definition);
         Object.DestroyImmediate(profile);
     }
@@ -132,13 +124,6 @@ public sealed class PlayerMotionRuntimeTests
         Object.DestroyImmediate(config);
         Object.DestroyImmediate(definition);
         Object.DestroyImmediate(profile);
-    }
-
-    [Test]
-    public void PresentationPhase_IsTheMotionProgress()
-    {
-        PlayerMotionSnapshot snapshot = new PlayerMotionSnapshot(null, 4, 0.43f, 0f, false, true, false, false, 1f, 1f);
-        Assert.That(PlayerMotionPresentationPhase.ResolveBoundaryProgress(snapshot), Is.EqualTo(0.43f));
     }
 
     [Test]

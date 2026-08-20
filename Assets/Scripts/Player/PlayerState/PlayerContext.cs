@@ -12,7 +12,6 @@ public sealed class PlayerContext
     public PlayerMovementConfig MovementConfig { get; }
     public PlayerMotorResult MotorResult { get; private set; }
     public PlayerMotionSnapshot MotionSnapshot { get; private set; }
-    public Vector3 DesiredMoveDirection { get; private set; }
     public bool IsGrounded => MotorResult.IsGrounded;
     public bool IsHardLandingImpact => MotorResult.JustLanded && MotorResult.LandingImpactSpeed >= MovementConfig.Landing.HardLandingMinImpactSpeed;
 
@@ -28,11 +27,10 @@ public sealed class PlayerContext
         MovementConfig = movementConfig;
     }
 
-    public void SetSimulationFacts(PlayerMotorResult motorResult, PlayerMotionSnapshot motionSnapshot, Vector3 desiredMoveDirection)
+    public void SetSimulationFacts(PlayerMotorResult motorResult, PlayerMotionSnapshot motionSnapshot)
     {
         MotorResult = motorResult;
         MotionSnapshot = motionSnapshot;
-        DesiredMoveDirection = desiredMoveDirection;
     }
 
     public void RequestJumpImpulse()

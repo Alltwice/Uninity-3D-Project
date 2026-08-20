@@ -48,7 +48,7 @@ public class PlayerSimulationDriver : MonoBehaviour
         motionPlanner.BeginFrame();
         dodge.TickCooldown(deltaTime);
         Vector3 desiredMoveDirection = ResolveWorldMoveDirection(inputSource.MoveInput);
-        stateController.SetSimulationFacts(motor.CurrentResult, motionPlanner.Snapshot, desiredMoveDirection);
+        stateController.SetSimulationFacts(motor.CurrentResult, motionPlanner.Snapshot);
         PlayerStateTransition? transition = stateController.ProcessPreTickTransition();
         //建立输入意图
         PlayerGameplayIntent intent = PlayerGameplayIntent.Create(desiredMoveDirection, transform.forward);
@@ -66,7 +66,7 @@ public class PlayerSimulationDriver : MonoBehaviour
         //执行动画移动
         PlayerMotorResult motorResult = motor.Simulate(command, deltaTime);
         //设置移动事实
-        stateController.SetSimulationFacts(motorResult, motionPlanner.Snapshot, desiredMoveDirection);
+        stateController.SetSimulationFacts(motorResult, motionPlanner.Snapshot);
         //在动画执行完毕后开始帧后状态切换
         PlayerStateTransition? resultTransition = stateController.ProcessPostTickTransition();
         //如果存在帧后切换的数据就执行一遍相同逻辑

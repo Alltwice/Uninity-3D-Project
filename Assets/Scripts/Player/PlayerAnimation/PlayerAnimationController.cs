@@ -82,7 +82,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
         boundaryState.Speed = 0f;
         boundaryState.IsPlaying = false;
         //依据motion状态判断动画现在播放到哪
-        float boundaryProgress = PlayerMotionPresentationPhase.ResolveBoundaryProgress(motion);
+        float boundaryProgress = motion.Progress;
         boundaryState.NormalizedTime = boundaryProgress;
         DebugBoundaryPhase = boundaryProgress;
     }
@@ -92,7 +92,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
         if (boundaryState == null || activeBinding == null) return;
         boundaryState.Speed = 0f;
         boundaryState.IsPlaying = false;
-        float boundaryProgress = PlayerMotionPresentationPhase.ResolveBoundaryProgress(motion);
+        float boundaryProgress = motion.Progress;
         boundaryState.NormalizedTime = boundaryProgress;
         DebugBoundaryPhase = boundaryProgress;
         if (motion.HandoffActive || motion.JustCompleted)

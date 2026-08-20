@@ -19,7 +19,7 @@ public static class PlayerMotionComposer
             displacement = motionFrame.AuthoredPlanarDisplacement * authority + predictedVelocity * deltaTime * (1f - authority);
             translationMode = PlayerMotorTranslationMode.DisplacementDriven;
         }
-        ResolveRotation(intent, motionFrame, config.Locomotion, deltaTime, currentFacing, out PlayerMotorRotationMode rotationMode, out Vector3 facingDirection, out float yawDelta);
+        ResolveRotation(intent, motionFrame, currentFacing, out PlayerMotorRotationMode rotationMode, out Vector3 facingDirection, out float yawDelta);
         float acceleration = ResolveAcceleration(previousMotorResult.HorizontalVelocity, targetVelocity, intent.LocomotionMode, config.Locomotion);
         return new PlayerMotorCommand(translationMode, targetVelocity, acceleration, displacement, rotationMode, facingDirection, yawDelta, intent.HasVerticalImpulse, intent.VerticalImpulse);
     }
@@ -65,7 +65,7 @@ public static class PlayerMotionComposer
     /// <summary>
     /// 处理旋转
     /// </summary>
-    private static void ResolveRotation(PlayerGameplayIntent intent, PlayerMotionFrame frame, PlayerMovementConfig.LocomotionSettings settings, float deltaTime, Vector3 currentFacing, out PlayerMotorRotationMode mode, out Vector3 facingDirection, out float yawDelta)
+    private static void ResolveRotation(PlayerGameplayIntent intent, PlayerMotionFrame frame, Vector3 currentFacing, out PlayerMotorRotationMode mode, out Vector3 facingDirection, out float yawDelta)
     {
         facingDirection = intent.DesiredFacingDirection;
         yawDelta = 0f;
@@ -100,21 +100,7 @@ public static class PlayerMotionComposer
             mode = PlayerMotorRotationMode.YawDelta;
             return;
         }
-        //非 ProfileYaw 时，KeepFacing/None 不旋转；其余策略在存在目标朝向时交给 Motor 平滑朝向该目标
-        mode = policy == PlayerMotionRotationPolicy.KeepFacing || policy == PlayerMotionRotationPolicy.None ? PlayerMotorRotationMode.None : facingDirection.sqrMagnitude > 0.0001f ? PlayerMotorRotationMode.FaceDirection : PlayerMotorRotationMode.None;
-    }
-    /// <summary>
-    /// 处理平滑旋转
-    /// </summary>
-    private static float CalculateFacingYawDelta(Vector3 currentFacing, Vector3 desiredFacing, float smoothSpeed, float deltaTime)
-    {
-        currentFacing.y = 0f;
-        desiredFacing.y = 0f;
-        if (currentFacing.sqrMagnitude < 0.0001f || desiredFacing.sqrMagnitude < 0.0001f) return 0f;
-        float angle = Vector3.SignedAngle(currentFacing, desiredFacing, Vector3.up);
-        //代码比较复杂，主要用于平滑旋转
-        //第三个参数的Exp用于计算e的x次方，注意符号，e的负指次方为一条无线趋近于0的曲线，而1-这个数值则是相反
-        //这恰好可以作为平滑旋转的参数，先慢后快
-        return Mathf.Lerp(0f, angle, 1f - Mathf.Exp(-smoothSpeed * Mathf.Max(0f, deltaTime)));
+        //非 ProfileYaw 时，KeepFacing 不旋转；其余策略在存在目标朝向时交给 Motor 平滑朝向该目标
+        mode = policy == PlayerMotionRotationPolicy.KeepFacing ? PlayerMotorRotationMode.None : facingDirection.sqrMagnitude > 0.0001f ? PlayerMotorRotationMode.FaceDirection : PlayerMotorRotationMode.None;
     }
 }

@@ -5,7 +5,7 @@ using UnityEngine;
 /// </summary>
 public struct PlayerMotionFrame
 {
-    public PlayerMotionFrame(PlayerMotionDefinition definition, Vector3 authoredPlanarDisplacement, float authoredYawDelta, float remainingAuthoredYaw, float previousProgress, float currentProgress, float translationAuthority, float rotationAuthority)
+    public PlayerMotionFrame(PlayerMotionDefinition definition, Vector3 authoredPlanarDisplacement, float authoredYawDelta, float remainingAuthoredYaw, float previousProgress, float currentProgress, float translationAuthority)
     {
         //定义由谁产生
         Definition = definition;
@@ -18,8 +18,6 @@ public struct PlayerMotionFrame
         CurrentProgress = currentProgress;
         //动画移动轨迹和代码的控制权占比
         TranslationAuthority = translationAuthority;
-        //记录旋转授权状态
-        RotationAuthority = rotationAuthority;
     }
 
     public PlayerMotionDefinition Definition { get; }
@@ -29,7 +27,6 @@ public struct PlayerMotionFrame
     public float PreviousProgress { get; }
     public float CurrentProgress { get; }
     public float TranslationAuthority { get; }
-    public float RotationAuthority { get; }
     //查找有无有效输入
     public bool IsValid => Definition != null;
 }
@@ -38,7 +35,7 @@ public struct PlayerMotionFrame
 /// </summary>
 public struct PlayerMotionSnapshot
 {
-    public PlayerMotionSnapshot(PlayerMotionDefinition activeDefinition, ulong instanceId, float progress, float handoffProgress, bool handoffActive, bool isActive, bool justCompleted, bool justCancelled, float translationAuthority, float rotationAuthority)
+    public PlayerMotionSnapshot(PlayerMotionDefinition activeDefinition, ulong instanceId, float progress, float handoffProgress, bool handoffActive, bool isActive, bool justCompleted, bool justCancelled)
     {
         ActiveDefinition = activeDefinition;
         InstanceId = instanceId;
@@ -48,8 +45,6 @@ public struct PlayerMotionSnapshot
         IsActive = isActive;
         JustCompleted = justCompleted;
         JustCancelled = justCancelled;
-        TranslationAuthority = translationAuthority;
-        RotationAuthority = rotationAuthority;
     }
 
     public PlayerMotionDefinition ActiveDefinition { get; }
@@ -60,10 +55,7 @@ public struct PlayerMotionSnapshot
     public bool IsActive { get; }
     public bool JustCompleted { get; }
     public bool JustCancelled { get; }
-    public float TranslationAuthority { get; }
-    public float RotationAuthority { get; }
 }
-
 public class PlayerMotionRuntime
 {
     private PlayerMotionDefinition definition;
@@ -79,9 +71,7 @@ public class PlayerMotionRuntime
     private bool isActive;
     private bool justCompleted;
     private bool justCancelled;
-    private PlayerMotionFrame currentFrame;
 
-    public PlayerMotionFrame CurrentFrame => currentFrame;
     public PlayerMotionSnapshot Snapshot => BuildSnapshot();
     /// <summary>
     /// 处理单帧事件例如跳跃开始结束等
@@ -91,7 +81,6 @@ public class PlayerMotionRuntime
         if (!isActive && (justCompleted || justCancelled)) definition = null;
         justCompleted = false;
         justCancelled = false;
-        currentFrame = default;
     }
     /// <summary>
     /// 动画启动时的基础设定
@@ -115,7 +104,6 @@ public class PlayerMotionRuntime
         justCompleted = false;
         justCancelled = replaced;
         isActive = definition != null && definition.Profile != null && definition.Duration > 0f;
-        currentFrame = default;
         //返回这一次的动画处理ID
         return instanceId;
     }
@@ -126,7 +114,6 @@ public class PlayerMotionRuntime
         isActive = false;
         justCompleted = false;
         justCancelled = true;
-        currentFrame = default;
     }
     /// <summary>
     /// 按固定间隔时间推进动画演进
@@ -149,15 +136,14 @@ public class PlayerMotionRuntime
         float remainingAuthoredYaw = definition.RotationPolicy == PlayerMotionRotationPolicy.ProfileYaw ? profile.EvaluateYaw(1f) - profile.EvaluateYaw(currentProgress) : 0f;
         //拿到动画控制权重
         float translationWeight = definition.EvaluateTranslationAuthority(currentProgress);
-        float rotationWeight = definition.EvaluateRotationAuthority(currentProgress);
         //产生这一针等待消费的移动数据
-        currentFrame = new PlayerMotionFrame(definition, authoredTranslation, authoredYaw, remainingAuthoredYaw, previousProgress, currentProgress, translationWeight, rotationWeight);
+        PlayerMotionFrame frame = new PlayerMotionFrame(definition, authoredTranslation, authoredYaw, remainingAuthoredYaw, previousProgress, currentProgress, translationWeight);
         if (currentProgress >= 1f)
         {
             isActive = false;
             justCompleted = true;
         }
-        return currentFrame;
+        return frame;
     }
     /// <summary>
     /// 利用烘焙动画数据文件执行移动
@@ -181,7 +167,7 @@ public class PlayerMotionRuntime
     {
         float handoff = definition == null ? 0f : definition.CalculateHandoffProgress(currentProgress);
         bool handoffActive = definition != null && currentProgress >= definition.HandoffStartProgress;
-        return new PlayerMotionSnapshot(definition, instanceId, currentProgress, handoff, handoffActive, isActive, justCompleted, justCancelled, currentFrame.TranslationAuthority, currentFrame.RotationAuthority);
+        return new PlayerMotionSnapshot(definition, instanceId, currentProgress, handoff, handoffActive, isActive, justCompleted, justCancelled);
     }
     /// <summary>
     /// 去除y分量并将其向量化
@@ -193,19 +179,4 @@ public class PlayerMotionRuntime
         fallback.y = 0f;
         return fallback.sqrMagnitude > 0.0001f ? fallback.normalized : Vector3.zero;
     }
-}
-
-public static class PlayerMotionMath
-{
-    public static float UnwrapYaw(float previousWrappedYaw, float currentWrappedYaw, float previousUnwrappedYaw)
-    {
-        return previousUnwrappedYaw + Mathf.DeltaAngle(previousWrappedYaw, currentWrappedYaw);
-    }
-}
-/// <summary>
-/// 返回移动进程
-/// </summary>
-public static class PlayerMotionPresentationPhase
-{
-    public static float ResolveBoundaryProgress(PlayerMotionSnapshot snapshot) => snapshot.Progress;
 }

@@ -14,8 +14,6 @@ public class PlayerStateController : MonoBehaviour
     private PlayerDodge playerDodge;
     private PlayerContext context;
     private PlayerStateBase currentState;
-    private IPlayerInputSource playerInput;
-    private IPlayerActionBuffer actionBuffer;
 
     public PlayerStateBase CurrentState => currentState;
     public PlayerLocomotionMode CurrentLocomotionMode => currentState?.LocomotionMode ?? PlayerLocomotionMode.Idle;
@@ -31,9 +29,7 @@ public class PlayerStateController : MonoBehaviour
     /// </summary>
     public PlayerStateTransition Initialize(IPlayerInputSource inputSource, IPlayerActionBuffer inputActionBuffer)
     {
-        playerInput = inputSource;
-        actionBuffer = inputActionBuffer;
-        context = new PlayerContext(playerJump, playerDodge, playerInput, actionBuffer, movementConfig);
+        context = new PlayerContext(playerJump, playerDodge, inputSource, inputActionBuffer, movementConfig);
         RegisterStates();
         TryChangeState(new PlayerStateTransitionRequest(typeof(PlayerIdleState), PlayerStateTransitionReason.Initialized), out PlayerStateTransition transition);
         return transition;
@@ -41,9 +37,9 @@ public class PlayerStateController : MonoBehaviour
     /// <summary>
     /// 设置移动数据和事实
     /// </summary>
-    public void SetSimulationFacts(PlayerMotorResult motorResult, PlayerMotionSnapshot motionSnapshot, Vector3 desiredMoveDirection)
+    public void SetSimulationFacts(PlayerMotorResult motorResult, PlayerMotionSnapshot motionSnapshot)
     {
-        context.SetSimulationFacts(motorResult, motionSnapshot, desiredMoveDirection);
+        context.SetSimulationFacts(motorResult, motionSnapshot);
     }
 
     public PlayerStateTransition? ProcessPreTickTransition()
@@ -88,7 +84,7 @@ public class PlayerStateController : MonoBehaviour
             return false;
         }
 
-        transition = new PlayerStateTransition(currentState?.GetType(), nextState.GetType(), request.Reason, currentState?.LocomotionMode ?? PlayerLocomotionMode.Idle, nextState.LocomotionMode);
+        transition = new PlayerStateTransition(currentState?.GetType(), nextState.GetType(), request.Reason);
         currentState?.Exit(transition);
         currentState = nextState;
         currentState.Enter(transition);
