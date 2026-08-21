@@ -118,7 +118,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
         if (handoffLoopState != null) return;
         ITransition loop = ResolveLoop(gameplayStateType);
         if (loop == null) return;
-        handoffLoopState = animancer.Play(loop, 0f, FadeMode.FixedDuration);
+        handoffLoopState = animancer.Play(loop);
         boundaryState.Weight = 1f;
         handoffLoopState.Weight = 0f;
         if (groundLocomotionTransition.State != null) groundLocomotionTransition.State.Parameter = 0f;

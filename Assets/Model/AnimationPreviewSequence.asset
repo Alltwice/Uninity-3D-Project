@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbee0c179af005f46b338c6751f69e76, type: 3}
+  m_Name: AnimationPreviewSequence
+  m_EditorClassIdentifier: Project.AnimationPreview.Editor::ProjectTools.AnimationPreview.AnimationPreviewSequence
+  entries:
+  - source: {fileID: 0}
+    clip: {fileID: 5687401409094618642, guid: 6e7d645661cabbd4a8f77d8540b6a65c, type: 3}
+    startTime: 0
+    duration: 1
+    blendDuration: 0.5
+  - source: {fileID: 0}
+    clip: {fileID: 1827226128182048838, guid: c30c38dc7fdbc14459a67e6610edd81b, type: 3}
+    startTime: 1
+    duration: 1
+    blendDuration: 0.5
+  - source: {fileID: 0}
+    clip: {fileID: 1323507923967955738, guid: 916823342d9d82447b6dc4044f3c4a63, type: 3}
+    startTime: 2
+    duration: 1
+    blendDuration: 0.5

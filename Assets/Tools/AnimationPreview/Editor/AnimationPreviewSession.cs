@@ -28,7 +28,11 @@ namespace ProjectTools.AnimationPreview
         //动画播放管线，比AnimatorController更底层的动画组织方式
         private PlayableGraph graph;
         private AnimationClipPlayable clipPlayable;
+        private AnimationMixerPlayable sequenceMixer;
+        private readonly List<AnimationClipPlayable> sequencePlayables = new List<AnimationClipPlayable>();
         private AnimationClip clip;
+        private AnimationPreviewSequence sequence;
+        private double sequenceLength;
         //创建一个盒子，表示空间信息
         private Bounds modelBounds;
         private Vector3 modelOrigin;
@@ -50,11 +54,14 @@ namespace ProjectTools.AnimationPreview
 
         public GameObject ModelAsset { get; private set; }
         public AnimationClip Clip => clip;
+        public AnimationPreviewSequence Sequence => sequence;
         public Animator Animator => animator;
         public bool IsPlaying => playing;
-        public bool IsReady => animator != null && clip != null && graph.IsValid();
+        public bool IsSequence => sequence != null;
+        public bool IsReady => animator != null && graph.IsValid() && (clip != null || sequence != null);
+        public bool HasFiniteLength => !double.IsInfinity(Length);
         public double Time => time;
-        public double Length => clip == null ? 0d : clip.length;
+        public double Length => sequence != null ? sequenceLength : clip == null ? 0d : clip.length;
         public Bounds ModelBounds => modelBounds;
         public int RendererCount { get; private set; }
         public int TransformCount { get; private set; }
@@ -62,6 +69,8 @@ namespace ProjectTools.AnimationPreview
         public string ModelError { get; private set; }
         public string CompatibilityMessage { get; private set; }
         public ModelImporterAnimationType? ModelImportType { get; private set; }
+        internal int SequenceInputCount => sequencePlayables.Count;
+        internal float GetSequenceInputWeight(int index) => sequenceMixer.IsValid() && index >= 0 && index < sequencePlayables.Count ? sequenceMixer.GetInputWeight(index) : 0f;
         /// <summary>
         /// 清理资源，当使用using字样时异常或正常结束均会触发或被手动调用
         /// </summary>
@@ -173,26 +182,14 @@ namespace ProjectTools.AnimationPreview
         public bool SetClip(AnimationPreviewClipEntry entry)
         {
             DestroyGraph();
+            sequence = null;
+            sequenceLength = 0d;
             clip = entry?.Clip;
             CompatibilityMessage = null;
             time = 0d;
             playing = false;
             if (animator == null || clip == null) return false;
-            if (ModelImportType == ModelImporterAnimationType.Generic && entry.ImportType == ModelImporterAnimationType.Generic && !AnimationPreviewClipLibrary.HasMatchingTransformBindings(clip, animator.transform, out string missingPath))
-            {
-                CompatibilityMessage = "Generic 骨架路径不匹配：" + missingPath;
-                return false;
-            }
-            if (ModelImportType == ModelImporterAnimationType.Human && !animator.isHuman)
-            {
-                CompatibilityMessage = "模型标记为 Humanoid，但当前 Avatar 无法生成人形 Animator";
-                return false;
-            }
-            if (entry.ImportType == ModelImporterAnimationType.Human && !animator.isHuman)
-            {
-                CompatibilityMessage = "该动画需要有效的 Humanoid 模型";
-                return false;
-            }
+            if (!IsCompatibleWithModel(clip, entry.ImportType, out string message)) { CompatibilityMessage = message; return false; }
             graph = PlayableGraph.Create("Model Animation Preview");
             //设置时间推进模式为手动
             graph.SetTimeUpdateMode(DirectorUpdateMode.Manual);
@@ -204,6 +201,37 @@ namespace ProjectTools.AnimationPreview
             AnimationPlayableOutput output = AnimationPlayableOutput.Create(graph, "Animation", animator);
             //设置了数据来源
             output.SetSourcePlayable(clipPlayable);
+            graph.Play();
+            EvaluatePose();
+            return true;
+        }
+
+        public bool SetSequence(AnimationPreviewSequence value)
+        {
+            DestroyGraph();
+            clip = null;
+            sequence = value;
+            sequenceLength = 0d;
+            CompatibilityMessage = null;
+            time = 0d;
+            playing = false;
+            if (animator == null || sequence == null) return false;
+            if (!ValidateSequence(sequence)) return false;
+            sequenceLength = CalculateSequenceLength(sequence.Entries);
+            graph = PlayableGraph.Create("Model Animation Sequence Preview");
+            graph.SetTimeUpdateMode(DirectorUpdateMode.Manual);
+            sequenceMixer = AnimationMixerPlayable.Create(graph, sequence.Entries.Count);
+            for (int index = 0; index < sequence.Entries.Count; index++)
+            {
+                AnimationClipPlayable playable = AnimationClipPlayable.Create(graph, sequence.Entries[index].Clip);
+                playable.SetApplyFootIK(false);
+                playable.SetApplyPlayableIK(false);
+                graph.Connect(playable, 0, sequenceMixer, index);
+                sequenceMixer.SetInputWeight(index, 0f);
+                sequencePlayables.Add(playable);
+            }
+            AnimationPlayableOutput output = AnimationPlayableOutput.Create(graph, "Animation", animator);
+            output.SetSourcePlayable(sequenceMixer);
             graph.Play();
             EvaluatePose();
             return true;
@@ -229,14 +257,16 @@ namespace ProjectTools.AnimationPreview
         {
             if (!IsReady) return;
             playing = false;
-            double frameDuration = 1d / Math.Max(1d, clip.frameRate);
+            AnimationClip activeClip = GetActiveClip();
+            double frameDuration = 1d / Math.Max(1d, activeClip == null ? 60f : activeClip.frameRate);
             SetTime(time + frameDuration * Math.Sign(direction));
         }
 
         public void SetTime(double value)
         {
             if (!IsReady) return;
-            time = Math.Max(0d, Math.Min(Length, value));
+            time = Math.Max(0d, value);
+            if (HasFiniteLength) time = Math.Min(Length, time);
             EvaluatePose();
         }
         /// <summary>
@@ -245,6 +275,7 @@ namespace ProjectTools.AnimationPreview
         internal PlayerMotionBakeResult SampleMotion(int requestedSampleRate)
         {
             if (!IsReady) throw new InvalidOperationException("请先选择有效 Model/Avatar 和 AnimationClip");
+            if (IsSequence) throw new InvalidOperationException("Animation Sequence 暂不支持 Motion Profile Bake，请切换到 Single Clip。");
             int rate = Math.Max(1, requestedSampleRate);
             //被采样的数量，+1意味着算上起始点，CeilToInt向上取整，确保动画非整时也能取得精确的开始点和结束点从而控制取样间隔均等
             int count = Math.Max(2, Mathf.CeilToInt(clip.length * rate) + 1);
@@ -308,7 +339,7 @@ namespace ProjectTools.AnimationPreview
         {
             if (!playing || !IsReady) return false;
             time += deltaTime * playbackSpeed;
-            if (time >= Length)
+            if (HasFiniteLength && time >= Length)
             {
                 if (loop && Length > 0d) time %= Length;
                 else
@@ -397,8 +428,12 @@ namespace ProjectTools.AnimationPreview
             {
                 previewInstance.transform.SetPositionAndRotation(modelOrigin, modelRotation);
             }
-            clipPlayable.SetTime(time);
-            clipPlayable.SetDone(time >= Length);
+            if (IsSequence) EvaluateSequence();
+            else
+            {
+                clipPlayable.SetTime(time);
+                clipPlayable.SetDone(time >= Length);
+            }
             graph.Evaluate(0f);
             trajectoryEnd = previewInstance.transform.position;
             if (rootMotionMode != AnimationPreviewRootMotionMode.Actual) previewInstance.transform.SetPositionAndRotation(modelOrigin, modelRotation);
@@ -408,6 +443,151 @@ namespace ProjectTools.AnimationPreview
         {
             if (graph.IsValid()) graph.Destroy();
             clipPlayable = default;
+            sequenceMixer = default;
+            sequencePlayables.Clear();
+        }
+
+        private bool ValidateSequence(AnimationPreviewSequence value)
+        {
+            if (value.Entries.Count == 0)
+            {
+                CompatibilityMessage = "Animation Sequence 至少需要一个条目。";
+                return false;
+            }
+            double previousEnd = 0d;
+            for (int index = 0; index < value.Entries.Count; index++)
+            {
+                AnimationPreviewSequenceEntry entry = value.Entries[index];
+                if (entry == null || !AnimationPreviewClipLibrary.IsUsableClip(entry.Clip))
+                {
+                    CompatibilityMessage = $"Sequence 第 {index + 1} 个条目没有可用 AnimationClip。";
+                    return false;
+                }
+                if (float.IsNaN(entry.StartTime) || float.IsInfinity(entry.StartTime) || entry.StartTime < 0f || float.IsNaN(entry.Duration) || entry.Duration <= 0f || float.IsNegativeInfinity(entry.Duration))
+                {
+                    CompatibilityMessage = $"Sequence 第 {index + 1} 个条目的 StartTime 或 Duration 无效。";
+                    return false;
+                }
+                if (float.IsNaN(entry.BlendDuration) || float.IsInfinity(entry.BlendDuration) || entry.BlendDuration < 0f || (!float.IsPositiveInfinity(entry.Duration) && entry.BlendDuration > entry.Duration))
+                {
+                    CompatibilityMessage = $"Sequence 第 {index + 1} 个条目的 BlendDuration 无效。";
+                    return false;
+                }
+                if (index == 0 && !Mathf.Approximately(entry.StartTime, 0f))
+                {
+                    CompatibilityMessage = "Sequence 的第一个条目必须从 0 秒开始。";
+                    return false;
+                }
+                if (index > 0 && (double.IsPositiveInfinity(previousEnd) || Math.Abs(entry.StartTime - previousEnd) > 0.0001d))
+                {
+                    CompatibilityMessage = $"Sequence 第 {index + 1} 个条目的 StartTime 必须衔接前一条目的结束时间。";
+                    return false;
+                }
+                if (!IsCompatibleWithModel(entry.Clip, GetImportType(entry), out string message))
+                {
+                    CompatibilityMessage = $"Sequence 第 {index + 1} 个条目：{message}";
+                    return false;
+                }
+                previousEnd = float.IsPositiveInfinity(entry.Duration) ? double.PositiveInfinity : entry.StartTime + entry.Duration;
+            }
+            return true;
+        }
+
+        private bool IsCompatibleWithModel(AnimationClip candidate, ModelImporterAnimationType? importType, out string message)
+        {
+            message = null;
+            if (ModelImportType == ModelImporterAnimationType.Generic && importType == ModelImporterAnimationType.Generic && !AnimationPreviewClipLibrary.HasMatchingTransformBindings(candidate, animator.transform, out string missingPath))
+            {
+                message = "Generic 骨架路径不匹配：" + missingPath;
+                return false;
+            }
+            if (ModelImportType == ModelImporterAnimationType.Human && !animator.isHuman)
+            {
+                message = "模型标记为 Humanoid，但当前 Avatar 无法生成人形 Animator";
+                return false;
+            }
+            if (importType == ModelImporterAnimationType.Human && !animator.isHuman)
+            {
+                message = "该动画需要有效的 Humanoid 模型";
+                return false;
+            }
+            return true;
+        }
+
+        private void EvaluateSequence()
+        {
+            int currentIndex = GetSequenceEntryIndex(time);
+            int nextIndex = -1;
+            float blend = GetOutgoingBlendDuration(currentIndex);
+            float blendProgress = 0f;
+            if (blend > 0f && currentIndex < sequence.Entries.Count - 1)
+            {
+                AnimationPreviewSequenceEntry current = sequence.Entries[currentIndex];
+                double blendStart = current.StartTime + current.Duration - blend;
+                if (time >= blendStart && time < current.StartTime + current.Duration)
+                {
+                    nextIndex = currentIndex + 1;
+                    blendProgress = Mathf.InverseLerp((float)blendStart, current.StartTime + current.Duration, (float)time);
+                }
+            }
+            for (int index = 0; index < sequencePlayables.Count; index++)
+            {
+                AnimationPreviewSequenceEntry entry = sequence.Entries[index];
+                double localTime = index < currentIndex ? entry.Duration : index > nextIndex && index != currentIndex ? 0d : Math.Max(0d, time - GetEntryPlaybackStartTime(index));
+                sequencePlayables[index].SetTime(GetClipSampleTime(entry.Clip, localTime));
+                sequencePlayables[index].SetDone(false);
+                sequenceMixer.SetInputWeight(index, 0f);
+            }
+            sequenceMixer.SetInputWeight(currentIndex, nextIndex >= 0 ? Mathf.Lerp(1f, 0f, blendProgress) : 1f);
+            if (nextIndex >= 0) sequenceMixer.SetInputWeight(nextIndex, Mathf.Lerp(0f, 1f, blendProgress));
+        }
+
+        private int GetSequenceEntryIndex(double value)
+        {
+            int index = 0;
+            for (int candidate = 1; candidate < sequence.Entries.Count; candidate++)
+            {
+                if (value < sequence.Entries[candidate].StartTime) break;
+                index = candidate;
+            }
+            return index;
+        }
+
+        private float GetOutgoingBlendDuration(int index)
+        {
+            if (index < 0 || index >= sequence.Entries.Count - 1) return 0f;
+            AnimationPreviewSequenceEntry entry = sequence.Entries[index];
+            return float.IsPositiveInfinity(entry.Duration) ? 0f : Mathf.Min(entry.BlendDuration, entry.Duration);
+        }
+
+        private double GetEntryPlaybackStartTime(int index)
+        {
+            if (index == 0) return sequence.Entries[index].StartTime;
+            return sequence.Entries[index].StartTime - GetOutgoingBlendDuration(index - 1);
+        }
+
+        private static double GetClipSampleTime(AnimationClip animationClip, double localTime)
+        {
+            if (animationClip == null || animationClip.length <= 0f) return 0d;
+            if (animationClip.isLooping && localTime > animationClip.length) return localTime % animationClip.length;
+            return Math.Min(animationClip.length, localTime);
+        }
+
+        private AnimationClip GetActiveClip()
+        {
+            return IsSequence ? sequence.Entries[GetSequenceEntryIndex(time)].Clip : clip;
+        }
+
+        private static ModelImporterAnimationType? GetImportType(AnimationPreviewSequenceEntry entry)
+        {
+            string path = AssetDatabase.GetAssetPath(entry.Source ?? entry.Clip);
+            return AssetImporter.GetAtPath(path) is ModelImporter importer ? importer.animationType : null;
+        }
+
+        private static double CalculateSequenceLength(IReadOnlyList<AnimationPreviewSequenceEntry> entries)
+        {
+            AnimationPreviewSequenceEntry last = entries[entries.Count - 1];
+            return float.IsPositiveInfinity(last.Duration) ? double.PositiveInfinity : last.StartTime + last.Duration;
         }
         /// <summary>
         /// 设置灯光

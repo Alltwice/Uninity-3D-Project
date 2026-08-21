@@ -16,6 +16,15 @@
         </ui:VisualElement>
         <ui:VisualElement class="main-row">
             <ui:VisualElement name="left-pane" class="side-pane left-pane">
+                <ui:VisualElement name="mode-container" class="mode-container" />
+                <ui:VisualElement name="sequence-panel" class="sequence-panel">
+                    <ui:Label text="Animation Sequence" class="section-title" />
+                    <ui:VisualElement class="source-actions">
+                        <uie:ObjectField name="sequence-field" label="当前 Sequence" class="sequence-field" />
+                        <ui:Button name="new-sequence-button" text="新建" />
+                    </ui:VisualElement>
+                    <ui:ListView name="sequence-entry-list" class="sequence-entry-list" fixed-item-height="38" />
+                </ui:VisualElement>
                 <ui:Label text="动画资源" class="section-title" />
                 <uie:ToolbarSearchField name="search-field" />
                 <ui:Toggle name="scan-all-toggle" label="扫描整个 Assets" />
@@ -68,6 +77,7 @@
         <ui:VisualElement class="playback-row">
             <ui:Button name="previous-frame-button" text="|◀" />
             <ui:Button name="play-button" text="播放" />
+            <ui:Button name="stop-button" text="停止" />
             <ui:Button name="next-frame-button" text="▶|" />
             <ui:Button name="reset-button" text="复位" />
             <ui:Toggle name="loop-toggle" label="循环" value="true" />

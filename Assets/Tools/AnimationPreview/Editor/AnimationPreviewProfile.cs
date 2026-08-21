@@ -17,6 +17,7 @@ namespace ProjectTools.AnimationPreview
         [SerializeField] private List<Object> animationSources = new List<Object>();
         [SerializeField] private List<AnimationClip> favorites = new List<AnimationClip>();
         [SerializeField] private AnimationClip lastClip;
+        [SerializeField] private AnimationPreviewSequence lastSequence;
         [SerializeField] private Color backgroundColor = new Color(0.105f, 0.115f, 0.13f, 1f);
         [SerializeField, Range(0f, 5f)] private float lightIntensity = 1.2f;
         [SerializeField] private Vector2 lightRotation = new Vector2(35f, -35f);
@@ -29,6 +30,7 @@ namespace ProjectTools.AnimationPreview
         public IReadOnlyList<Object> AnimationSources => animationSources;
         public IReadOnlyList<AnimationClip> Favorites => favorites;
         public AnimationClip LastClip => lastClip;
+        public AnimationPreviewSequence LastSequence => lastSequence;
         public Color BackgroundColor => backgroundColor;
         public float LightIntensity => lightIntensity;
         public Vector2 LightRotation => lightRotation;
@@ -37,7 +39,7 @@ namespace ProjectTools.AnimationPreview
         public bool ShowGrid => showGrid;
         public float PlaybackSpeed => playbackSpeed;
 
-        internal void Store(GameObject model, IEnumerable<Object> sources, IEnumerable<AnimationClip> favoriteClips, AnimationClip clip, Color background, float intensity, Vector2 rotation, AnimationPreviewRootMotionMode motionMode, bool shouldLoop, bool shouldShowGrid, float speed)
+        internal void Store(GameObject model, IEnumerable<Object> sources, IEnumerable<AnimationClip> favoriteClips, AnimationClip clip, AnimationPreviewSequence sequence, Color background, float intensity, Vector2 rotation, AnimationPreviewRootMotionMode motionMode, bool shouldLoop, bool shouldShowGrid, float speed)
         {
             modelAsset = model;
             animationSources.Clear();
@@ -45,6 +47,7 @@ namespace ProjectTools.AnimationPreview
             favorites.Clear();
             favorites.AddRange(favoriteClips);
             lastClip = clip;
+            lastSequence = sequence;
             backgroundColor = background;
             lightIntensity = intensity;
             lightRotation = rotation;

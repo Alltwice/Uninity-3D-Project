@@ -16,7 +16,7 @@ MonoBehaviour:
   motionBindings:
   - definition: {fileID: 11400000, guid: e0aad969cd095344ab0d8497f8121581, type: 2}
     transition:
-      _FadeDuration: 0.1
+      _FadeDuration: 0.08
       _Speed: 1
       _Events:
         _NormalizedTimes: []
@@ -84,7 +84,7 @@ MonoBehaviour:
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: 4437c1a77929315498589ebf3cad360d, type: 2}
     transition:
-      _FadeDuration: 0.1
+      _FadeDuration: 0.5
       _Speed: 1
       _Events:
         _NormalizedTimes: []
@@ -118,13 +118,13 @@ MonoBehaviour:
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: 29b98e4aead077b4d85e3488b4cad4dc, type: 2}
     transition:
-      _FadeDuration: 0.08
+      _FadeDuration: 0.5
       _Speed: 1
       _Events:
         _NormalizedTimes: []
         _Callbacks: []
         _Names: []
-      _Clip: {fileID: 7400142, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+      _Clip: {fileID: 7400140, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
       _NormalizedStartTime: NaN
     poseFadeWeight:
       serializedVersion: 2

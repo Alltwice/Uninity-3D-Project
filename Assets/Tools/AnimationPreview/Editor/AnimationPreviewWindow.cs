@@ -11,22 +11,31 @@ namespace ProjectTools.AnimationPreview
 {
     public sealed class AnimationPreviewWindow : EditorWindow
     {
+        private enum PreviewMode
+        {
+            SingleClip,
+            Sequence
+        }
+
         private const string UxmlPath = "Assets/Tools/AnimationPreview/Editor/UI/AnimationPreviewWindow.uxml";
         private const string UssPath = "Assets/Tools/AnimationPreview/Editor/UI/AnimationPreviewWindow.uss";
         private readonly List<UnityEngine.Object> animationSources = new List<UnityEngine.Object>();
         private readonly List<AnimationClip> favorites = new List<AnimationClip>();
         private readonly List<AnimationPreviewClipEntry> visibleClips = new List<AnimationPreviewClipEntry>();
+        private readonly List<AnimationPreviewSequenceEntry> visibleSequenceEntries = new List<AnimationPreviewSequenceEntry>();
         private AnimationPreviewSession session;
         private AnimationPreviewProfile profile;
         private List<AnimationPreviewClipEntry> clipLibrary = new List<AnimationPreviewClipEntry>();
         private ObjectField profileField;
         private ObjectField modelField;
         private ObjectField sourceField;
+        private ObjectField sequenceField;
         private ObjectField motionProfileField;
         private IntegerField motionSampleRateField;
         private Label motionValidationLabel;
         private ListView sourceList;
         private ListView clipList;
+        private ListView sequenceEntryList;
         private ToolbarSearchField searchField;
         private Toggle scanAllToggle;
         private Toggle loopToggle;
@@ -44,10 +53,14 @@ namespace ProjectTools.AnimationPreview
         private Label dirtyLabel;
         private AnimationPreviewViewport viewport;
         private Button playButton;
+        private Button stopButton;
         private Button focusModeButton;
         private Button favoriteButton;
         private VisualElement leftPane;
         private VisualElement rightPane;
+        private VisualElement sequencePanel;
+        private RadioButtonGroup modeField;
+        private PreviewMode previewMode;
         private bool profileDirty;
         private bool libraryDirty = true;
         private bool focusMode;
@@ -117,11 +130,13 @@ namespace ProjectTools.AnimationPreview
             profileField = rootVisualElement.Q<ObjectField>("profile-field");
             modelField = rootVisualElement.Q<ObjectField>("model-field");
             sourceField = rootVisualElement.Q<ObjectField>("source-field");
+            sequenceField = rootVisualElement.Q<ObjectField>("sequence-field");
             motionProfileField = rootVisualElement.Q<ObjectField>("motion-profile-field");
             motionSampleRateField = rootVisualElement.Q<IntegerField>("motion-sample-rate-field");
             motionValidationLabel = rootVisualElement.Q<Label>("motion-validation-label");
             sourceList = rootVisualElement.Q<ListView>("source-list");
             clipList = rootVisualElement.Q<ListView>("clip-list");
+            sequenceEntryList = rootVisualElement.Q<ListView>("sequence-entry-list");
             searchField = rootVisualElement.Q<ToolbarSearchField>("search-field");
             scanAllToggle = rootVisualElement.Q<Toggle>("scan-all-toggle");
             loopToggle = rootVisualElement.Q<Toggle>("loop-toggle");
@@ -142,18 +157,27 @@ namespace ProjectTools.AnimationPreview
             viewport.AddToClassList("preview-viewport");
             viewportContainer.Add(viewport);
             playButton = rootVisualElement.Q<Button>("play-button");
+            stopButton = rootVisualElement.Q<Button>("stop-button");
             focusModeButton = rootVisualElement.Q<Button>("focus-mode-button");
             favoriteButton = rootVisualElement.Q<Button>("favorite-button");
             leftPane = rootVisualElement.Q("left-pane");
             rightPane = rootVisualElement.Q("right-pane");
+            sequencePanel = rootVisualElement.Q("sequence-panel");
             profileField.objectType = typeof(AnimationPreviewProfile);
             modelField.objectType = typeof(GameObject);
             modelField.allowSceneObjects = false;
             sourceField.objectType = typeof(UnityEngine.Object);
             sourceField.allowSceneObjects = false;
+            sequenceField.objectType = typeof(AnimationPreviewSequence);
+            sequenceField.allowSceneObjects = false;
             motionProfileField.objectType = typeof(PlayerMotionProfile);
             motionProfileField.allowSceneObjects = false;
             rootMotionField.Init(AnimationPreviewRootMotionMode.Locked);
+            modeField = new RadioButtonGroup { label = "Mode" };
+            modeField.Add(new RadioButton("Single Clip"));
+            modeField.Add(new RadioButton("Sequence"));
+            rootVisualElement.Q("mode-container").Add(modeField);
+            UpdatePreviewModeUI();
         }
 
         private void ConfigureLists()
@@ -180,12 +204,23 @@ namespace ProjectTools.AnimationPreview
                 element.Q<Label>("clip-group").text = entry.Group;
             };
             clipList.selectionChanged += selection => SelectClip(selection.OfType<AnimationPreviewClipEntry>().FirstOrDefault());
+            sequenceEntryList.itemsSource = visibleSequenceEntries;
+            sequenceEntryList.selectionType = SelectionType.None;
+            sequenceEntryList.makeItem = () =>
+            {
+                Label label = new Label();
+                label.AddToClassList("sequence-entry-row");
+                return label;
+            };
+            sequenceEntryList.bindItem = (element, index) => ((Label)element).text = FormatSequenceEntry(visibleSequenceEntries[index], index);
         }
 
         private void RegisterCallbacks()
         {
             profileField.RegisterValueChangedCallback(evt => LoadProfile(evt.newValue as AnimationPreviewProfile));
             modelField.RegisterValueChangedCallback(evt => SetModel(evt.newValue as GameObject));
+            sequenceField.RegisterValueChangedCallback(evt => SelectSequence(evt.newValue as AnimationPreviewSequence));
+            modeField.RegisterValueChangedCallback(evt => SelectPreviewMode((PreviewMode)evt.newValue));
             sourceField.RegisterValueChangedCallback(evt =>
             {
                 if (evt.newValue == null) return;
@@ -213,6 +248,7 @@ namespace ProjectTools.AnimationPreview
             rootVisualElement.Q<Button>("new-profile-button").clicked += CreateProfile;
             rootVisualElement.Q<Button>("save-profile-button").clicked += SaveProfile;
             playButton.clicked += () => { session.TogglePlayback(); UpdatePlaybackUI(); };
+            stopButton.clicked += () => { session.SetPlaying(false); UpdatePlaybackUI(); };
             rootVisualElement.Q<Button>("reset-button").clicked += () => { session.ResetPlayback(); UpdatePlaybackUI(); viewport.MarkDirtyRepaint(); };
             rootVisualElement.Q<Button>("previous-frame-button").clicked += () => { session.Step(-1); UpdatePlaybackUI(); viewport.MarkDirtyRepaint(); };
             rootVisualElement.Q<Button>("next-frame-button").clicked += () => { session.Step(1); UpdatePlaybackUI(); viewport.MarkDirtyRepaint(); };
@@ -222,6 +258,7 @@ namespace ProjectTools.AnimationPreview
             rootVisualElement.Q<Button>("back-view-button").clicked += () => { session.SetView(new Vector2(0f, 0f)); viewport.MarkDirtyRepaint(); };
             focusModeButton.clicked += ToggleFocusMode;
             favoriteButton.clicked += ToggleFavorite;
+            rootVisualElement.Q<Button>("new-sequence-button").clicked += CreateSequence;
             rootVisualElement.Q<Button>("motion-bake-button").clicked += () => BakeMotion(true);
             rootVisualElement.Q<Button>("motion-rebake-button").clicked += () => BakeMotion(false);
             rootVisualElement.Q<Button>("motion-validate-button").clicked += ValidateMotionProfile;
@@ -245,25 +282,74 @@ namespace ProjectTools.AnimationPreview
             modelField.SetValueWithoutNotify(model);
             bool ready = session.SetModel(model);
             viewport.OverlayMessage = ready ? null : session.ModelError;
-            if (ready && clipList.selectedItem is AnimationPreviewClipEntry selected) session.SetClip(selected);
+            if (ready && previewMode == PreviewMode.Sequence && sequenceField.value is AnimationPreviewSequence selectedSequence)
+            {
+                if (!session.SetSequence(selectedSequence)) viewport.OverlayMessage = session.CompatibilityMessage;
+            }
+            else if (ready && clipList.selectedItem is AnimationPreviewClipEntry selected)
+            {
+                if (!session.SetClip(selected)) viewport.OverlayMessage = session.CompatibilityMessage;
+            }
             MarkProfileDirty();
             UpdateModelInfo();
             UpdateClipInfo();
+            UpdateSequenceEntries();
             UpdateFavoriteButton();
+            UpdateMotionToolsUI();
+            UpdatePlaybackUI();
             viewport.MarkDirtyRepaint();
         }
 
         private void SelectClip(AnimationPreviewClipEntry entry)
         {
             if (entry == null) return;
+            previewMode = PreviewMode.SingleClip;
+            UpdatePreviewModeUI();
             bool ready = session.SetClip(entry);
             viewport.OverlayMessage = ready ? null : session.CompatibilityMessage ?? session.ModelError ?? "请先选择有效模型。";
-            timeSlider.lowValue = 0f;
-            timeSlider.highValue = Math.Max(0.001f, entry.Clip.length);
-            timeSlider.SetValueWithoutNotify(0f);
             MarkProfileDirty();
             UpdateClipInfo();
             UpdatePlaybackUI();
+            UpdateMotionToolsUI();
+            viewport.MarkDirtyRepaint();
+        }
+
+        private void SelectSequence(AnimationPreviewSequence value, bool markDirty = true)
+        {
+            previewMode = PreviewMode.Sequence;
+            sequenceField.SetValueWithoutNotify(value);
+            UpdatePreviewModeUI();
+            bool ready = session.SetSequence(value);
+            viewport.OverlayMessage = ready ? null : session.CompatibilityMessage ?? session.ModelError ?? "请先选择有效模型和 Animation Sequence。";
+            UpdateSequenceEntries();
+            if (markDirty) MarkProfileDirty();
+            UpdateClipInfo();
+            UpdatePlaybackUI();
+            UpdateFavoriteButton();
+            UpdateMotionToolsUI();
+            viewport.MarkDirtyRepaint();
+        }
+
+        private void SelectPreviewMode(PreviewMode value)
+        {
+            previewMode = value;
+            UpdatePreviewModeUI();
+            if (previewMode == PreviewMode.Sequence)
+            {
+                SelectSequence(sequenceField.value as AnimationPreviewSequence);
+                return;
+            }
+            if (clipList.selectedItem is AnimationPreviewClipEntry selected)
+            {
+                SelectClip(selected);
+                return;
+            }
+            session.SetClip(null);
+            MarkProfileDirty();
+            UpdateClipInfo();
+            UpdatePlaybackUI();
+            UpdateFavoriteButton();
+            UpdateMotionToolsUI();
             viewport.MarkDirtyRepaint();
         }
 
@@ -321,10 +407,14 @@ namespace ProjectTools.AnimationPreview
             if (profileField != null) profileField.SetValueWithoutNotify(value);
             animationSources.Clear();
             favorites.Clear();
+            previewMode = PreviewMode.SingleClip;
+            sequenceField.SetValueWithoutNotify(null);
             if (value != null)
             {
                 animationSources.AddRange(value.AnimationSources.Where(source => source != null));
                 favorites.AddRange(value.Favorites.Where(clip => clip != null));
+                sequenceField.SetValueWithoutNotify(value.LastSequence);
+                previewMode = value.LastSequence != null ? PreviewMode.Sequence : PreviewMode.SingleClip;
                 loopToggle.SetValueWithoutNotify(value.Loop);
                 gridToggle.SetValueWithoutNotify(value.ShowGrid);
                 speedSlider.SetValueWithoutNotify(value.PlaybackSpeed);
@@ -333,13 +423,19 @@ namespace ProjectTools.AnimationPreview
                 lightIntensitySlider.SetValueWithoutNotify(value.LightIntensity);
                 lightRotationField.SetValueWithoutNotify(value.LightRotation);
             }
+            UpdatePreviewModeUI();
+            UpdateSequenceEntries();
             sourceList?.Rebuild();
             SetModel(value?.ModelAsset);
             profileDirty = false;
             UpdateDirtyLabel();
             ApplySessionSettings();
             RefreshLibrary();
-            if (value?.LastClip != null)
+            if (value?.LastSequence != null)
+            {
+                SelectSequence(value.LastSequence, false);
+            }
+            else if (value?.LastClip != null)
             {
                 int index = visibleClips.FindIndex(entry => entry.Clip == value.LastClip);
                 if (index >= 0) clipList.SetSelection(index);
@@ -353,7 +449,7 @@ namespace ProjectTools.AnimationPreview
                 CreateProfile();
                 if (profile == null) return;
             }
-            profile.Store(modelField.value as GameObject, animationSources, favorites, session.Clip, backgroundField.value, lightIntensitySlider.value, lightRotationField.value, (AnimationPreviewRootMotionMode)rootMotionField.value, loopToggle.value, gridToggle.value, speedSlider.value);
+            profile.Store(modelField.value as GameObject, animationSources, favorites, session.Clip, session.Sequence, backgroundField.value, lightIntensitySlider.value, lightRotationField.value, (AnimationPreviewRootMotionMode)rootMotionField.value, loopToggle.value, gridToggle.value, speedSlider.value);
             EditorUtility.SetDirty(profile);
             AssetDatabase.SaveAssetIfDirty(profile);
             profileDirty = false;
@@ -371,6 +467,17 @@ namespace ProjectTools.AnimationPreview
             profileField.SetValueWithoutNotify(created);
             MarkProfileDirty();
             SaveProfile();
+            Selection.activeObject = created;
+        }
+
+        private void CreateSequence()
+        {
+            string path = EditorUtility.SaveFilePanelInProject("Create Animation Preview Sequence", "AnimationPreviewSequence", "asset", "选择 Sequence 保存位置");
+            if (string.IsNullOrEmpty(path)) return;
+            AnimationPreviewSequence created = CreateInstance<AnimationPreviewSequence>();
+            AssetDatabase.CreateAsset(created, path);
+            AssetDatabase.SaveAssets();
+            SelectSequence(created);
             Selection.activeObject = created;
         }
 
@@ -444,10 +551,13 @@ namespace ProjectTools.AnimationPreview
         {
             sourceList.Rebuild();
             if (libraryDirty) RefreshLibrary();
+            UpdatePreviewModeUI();
+            UpdateSequenceEntries();
             UpdateModelInfo();
             UpdateClipInfo();
             UpdatePlaybackUI();
             UpdateFavoriteButton();
+            UpdateMotionToolsUI();
             UpdateDirtyLabel();
         }
 
@@ -467,6 +577,15 @@ namespace ProjectTools.AnimationPreview
 
         private void UpdateClipInfo()
         {
+            if (session?.Sequence != null)
+            {
+                AnimationPreviewSequence selectedSequence = session.Sequence;
+                string length = session.HasFiniteLength ? $"{session.Length:F3}s" : "∞";
+                clipInfo.text = $"Sequence：{selectedSequence.name}\n条目：{selectedSequence.Entries.Count}\n长度：{length}\n模式：顺序播放";
+                compatibilityInfo.text = session.CompatibilityMessage ?? "Sequence 与当前模型兼容";
+                compatibilityInfo.EnableInClassList("status-error", session.CompatibilityMessage != null);
+                return;
+            }
             AnimationClip selected = session?.Clip;
             if (selected == null)
             {
@@ -482,10 +601,45 @@ namespace ProjectTools.AnimationPreview
         private void UpdatePlaybackUI()
         {
             if (session == null || timeSlider == null) return;
-            timeSlider.SetValueWithoutNotify((float)session.Time);
-            timeLabel.text = $"{session.Time:F2} / {session.Length:F2}";
+            bool canSeek = session.IsReady && session.HasFiniteLength;
+            timeSlider.lowValue = 0f;
+            timeSlider.highValue = canSeek ? Mathf.Max(0.001f, (float)session.Length) : 1f;
+            timeSlider.SetEnabled(canSeek);
+            timeSlider.SetValueWithoutNotify(canSeek ? (float)session.Time : 0f);
+            timeLabel.text = session.HasFiniteLength ? $"{session.Time:F2} / {session.Length:F2}" : $"{session.Time:F2} / ∞";
             playButton.text = session.IsPlaying ? "暂停" : "播放";
             playButton.SetEnabled(session.IsReady);
+            stopButton.SetEnabled(session.IsPlaying);
+        }
+
+        private void UpdatePreviewModeUI()
+        {
+            if (modeField != null) modeField.SetValueWithoutNotify((int)previewMode);
+            if (sequencePanel != null) sequencePanel.style.display = previewMode == PreviewMode.Sequence ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        private void UpdateSequenceEntries()
+        {
+            visibleSequenceEntries.Clear();
+            AnimationPreviewSequence selectedSequence = sequenceField?.value as AnimationPreviewSequence;
+            if (selectedSequence != null) visibleSequenceEntries.AddRange(selectedSequence.Entries);
+            sequenceEntryList?.Rebuild();
+        }
+
+        private void UpdateMotionToolsUI()
+        {
+            bool supportsSingleClip = session != null && session.IsReady && !session.IsSequence;
+            rootVisualElement.Q<Button>("motion-bake-button")?.SetEnabled(supportsSingleClip);
+            rootVisualElement.Q<Button>("motion-rebake-button")?.SetEnabled(supportsSingleClip);
+            rootVisualElement.Q<Button>("motion-trajectory-button")?.SetEnabled(supportsSingleClip);
+        }
+
+        private static string FormatSequenceEntry(AnimationPreviewSequenceEntry entry, int index)
+        {
+            if (entry == null) return $"{index + 1}. <Missing>";
+            string clipName = entry.Clip == null ? entry.Source == null ? "<Missing>" : entry.Source.name : entry.Clip.name;
+            string duration = float.IsPositiveInfinity(entry.Duration) ? "∞" : $"{entry.Duration:F2}s";
+            return $"{index + 1}. {clipName}\nStart {entry.StartTime:F2}s  Duration {duration}  Blend {entry.BlendDuration:F2}s";
         }
 
         private void MarkProfileDirty()
@@ -539,6 +693,11 @@ namespace ProjectTools.AnimationPreview
                 motionValidationLabel.text = "请先选择有效 Model/Avatar 和 AnimationClip";
                 return;
             }
+            if (session.IsSequence)
+            {
+                motionValidationLabel.text = "Motion Profile Bake 目前只支持 Single Clip。";
+                return;
+            }
             PlayerMotionProfile target = motionProfileField.value as PlayerMotionProfile;
             if (target == null && createIfMissing)
             {
@@ -573,6 +732,11 @@ namespace ProjectTools.AnimationPreview
         private void ShowMotionTrajectory()
         {
             if (session == null || !session.IsReady) return;
+            if (session.IsSequence)
+            {
+                motionValidationLabel.text = "Motion Trajectory 目前只支持 Single Clip。";
+                return;
+            }
             PlayerMotionBakeResult result = session.SampleMotion(Mathf.Max(1, motionSampleRateField.value));
             rootMotionField.SetValueWithoutNotify(AnimationPreviewRootMotionMode.Trajectory);
             ApplySessionSettings();
