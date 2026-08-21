@@ -18,7 +18,7 @@ MonoBehaviour:
   basisPolicy: 0
   durationOverride: 0
   translationScale: 1
-  handoffStartProgress: 1
+  handoffStartProgress: 0.8
   handoffEndProgress: 1
   translationAuthority:
     serializedVersion: 2
