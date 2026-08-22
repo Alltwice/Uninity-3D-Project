@@ -78,8 +78,8 @@ public class PlayerSimulationDriver : MonoBehaviour
         }
         PlayerStateTransition? presentationTransition = resultTransition ?? transition ?? pendingTransition;
         pendingTransition = null;
-        //播放动画，以及更新参数（当前动画依附与移动）
-        animationController.Present(stateController.CurrentState.GetType(), presentationTransition, motionPlanner.Snapshot, motorResult, stateController.CurrentPresentationProgress);
+        //播放动画表现
+        animationController.Present(stateController.CurrentState.GetType(), presentationTransition, motionPlanner.Snapshot, stateController.CurrentPresentationProgress);
         //animancer设定为手动后需要手动更新
         animationController.EvaluateGraph(deltaTime);
     }

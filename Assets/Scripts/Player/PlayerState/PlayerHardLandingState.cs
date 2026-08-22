@@ -1,14 +1,14 @@
 using UnityEngine;
 
 /// <summary>
-/// 重落地期间锁定地面移动，恢复条件由状态自身的 Gameplay Progress 决定。
+/// 重落地期间保持 HardLanding 模式，锁定旋转并按状态自身的 Gameplay Progress 恢复。
 /// </summary>
 public sealed class PlayerHardLandingState : PlayerStateBase
 {
     private float elapsedTime;
 
     public PlayerHardLandingState(PlayerContext context) : base(context) { }
-    public override PlayerLocomotionMode LocomotionMode => PlayerLocomotionMode.Idle;
+    public override PlayerLocomotionMode LocomotionMode => PlayerLocomotionMode.HardLanding;
     public override float PresentationProgress => Mathf.Clamp01(elapsedTime / Context.MovementConfig.Landing.HardLandingDuration);
 
     public override void Enter(PlayerStateTransition transition)
@@ -18,7 +18,7 @@ public sealed class PlayerHardLandingState : PlayerStateBase
 
     public override void Tick(float deltaTime, ref PlayerGameplayIntent intent)
     {
-        intent.LocomotionMode = PlayerLocomotionMode.Idle;
+        intent.LocomotionMode = PlayerLocomotionMode.HardLanding;
         elapsedTime = Mathf.Min(Context.MovementConfig.Landing.HardLandingDuration, elapsedTime + deltaTime);
     }
 

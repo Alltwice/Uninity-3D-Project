@@ -39,7 +39,7 @@ public static class PlayerMotionComposer
     private static float ResolveAcceleration(Vector3 currentVelocity, Vector3 targetVelocity, PlayerLocomotionMode locomotionMode, PlayerMovementConfig.LocomotionSettings settings)
     {
         float acceleration = locomotionMode == PlayerLocomotionMode.Air ? settings.AirAcceleration : settings.GroundAcceleration;
-        if (locomotionMode == PlayerLocomotionMode.Idle) return settings.GroundDeceleration;
+        if (locomotionMode == PlayerLocomotionMode.Idle || locomotionMode == PlayerLocomotionMode.HardLanding) return settings.GroundDeceleration;
         if (currentVelocity.sqrMagnitude > 0.0001f && targetVelocity.sqrMagnitude > 0.0001f)
         {
             float alignment = Vector3.Dot(currentVelocity.normalized, targetVelocity.normalized);
@@ -59,6 +59,7 @@ public static class PlayerMotionComposer
             case PlayerLocomotionMode.Run: return settings.RunSpeed;
             case PlayerLocomotionMode.FastRun: return settings.FastRunSpeed;
             case PlayerLocomotionMode.Air: return settings.AirMoveSpeed;
+            case PlayerLocomotionMode.HardLanding: return 0f;
             default: return 0f;
         }
     }
@@ -69,6 +70,11 @@ public static class PlayerMotionComposer
     {
         facingDirection = intent.DesiredFacingDirection;
         yawDelta = 0f;
+        if (intent.LocomotionMode == PlayerLocomotionMode.HardLanding)
+        {
+            mode = PlayerMotorRotationMode.None;
+            return;
+        }
         if (!frame.IsValid)
         {
             mode = facingDirection.sqrMagnitude > 0.0001f ? PlayerMotorRotationMode.FaceDirection : PlayerMotorRotationMode.None;

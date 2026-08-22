@@ -71,6 +71,7 @@ public class PlayerMotionPlanner : MonoBehaviour
         else if (previous == typeof(PlayerIdleState) && current == typeof(PlayerRunState)) id = ResolveStartId(PlayerMotionId.IdleToRun, PlayerMotionId.RunStart180Left, PlayerMotionId.RunStart180Right, intent);
         else if (previous == typeof(PlayerWalkState) && current == typeof(PlayerIdleState)) id = PlayerMotionId.WalkToIdle;
         else if (previous == typeof(PlayerRunState) && current == typeof(PlayerIdleState)) id = PlayerMotionId.RunToIdle;
+        else if (previous == typeof(PlayerDodgeState) && current == typeof(PlayerIdleState)) id = PlayerMotionId.FastRunToIdle;
         else if (previous == typeof(PlayerFastRunState) && current == typeof(PlayerIdleState)) id = PlayerMotionId.FastRunToIdle;
         else { definition = null; return false; }
         return catalog.TryGet(id, out definition);

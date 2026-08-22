@@ -14,7 +14,8 @@ public sealed class PlayerAnimationController : MonoBehaviour
 
     [Header("稳定循环")]
     [SerializeField] private ClipTransition idleLoopTransition = new ClipTransition();
-    [SerializeField] private LinearMixerTransition groundLocomotionTransition = new LinearMixerTransition();
+    [SerializeField] private ClipTransition walkLoopTransition = new ClipTransition();
+    [SerializeField] private ClipTransition runLoopTransition = new ClipTransition();
     [SerializeField] private ClipTransition fastRunLoopTransition = new ClipTransition();
     [SerializeField] private ClipTransition airLoopTransition = new ClipTransition();
 
@@ -43,7 +44,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
         animancer.Graph.UpdateMode = DirectorUpdateMode.Manual;
     }
 
-    public void Present(Type currentGameplayStateType, PlayerStateTransition? transition, PlayerMotionSnapshot motion, PlayerMotorResult motorResult, float stateProgress)
+    public void Present(Type currentGameplayStateType, PlayerStateTransition? transition, PlayerMotionSnapshot motion, float stateProgress)
     {
         gameplayStateType = currentGameplayStateType;
         bool newMotion = motion.ActiveDefinition != null && motion.InstanceId != presentedMotionInstanceId;
@@ -56,7 +57,6 @@ public sealed class PlayerAnimationController : MonoBehaviour
             hardLandingState.Speed = 0f;
             hardLandingState.NormalizedTime = stateProgress;
         }
-        if (groundLocomotionTransition.State != null) groundLocomotionTransition.State.Parameter = motorResult.HorizontalSpeed;
     }
 
     public void EvaluateGraph(float deltaTime)
@@ -116,12 +116,11 @@ public sealed class PlayerAnimationController : MonoBehaviour
     private void EnsureHandoffLoop()
     {
         if (handoffLoopState != null) return;
-        ITransition loop = ResolveLoop(gameplayStateType);
+        ClipTransition loop = ResolveLoop(gameplayStateType);
         if (loop == null) return;
         handoffLoopState = animancer.Play(loop);
         boundaryState.Weight = 1f;
         handoffLoopState.Weight = 0f;
-        if (groundLocomotionTransition.State != null) groundLocomotionTransition.State.Parameter = 0f;
     }
     
     private void PlayStateTransition(PlayerStateTransition transition)
@@ -133,6 +132,11 @@ public sealed class PlayerAnimationController : MonoBehaviour
             hardLandingState = animancer.Play(hardLandingTransition);
             hardLandingState.Speed = 0f;
             hardLandingState.NormalizedTime = 0f;
+            return;
+        }
+        if ((transition.PreviousStateType == typeof(PlayerWalkState) && transition.CurrentStateType == typeof(PlayerRunState)) || (transition.PreviousStateType == typeof(PlayerRunState) && transition.CurrentStateType == typeof(PlayerWalkState)))
+        {
+            PlayStableLoopWithFade(transition.CurrentStateType);
             return;
         }
         if (transition.CurrentStateType == typeof(PlayerAirState))
@@ -167,14 +171,23 @@ public sealed class PlayerAnimationController : MonoBehaviour
 
     private void PlayStableLoop(Type stateType)
     {
-        ITransition loop = ResolveLoop(stateType);
+        ClipTransition loop = ResolveLoop(stateType);
         if (loop != null) animancer.Play(loop);
     }
 
-    private ITransition ResolveLoop(Type stateType)
+    private void PlayStableLoopWithFade(Type stateType)
+    {
+        ClipTransition loop = ResolveLoop(stateType);
+        if (loop == null) return;
+        AnimancerState state = animancer.Play(loop, loop.FadeDuration, FadeMode.FixedDuration);
+        state.NormalizedTime = loop.NormalizedStartTime;
+    }
+
+    private ClipTransition ResolveLoop(Type stateType)
     {
         if (stateType == typeof(PlayerIdleState) || stateType == typeof(PlayerHardLandingState)) return idleLoopTransition;
-        if (stateType == typeof(PlayerWalkState) || stateType == typeof(PlayerRunState)) return groundLocomotionTransition;
+        if (stateType == typeof(PlayerWalkState)) return walkLoopTransition;
+        if (stateType == typeof(PlayerRunState)) return runLoopTransition;
         if (stateType == typeof(PlayerFastRunState)) return fastRunLoopTransition;
         if (stateType == typeof(PlayerAirState)) return airLoopTransition;
         return null;

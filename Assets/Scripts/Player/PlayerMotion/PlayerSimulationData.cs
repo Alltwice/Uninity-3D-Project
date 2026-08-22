@@ -9,7 +9,8 @@ public enum PlayerLocomotionMode
     Run,
     FastRun,
     Dodge,
-    Air
+    Air,
+    HardLanding
 }
 /// <summary>
 /// 实际速度还是烘焙路径

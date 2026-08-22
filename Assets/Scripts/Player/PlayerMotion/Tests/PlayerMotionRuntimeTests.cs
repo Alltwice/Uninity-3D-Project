@@ -75,6 +75,52 @@ public sealed class PlayerMotionRuntimeTests
     }
 
     [Test]
+    public void HardLanding_TargetsZeroHorizontalVelocityWithMoveInput()
+    {
+        PlayerMovementConfig config = ScriptableObject.CreateInstance<PlayerMovementConfig>();
+        PlayerGameplayIntent intent = PlayerGameplayIntent.Create(Vector3.right, Vector3.forward);
+        intent.LocomotionMode = PlayerLocomotionMode.HardLanding;
+        PlayerMotorCommand command = PlayerMotionComposer.Compose(intent, default, new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.forward * 3f, 0f, true, false, 0f, CollisionFlags.None), config, 0.1f, Vector3.forward);
+        Assert.That(command.TargetPlanarVelocity, Is.EqualTo(Vector3.zero));
+        Object.DestroyImmediate(config);
+    }
+
+    [Test]
+    public void HardLanding_LocksRotationWithMoveInput()
+    {
+        PlayerMovementConfig config = ScriptableObject.CreateInstance<PlayerMovementConfig>();
+        PlayerGameplayIntent intent = PlayerGameplayIntent.Create(Vector3.right, Vector3.forward);
+        intent.LocomotionMode = PlayerLocomotionMode.HardLanding;
+        PlayerMotorCommand command = PlayerMotionComposer.Compose(intent, default, new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.zero, 0f, true, false, 0f, CollisionFlags.None), config, 0.1f, Vector3.forward);
+        Assert.That(command.RotationMode, Is.EqualTo(PlayerMotorRotationMode.None));
+        Object.DestroyImmediate(config);
+    }
+
+    [Test]
+    public void Idle_FacesMoveInputWithSameInputAsHardLanding()
+    {
+        PlayerMovementConfig config = ScriptableObject.CreateInstance<PlayerMovementConfig>();
+        PlayerGameplayIntent intent = PlayerGameplayIntent.Create(Vector3.right, Vector3.forward);
+        intent.LocomotionMode = PlayerLocomotionMode.Idle;
+        PlayerMotorCommand command = PlayerMotionComposer.Compose(intent, default, new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.zero, 0f, true, false, 0f, CollisionFlags.None), config, 0.1f, Vector3.forward);
+        Assert.That(command.RotationMode, Is.EqualTo(PlayerMotorRotationMode.FaceDirection));
+        Object.DestroyImmediate(config);
+    }
+
+    [Test]
+    public void HardLanding_UsesGroundDecelerationForExistingHorizontalInertia()
+    {
+        PlayerMovementConfig config = ScriptableObject.CreateInstance<PlayerMovementConfig>();
+        PlayerGameplayIntent intent = PlayerGameplayIntent.Create(Vector3.right, Vector3.forward);
+        intent.LocomotionMode = PlayerLocomotionMode.HardLanding;
+        PlayerMotorResult result = new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.forward * 10f, 0f, true, false, 0f, CollisionFlags.None);
+        PlayerMotorCommand command = PlayerMotionComposer.Compose(intent, default, result, config, 0.1f, Vector3.forward);
+        Assert.That(command.PlanarAcceleration, Is.EqualTo(config.Locomotion.GroundDeceleration));
+        Assert.That(PlayerMotionComposer.CalculateVelocity(result.HorizontalVelocity, command.TargetPlanarVelocity, PlayerLocomotionMode.HardLanding, config.Locomotion, 0.1f).magnitude, Is.EqualTo(7.5f).Within(0.0001f));
+        Object.DestroyImmediate(config);
+    }
+
+    [Test]
     public void Handoff_EndpointsAndComposerHaveNoDoubleMovement()
     {
         PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile, 0.5f, 1f);
@@ -139,6 +185,24 @@ public sealed class PlayerMotionRuntimeTests
         GameObject prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab");
         CharacterController controller = prefab.GetComponent<CharacterController>();
         Assert.That(controller.minMoveDistance, Is.Zero, "PlayerMotor 会用实际位移回写水平速度；非零 MinMoveDistance 会在高帧率下反复丢弃从零加速的首批位移。");
+    }
+
+    [Test]
+    public void PlayerPrefab_UsesIndependentWalkAndRunClipTransitions()
+    {
+        GameObject prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab");
+        Component controller = prefab.GetComponent("PlayerAnimationController");
+        UnityEditor.SerializedObject serialized = new UnityEditor.SerializedObject(controller);
+        UnityEditor.SerializedProperty walk = serialized.FindProperty("walkLoopTransition");
+        UnityEditor.SerializedProperty run = serialized.FindProperty("runLoopTransition");
+        Assert.That(walk, Is.Not.Null);
+        Assert.That(run, Is.Not.Null);
+        Assert.That(serialized.FindProperty("groundLocomotionTransition"), Is.Null);
+        Assert.That(walk.FindPropertyRelative("_Clip").objectReferenceValue, Is.Not.Null);
+        Assert.That(run.FindPropertyRelative("_Clip").objectReferenceValue, Is.Not.Null);
+        Assert.That(walk.FindPropertyRelative("_Clip").objectReferenceValue, Is.Not.SameAs(run.FindPropertyRelative("_Clip").objectReferenceValue));
+        Assert.That(walk.FindPropertyRelative("_FadeDuration").floatValue, Is.EqualTo(0.4f).Within(0.0001f));
+        Assert.That(run.FindPropertyRelative("_FadeDuration").floatValue, Is.EqualTo(0.4f).Within(0.0001f));
     }
 
     [Test]
