@@ -63,7 +63,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
     {
         animancer.Evaluate(Mathf.Max(0f, deltaTime));
     }
-
+    //实际处理动画播放，包括对烘焙动画的处理
     private void PlayMotion(PlayerMotionSnapshot motion)
     {
         ++presentationSequence;
@@ -71,7 +71,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
         boundaryState = null;
         handoffLoopState = null;
         activeBinding = null;
-        //没拿到绑定就去依据状态播动画
+        //没拿到烘焙动画数据就播放普通循环
         if (!animationSet.TryGetBinding(motion.ActiveDefinition, out activeBinding))
         {
             PlayStableLoop(gameplayStateType);
