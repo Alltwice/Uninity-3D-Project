@@ -14,13 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMovementConfig
   locomotion:
     walkSpeed: 1.5
-    runSpeed: 4
-    fastRunSpeed: 7
-    airMoveSpeed: 3.5
+    runSpeed: 4.5
+    fastRunSpeed: 6
+    airMoveSpeed: 4
     groundAcceleration: 25
     groundDeceleration: 25
     groundTurnAcceleration: 80
-    airAcceleration: 10
+    airAcceleration: 1
     rotationSmoothSpeed: 12
   motorPhysics:
     gravity: -20

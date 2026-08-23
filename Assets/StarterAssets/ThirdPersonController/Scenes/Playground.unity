@@ -684,6 +684,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 2115747542254858949, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: runLoopTransition._Clip
+      value: 
+      objectReference: {fileID: 7400098, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+    - target: {fileID: 2115747542254858949, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: groundLocomotionTransition._FadeDuration
       value: 0.5
       objectReference: {fileID: 0}
@@ -931,15 +935,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7649d304ef80904c83bd17b37336fc9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::IdleToRunTransitionDebugTestRunner
-  totalTests: 30
-  runOnStart: 1
-  randomSeed: 0
-  idleWaitRange: {x: 0.5, y: 2}
-  moveDurationRange: {x: 2, y: 5}
-  returnIdleStableDuration: 0.25
-  observedStallMarkerKey: 40
-  probe: {fileID: 0}
-  logger: {fileID: 0}
 --- !u!1001 &8345070700268369567
 PrefabInstance:
   m_ObjectHideFlags: 0

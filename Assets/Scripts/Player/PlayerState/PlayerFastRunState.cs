@@ -1,9 +1,9 @@
 using UnityEngine;
 
 /// <summary>
-/// Dodge 完成后保持移动输入时进入的疾跑状态。
+/// Dodge 完成后保持移动输入时进入的疾跑状态
 /// </summary>
-public sealed class PlayerFastRunState : PlayerStateBase
+public class PlayerFastRunState : PlayerStateBase
 {
     public PlayerFastRunState(PlayerContext context) : base(context) { }
     public override PlayerLocomotionMode LocomotionMode => PlayerLocomotionMode.FastRun;
