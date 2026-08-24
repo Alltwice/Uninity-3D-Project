@@ -1,1 +1,0 @@
-For any questions please visit: https://www.kubold.com/faq-unity

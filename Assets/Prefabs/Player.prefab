@@ -113,7 +113,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 7400002, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+    _Clip: {fileID: 1827226128182048838, guid: 478ec63e68b1ee64eaf3e5b9a296a6a4, type: 3}
     _NormalizedStartTime: 0
   walkLoopTransition:
     _FadeDuration: 0.4
@@ -122,7 +122,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 7400016, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+    _Clip: {fileID: 1827226128182048838, guid: 28f94a65124f3284b8882da5e12ea584, type: 3}
     _NormalizedStartTime: 0
   runLoopTransition:
     _FadeDuration: 0.4
@@ -131,7 +131,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 7400098, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+    _Clip: {fileID: 1827226128182048838, guid: 99e4eb5572885a74b8602df50dac4516, type: 3}
     _NormalizedStartTime: 0
   fastRunLoopTransition:
     _FadeDuration: 0.15
@@ -140,7 +140,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 1827226128182048838, guid: 9bcb5fa982ad07e4eb42e4232187056e, type: 3}
+    _Clip: {fileID: 1827226128182048838, guid: 3e2e69d8336b4a944969c564b91de69e, type: 3}
     _NormalizedStartTime: 0
   airLoopTransition:
     _FadeDuration: 0.5
@@ -149,7 +149,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 7400150, guid: dd4bc59541169e34ead96f0310ddc7bd, type: 3}
+    _Clip: {fileID: 6624780820005253362, guid: 3143222e94d549e449a7527fef636283, type: 3}
     _NormalizedStartTime: 0
   jumpStartTransition:
     _FadeDuration: 0.3
@@ -158,7 +158,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 7400146, guid: dd4bc59541169e34ead96f0310ddc7bd, type: 3}
+    _Clip: {fileID: -5475316151806207314, guid: b3462e35ae6790846a4e4609db48d800, type: 3}
     _NormalizedStartTime: 0
   landingTransition:
     _FadeDuration: 0.08
@@ -167,7 +167,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 7400120, guid: dd4bc59541169e34ead96f0310ddc7bd, type: 3}
+    _Clip: {fileID: -8279524762354361089, guid: c2db81f0323333a46b5cfa2e4c123f39, type: 3}
     _NormalizedStartTime: 0
   hardLandingTransition:
     _FadeDuration: 0.08
@@ -176,7 +176,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: -203655887218126122, guid: a858150cb166188488b92e796b612955, type: 3}
+    _Clip: {fileID: 3986369646147372437, guid: 0f6c69507708e8a40a96f9a2e0517531, type: 3}
     _NormalizedStartTime: 0
   references:
     version: 2

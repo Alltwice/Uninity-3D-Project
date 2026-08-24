@@ -10,6 +10,7 @@ namespace ProjectTools.AnimationPreview.Tests
     public sealed class AnimationPreviewClipLibraryTests
     {
         private const string IdleToRunSequencePath = "Assets/Tools/AnimationPreview/Editor/Tests/IdleToRunTest Sequence.asset";
+        private const string PlayerIdleAnimationPath = "Assets/Animation/Player/Idle/Idle.fbx";
         private string temporarySequencePath;
 
         [TearDown]
@@ -22,7 +23,7 @@ namespace ProjectTools.AnimationPreview.Tests
         [Test]
         public void Scan_FbxSource_ReturnsEmbeddedClipsWithoutPreviewClips()
         {
-            GameObject source = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/FemaleMovementAnimsetPro/Animations/FemaleMovementAnimsetPro_1.fbx");
+            GameObject source = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerIdleAnimationPath);
             Assert.That(source, Is.Not.Null);
             var results = AnimationPreviewClipLibrary.Scan(new Object[] { source }, false);
             Assert.That(results, Is.Not.Empty);
@@ -33,7 +34,7 @@ namespace ProjectTools.AnimationPreview.Tests
         public void PreviewSession_XBotAndHumanoidClip_CreatesPlayableGraph()
         {
             GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Model/X Bot.fbx");
-            GameObject animationSource = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/FemaleMovementAnimsetPro/Animations/FemaleMovementAnimsetPro_1.fbx");
+            GameObject animationSource = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerIdleAnimationPath);
             AnimationPreviewClipEntry entry = AnimationPreviewClipLibrary.Scan(new Object[] { animationSource }, false).First();
             using AnimationPreviewSession session = new AnimationPreviewSession();
             Assert.That(session.SetModel(model), Is.True, session.ModelError);

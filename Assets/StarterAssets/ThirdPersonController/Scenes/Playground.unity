@@ -670,11 +670,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4939352834144267727, guid: 02b3fe4a1fff8474eac7b544e5f2e1d7, type: 3}
   m_PrefabInstance: {fileID: 1575864814}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1659824287861266592 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 3759524673635935766, guid: a74b765abd4140c479f1c698562ce026, type: 3}
-  m_PrefabInstance: {fileID: 1803757077244998304}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1803757077244998304
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -694,7 +689,7 @@ PrefabInstance:
     - target: {fileID: 2115747542254858949, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: runLoopTransition._Clip
       value: 
-      objectReference: {fileID: 7400098, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+      objectReference: {fileID: 1827226128182048838, guid: ea9956f046d63b146b793cac83c4d2a7, type: 3}
     - target: {fileID: 2115747542254858949, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: groundLocomotionTransition._FadeDuration
       value: 0.5
@@ -758,10 +753,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 3759524673635935766, guid: a74b765abd4140c479f1c698562ce026, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 7995786445649342148}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: a74b765abd4140c479f1c698562ce026, type: 3}
 --- !u!1 &2114283753834967212
 GameObject:
@@ -931,18 +923,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1126623778274932028, guid: a74b765abd4140c479f1c698562ce026, type: 3}
   m_PrefabInstance: {fileID: 1803757077244998304}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &7995786445649342148
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1659824287861266592}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d7649d304ef80904c83bd17b37336fc9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::IdleToRunTransitionDebugTestRunner
 --- !u!1001 &8345070700268369567
 PrefabInstance:
   m_ObjectHideFlags: 0
