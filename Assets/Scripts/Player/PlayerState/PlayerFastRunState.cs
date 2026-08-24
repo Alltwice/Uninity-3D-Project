@@ -1,12 +1,17 @@
 using UnityEngine;
 
 /// <summary>
-/// Dodge 完成后保持移动输入时进入的疾跑状态
+/// Dodge 完成后保持的接地疾跑状态；跨越空中和重落地时由 Context 保存疾跑标识。
 /// </summary>
 public class PlayerFastRunState : PlayerStateBase
 {
     public PlayerFastRunState(PlayerContext context) : base(context) { }
     public override PlayerLocomotionMode LocomotionMode => PlayerLocomotionMode.FastRun;
+
+    public override void Enter(PlayerStateTransition transition)
+    {
+        Context.ActivateFastRun();
+    }
 
     public override PlayerStateTransitionRequest EvaluateInputTransition()
     {
@@ -22,7 +27,15 @@ public class PlayerFastRunState : PlayerStateBase
         {
             return new PlayerStateTransitionRequest(typeof(PlayerDodgeState), PlayerStateTransitionReason.DodgeStarted);
         }
-        return Context.InputSource.MoveInput == Vector2.zero ? new PlayerStateTransitionRequest(typeof(PlayerIdleState), PlayerStateTransitionReason.StoppedMoving) : null;
+        if (!Context.HasGroundMoveContinuationIntent)
+        {
+            return new PlayerStateTransitionRequest(typeof(PlayerIdleState), PlayerStateTransitionReason.StoppedMoving);
+        }
+        if (!Context.IsFastRunLatched)
+        {
+            return new PlayerStateTransitionRequest(ResolveGroundStateType(), PlayerStateTransitionReason.Decelerated);
+        }
+        return null;
     }
 
     public override void Tick(float deltaTime, ref PlayerGameplayIntent intent)

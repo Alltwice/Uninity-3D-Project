@@ -48,6 +48,8 @@ public class PlayerSimulationDriver : MonoBehaviour
         motionPlanner.BeginFrame();
         dodge.TickCooldown(deltaTime);
         Vector3 desiredMoveDirection = ResolveWorldMoveDirection(inputSource.MoveInput);
+        //零输入延迟检测
+        stateController.UpdateLocomotionIntent(deltaTime);
         stateController.SetSimulationFacts(motor.CurrentResult, motionPlanner.Snapshot);
         PlayerStateTransition? transition = stateController.ProcessPreTickTransition();
         //建立输入意图

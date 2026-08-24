@@ -13,13 +13,15 @@ MonoBehaviour:
   m_Name: WalkTurn180LeftDefinition
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMotionDefinition
   profile: {fileID: 11400000, guid: bac74e81b04cff54aacf020fcd44681a, type: 2}
-  translationPolicy: 4
+  translationPolicy: 3
   rotationPolicy: 2
   basisPolicy: 2
   durationOverride: 0
   translationScale: 1
   handoffStartProgress: 0.6
   handoffEndProgress: 1
+  transitionLockEndProgress: 0
+  interruptedExitPolicy: 0
   translationAuthority:
     serializedVersion: 2
     m_Curve:

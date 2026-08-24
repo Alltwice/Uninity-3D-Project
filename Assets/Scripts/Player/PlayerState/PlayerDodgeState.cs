@@ -34,7 +34,15 @@ public sealed class PlayerDodgeState : PlayerStateBase
         {
             return new PlayerStateTransitionRequest(typeof(PlayerAirState), PlayerStateTransitionReason.Fell);
         }
-        return Context.MotionSnapshot.JustCompleted ? new PlayerStateTransitionRequest(Context.InputSource.MoveInput == Vector2.zero ? typeof(PlayerIdleState) : typeof(PlayerFastRunState), PlayerStateTransitionReason.DodgeCompleted) : null;
+        if (!Context.MotionSnapshot.JustCompleted)
+        {
+            return null;
+        }
+        if (Context.InputSource.MoveInput == Vector2.zero)
+        {
+            return new PlayerStateTransitionRequest(typeof(PlayerIdleState), PlayerStateTransitionReason.DodgeCompleted);
+        }
+        return new PlayerStateTransitionRequest(typeof(PlayerFastRunState), PlayerStateTransitionReason.DodgeCompleted);
     }
 
     public override void Exit(PlayerStateTransition transition)

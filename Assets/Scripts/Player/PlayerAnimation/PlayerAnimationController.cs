@@ -48,10 +48,12 @@ public sealed class PlayerAnimationController : MonoBehaviour
     {
         gameplayStateType = currentGameplayStateType;
         bool newMotion = motion.ActiveDefinition != null && motion.InstanceId != presentedMotionInstanceId;
+        bool motionCancelled = motion.JustCancelled && motion.InstanceId == presentedMotionInstanceId;
         if (newMotion) PlayMotion(motion);
+        else if (motionCancelled) ClearBoundary();
         if (transition.HasValue && !newMotion) PlayStateTransition(transition.Value);
-        if (motion.ActiveDefinition != null && motion.InstanceId == presentedMotionInstanceId) UpdateBoundaryMotion(motion);
-        else if (motion.JustCancelled) PlayStableLoop(gameplayStateType);
+        else if (!newMotion && !motionCancelled && motion.ActiveDefinition != null && motion.InstanceId == presentedMotionInstanceId) UpdateBoundaryMotion(motion);
+        else if (!newMotion && !transition.HasValue && motionCancelled) PlayStableLoop(gameplayStateType);
         if (gameplayStateType == typeof(PlayerHardLandingState) && hardLandingState != null)
         {
             hardLandingState.Speed = 0f;

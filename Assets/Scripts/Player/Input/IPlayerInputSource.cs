@@ -7,5 +7,6 @@ public interface IPlayerInputSource
     //写入具体输入事件
     Vector2 MoveInput { get; }
     Vector2 LookInput { get; }
+    //仅提供 WalkToggle 的当前信号；有效 Walk 模式由 PlayerContext 维护。
     bool IsWalkMode { get; }
 }

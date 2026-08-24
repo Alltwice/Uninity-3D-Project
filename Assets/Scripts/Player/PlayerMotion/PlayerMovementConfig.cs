@@ -18,6 +18,7 @@ public class PlayerMovementConfig : ScriptableObject
         [Min(0f)] [SerializeField] private float groundTurnAcceleration = 80f;
         [Min(0f)] [SerializeField] private float airAcceleration = 10f;
         [Min(0f)] [SerializeField] private float rotationSmoothSpeed = 12f;
+        [Min(0f)] [SerializeField] private float groundMoveInputReleaseGraceTime = 0.1f;
 
         public float WalkSpeed => walkSpeed;
         public float RunSpeed => runSpeed;
@@ -28,6 +29,7 @@ public class PlayerMovementConfig : ScriptableObject
         public float GroundTurnAcceleration => groundTurnAcceleration;
         public float AirAcceleration => airAcceleration;
         public float RotationSmoothSpeed => rotationSmoothSpeed;
+        public float GroundMoveInputReleaseGraceTime => groundMoveInputReleaseGraceTime;
     }
 
     [Serializable]

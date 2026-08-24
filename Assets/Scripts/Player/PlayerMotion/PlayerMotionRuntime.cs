@@ -35,7 +35,7 @@ public struct PlayerMotionFrame
 /// </summary>
 public struct PlayerMotionSnapshot
 {
-    public PlayerMotionSnapshot(PlayerMotionDefinition activeDefinition, ulong instanceId, float progress, float handoffProgress, bool handoffActive, bool isActive, bool justCompleted, bool justCancelled)
+    public PlayerMotionSnapshot(PlayerMotionDefinition activeDefinition, ulong instanceId, float progress, float handoffProgress, bool handoffActive, bool isActive, bool justCompleted, bool justCancelled, bool isTransitionLocked = false)
     {
         ActiveDefinition = activeDefinition;
         InstanceId = instanceId;
@@ -45,6 +45,7 @@ public struct PlayerMotionSnapshot
         IsActive = isActive;
         JustCompleted = justCompleted;
         JustCancelled = justCancelled;
+        IsTransitionLocked = isTransitionLocked;
     }
 
     public PlayerMotionDefinition ActiveDefinition { get; }
@@ -55,6 +56,7 @@ public struct PlayerMotionSnapshot
     public bool IsActive { get; }
     public bool JustCompleted { get; }
     public bool JustCancelled { get; }
+    public bool IsTransitionLocked { get; }
 }
 public class PlayerMotionRuntime
 {
@@ -162,12 +164,17 @@ public class PlayerMotionRuntime
                 return Vector3.zero;
         }
     }
-
+    /// <summary>
+    /// 建立快照
+    /// </summary>
+    /// <returns></returns>
     private PlayerMotionSnapshot BuildSnapshot()
     {
         float handoff = definition == null ? 0f : definition.CalculateHandoffProgress(currentProgress);
         bool handoffActive = definition != null && currentProgress >= definition.HandoffStartProgress;
-        return new PlayerMotionSnapshot(definition, instanceId, currentProgress, handoff, handoffActive, isActive, justCompleted, justCancelled);
+        //这里处理动画锁
+        bool isTransitionLocked = definition != null && isActive && currentProgress < definition.TransitionLockEndProgress;
+        return new PlayerMotionSnapshot(definition, instanceId, currentProgress, handoff, handoffActive, isActive, justCompleted, justCancelled, isTransitionLocked);
     }
     /// <summary>
     /// 去除y分量并将其向量化

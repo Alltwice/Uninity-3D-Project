@@ -11,6 +11,7 @@ public class PlayerInputReader : MonoBehaviour, IPlayerInputSource
 
     public Vector2 MoveInput { get; private set; }
     public Vector2 LookInput { get; private set; }
+    //WalkToggle 的当前信号，不代表 Gameplay 当前有效的 Walk 模式。
     public bool IsWalkMode { get; private set; }
 
     private void Awake()

@@ -40,6 +40,14 @@ public enum PlayerMotionBasisPolicy
     EntryFacing
 }
 /// <summary>
+/// Motion 被状态机打断后，决定是否仍解析源状态的退出表现
+/// </summary>
+public enum PlayerMotionInterruptedExitPolicy
+{
+    ResolveNormalTransitionMotion = 0,
+    DirectToTargetPresentation = 1
+}
+/// <summary>
 /// 动画数据定义
 /// </summary>
 [CreateAssetMenu(fileName = "PlayerMotionDefinition", menuName = "Player/Motion/Definition")]
@@ -57,6 +65,9 @@ public class PlayerMotionDefinition : ScriptableObject
     //控制权移交
     [Range(0f, 1f)] [SerializeField] private float handoffStartProgress = 0.8f;
     [Range(0f, 1f)] [SerializeField] private float handoffEndProgress = 1f;
+    //状态转换承诺窗口；窗口只约束状态机何时接受普通请求，不拥有转换裁决权
+    [Range(0f, 1f)] [SerializeField] private float transitionLockEndProgress;
+    [SerializeField] private PlayerMotionInterruptedExitPolicy interruptedExitPolicy;
     [SerializeField] private AnimationCurve translationAuthority = AnimationCurve.Linear(0f, 1f, 1f, 0f);
     //是否需要对应的动画表现
     [SerializeField] private bool requiresPresentation = true;
@@ -70,6 +81,8 @@ public class PlayerMotionDefinition : ScriptableObject
     public float TranslationScale => translationScale;
     public float HandoffStartProgress => handoffStartProgress;
     public float HandoffEndProgress => handoffEndProgress;
+    public float TransitionLockEndProgress => transitionLockEndProgress;
+    public PlayerMotionInterruptedExitPolicy InterruptedExitPolicy => interruptedExitPolicy;
     public bool RequiresPresentation => requiresPresentation;
     /// <summary>
     /// 将Handoff的过程从0.8-1.0重映射为0-1；
@@ -93,6 +106,7 @@ public class PlayerMotionDefinition : ScriptableObject
         if (float.IsNaN(Duration) || float.IsInfinity(Duration) || Duration <= 0f) { errors?.Add(name + ": Runtime Duration 必须是大于 0 的有限值。"); valid = false; }
         if (float.IsNaN(translationScale) || float.IsInfinity(translationScale)) { errors?.Add(name + ": TranslationScale 必须是有限值。"); valid = false; }
         if (handoffEndProgress < handoffStartProgress) { errors?.Add(name + ": HandoffEndProgress 不能早于 Start。"); valid = false; }
+        if (float.IsNaN(transitionLockEndProgress) || float.IsInfinity(transitionLockEndProgress) || transitionLockEndProgress < 0f || transitionLockEndProgress > 1f) { errors?.Add(name + ": TransitionLockEndProgress 必须是 0 到 1 的有限值。"); valid = false; }
         if (rotationPolicy == PlayerMotionRotationPolicy.ProfileYaw && !profile.HasYaw) { errors?.Add(name + ": ProfileYaw 需要有效 Yaw channel。"); valid = false; }
         if (translationPolicy == PlayerMotionTranslationPolicy.LocalTrajectory && !profile.HasPlanarPosition) { errors?.Add(name + ": LocalTrajectory 需要有效 XZ channel。"); valid = false; }
         if ((translationPolicy == PlayerMotionTranslationPolicy.TravelAlongCapturedDirection || translationPolicy == PlayerMotionTranslationPolicy.TravelAlongDesiredDirection) && !profile.HasTravelDistance) { errors?.Add(name + ": TravelAlong 需要有效 Travel channel。"); valid = false; }
@@ -101,9 +115,10 @@ public class PlayerMotionDefinition : ScriptableObject
 
 #if UNITY_EDITOR
     /// <summary>
-    /// Unity环境中的初始化行为
+    /// Unity 编辑器中配置轨迹、状态锁承诺窗口和中断表现策略。
     /// </summary>
-    public void Configure(PlayerMotionProfile motionProfile, PlayerMotionTranslationPolicy translation, PlayerMotionRotationPolicy rotation, PlayerMotionBasisPolicy basis, float runtimeDuration, float scale, float handoffStart, float handoffEnd, bool presentation = true)
+    public void Configure(PlayerMotionProfile motionProfile, PlayerMotionTranslationPolicy translation, PlayerMotionRotationPolicy rotation, PlayerMotionBasisPolicy basis, 
+        float runtimeDuration, float scale, float handoffStart, float handoffEnd, bool presentation = true, float transitionLockEndProgress = 0f, PlayerMotionInterruptedExitPolicy interruptedExitPolicy = PlayerMotionInterruptedExitPolicy.ResolveNormalTransitionMotion)
     {
         profile = motionProfile;
         translationPolicy = translation;
@@ -113,6 +128,8 @@ public class PlayerMotionDefinition : ScriptableObject
         translationScale = scale;
         handoffStartProgress = handoffStart;
         handoffEndProgress = handoffEnd;
+        this.transitionLockEndProgress = transitionLockEndProgress;
+        this.interruptedExitPolicy = interruptedExitPolicy;
         requiresPresentation = presentation;
         translationAuthority = AnimationCurve.Linear(0f, 1f, 1f, 0f);
     }

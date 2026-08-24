@@ -16,10 +16,12 @@ MonoBehaviour:
   translationPolicy: 4
   rotationPolicy: 0
   basisPolicy: 1
-  durationOverride: 0
+  durationOverride: 2.5
   translationScale: 1
   handoffStartProgress: 0.6
   handoffEndProgress: 1
+  transitionLockEndProgress: 0
+  interruptedExitPolicy: 0
   translationAuthority:
     serializedVersion: 2
     m_Curve:

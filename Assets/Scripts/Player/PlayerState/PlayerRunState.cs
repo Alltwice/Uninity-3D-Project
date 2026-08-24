@@ -22,11 +22,15 @@ public sealed class PlayerRunState : PlayerStateBase
         {
             return new PlayerStateTransitionRequest(typeof(PlayerDodgeState), PlayerStateTransitionReason.DodgeStarted);
         }
-        if (Context.InputSource.MoveInput == Vector2.zero)
+        if (!Context.HasGroundMoveContinuationIntent)
         {
             return new PlayerStateTransitionRequest(typeof(PlayerIdleState), PlayerStateTransitionReason.StoppedMoving);
         }
-        return Context.InputSource.IsWalkMode ? new PlayerStateTransitionRequest(typeof(PlayerWalkState), PlayerStateTransitionReason.Decelerated) : null;
+        if (!Context.IsWalkMode)
+        {
+            return null;
+        }
+        return new PlayerStateTransitionRequest(typeof(PlayerWalkState), PlayerStateTransitionReason.Decelerated);
     }
 
     public override void Tick(float deltaTime, ref PlayerGameplayIntent intent)

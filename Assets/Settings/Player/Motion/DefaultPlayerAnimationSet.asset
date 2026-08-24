@@ -396,7 +396,7 @@ MonoBehaviour:
         _NormalizedTimes: []
         _Callbacks: []
         _Names: []
-      _Clip: {fileID: 7400130, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+      _Clip: {fileID: -7836378658146244128, guid: 3270e5d01d6953e4f84c10a19af9f163, type: 3}
       _NormalizedStartTime: NaN
     poseFadeWeight:
       serializedVersion: 2
@@ -430,7 +430,7 @@ MonoBehaviour:
         _NormalizedTimes: []
         _Callbacks: []
         _Names: []
-      _Clip: {fileID: 7400128, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+      _Clip: {fileID: 4521375890317941169, guid: 3b9f4eb250faa39418550060182ac9d7, type: 3}
       _NormalizedStartTime: NaN
     poseFadeWeight:
       serializedVersion: 2
@@ -464,7 +464,7 @@ MonoBehaviour:
         _NormalizedTimes: []
         _Callbacks: []
         _Names: []
-      _Clip: {fileID: 7400130, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+      _Clip: {fileID: 7999116254279726571, guid: b768f8e47a2bea9439c494bde553d603, type: 3}
       _NormalizedStartTime: NaN
     poseFadeWeight:
       serializedVersion: 2
@@ -498,7 +498,7 @@ MonoBehaviour:
         _NormalizedTimes: []
         _Callbacks: []
         _Names: []
-      _Clip: {fileID: 7400128, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+      _Clip: {fileID: 8568171489415138635, guid: cbf5590ac3bb2a64c9eccb8ca2e31f85, type: 3}
       _NormalizedStartTime: NaN
     poseFadeWeight:
       serializedVersion: 2

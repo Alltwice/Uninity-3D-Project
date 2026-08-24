@@ -1,3 +1,4 @@
+using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -72,6 +73,164 @@ public sealed class PlayerMotionRuntimeTests
         Object.DestroyImmediate(config);
         Object.DestroyImmediate(definition);
         Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void MotionRuntime_ReportsTransitionLockUntilConfiguredProgress()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        Assert.That(definition.TransitionLockEndProgress, Is.EqualTo(0f));
+        Assert.That(definition.InterruptedExitPolicy, Is.EqualTo(PlayerMotionInterruptedExitPolicy.ResolveNormalTransitionMotion));
+        definition.Configure(profile, PlayerMotionTranslationPolicy.TravelAlongCapturedDirection, PlayerMotionRotationPolicy.FaceDirection, PlayerMotionBasisPolicy.DesiredDirection, 0f, 1f, 0.8f, 1f, true, 0.6f, PlayerMotionInterruptedExitPolicy.DirectToTargetPresentation);
+        PlayerMotionRuntime runtime = new PlayerMotionRuntime();
+        runtime.Begin(definition, Vector3.forward, Vector3.forward);
+        Assert.That(runtime.Snapshot.IsTransitionLocked, Is.True);
+        runtime.Advance(0.5f, PlayerGameplayIntent.Create(Vector3.forward, Vector3.forward));
+        Assert.That(runtime.Snapshot.IsTransitionLocked, Is.True);
+        runtime.Advance(0.11f, PlayerGameplayIntent.Create(Vector3.forward, Vector3.forward));
+        Assert.That(runtime.Snapshot.IsTransitionLocked, Is.False);
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void MotionDefinition_ValidateRejectsInvalidTransitionLockProgress()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        definition.Configure(profile, PlayerMotionTranslationPolicy.TravelAlongCapturedDirection, PlayerMotionRotationPolicy.FaceDirection, PlayerMotionBasisPolicy.DesiredDirection, 0f, 1f, 0.8f, 1f, true, -0.1f);
+        System.Collections.Generic.List<string> errors = new System.Collections.Generic.List<string>();
+        Assert.That(definition.Validate(errors), Is.False);
+        Assert.That(errors.Exists(error => error.Contains("TransitionLockEndProgress")), Is.True);
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void FastRunTurnDefinitions_UseDirectPresentationAfterSixtyPercent()
+    {
+        PlayerMotionDefinition left = UnityEditor.AssetDatabase.LoadAssetAtPath<PlayerMotionDefinition>("Assets/Settings/Player/Motion/Definitions/FastRunTurn180LeftDefinition.asset");
+        PlayerMotionDefinition right = UnityEditor.AssetDatabase.LoadAssetAtPath<PlayerMotionDefinition>("Assets/Settings/Player/Motion/Definitions/FastRunTurn180RightDefinition.asset");
+        Assert.That(left.TransitionLockEndProgress, Is.EqualTo(0.6f).Within(0.0001f));
+        Assert.That(right.TransitionLockEndProgress, Is.EqualTo(0.6f).Within(0.0001f));
+        Assert.That(left.InterruptedExitPolicy, Is.EqualTo(PlayerMotionInterruptedExitPolicy.DirectToTargetPresentation));
+        Assert.That(right.InterruptedExitPolicy, Is.EqualTo(PlayerMotionInterruptedExitPolicy.DirectToTargetPresentation));
+    }
+
+    [TestCase(PlayerLocomotionMode.Walk)]
+    [TestCase(PlayerLocomotionMode.Run)]
+    [TestCase(PlayerLocomotionMode.FastRun)]
+    public void Composer_ZeroDesiredDirectionStopsGroundModes(PlayerLocomotionMode locomotionMode)
+    {
+        PlayerMovementConfig config = ScriptableObject.CreateInstance<PlayerMovementConfig>();
+        PlayerGameplayIntent intent = PlayerGameplayIntent.Create(Vector3.zero, Vector3.forward);
+        intent.LocomotionMode = locomotionMode;
+        PlayerMotorResult result = new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.forward * 3f, 0f, true, false, 0f, CollisionFlags.None);
+        PlayerMotorCommand command = PlayerMotionComposer.Compose(intent, default, result, config, 0.1f, Vector3.forward);
+        Assert.That(command.TargetPlanarVelocity, Is.EqualTo(Vector3.zero));
+        Object.DestroyImmediate(config);
+    }
+
+    [Test]
+    public void DefaultMovementConfig_UsesGroundMoveInputReleaseGraceTime()
+    {
+        PlayerMovementConfig config = UnityEditor.AssetDatabase.LoadAssetAtPath<PlayerMovementConfig>("Assets/Settings/Player/Motion/DefaultPlayerMovementConfig.asset");
+        Assert.That(config.Locomotion.GroundMoveInputReleaseGraceTime, Is.EqualTo(0.1f).Within(0.0001f));
+    }
+
+    [TestCase(30)]
+    [TestCase(60)]
+    [TestCase(120)]
+    public void LocomotionIntent_ReleaseGraceUsesElapsedTimeAndReinputResetsIt(int fps)
+    {
+        PlayerMovementConfig config = ScriptableObject.CreateInstance<PlayerMovementConfig>();
+        GameObject inputObject = new GameObject("LocomotionIntentTestInput");
+        System.Type inputType = System.Type.GetType("PlayerInputReader, Assembly-CSharp");
+        System.Type contextType = System.Type.GetType("PlayerContext, Assembly-CSharp");
+        Assert.That(inputType, Is.Not.Null);
+        Assert.That(contextType, Is.Not.Null);
+        if (inputType == null || contextType == null)
+        {
+            Object.DestroyImmediate(inputObject);
+            Object.DestroyImmediate(config);
+            return;
+        }
+        Component input = inputObject.AddComponent(inputType);
+        ConstructorInfo contextConstructor = null;
+        foreach (ConstructorInfo constructor in contextType.GetConstructors())
+        {
+            if (constructor.GetParameters().Length == 5)
+            {
+                contextConstructor = constructor;
+                break;
+            }
+        }
+        MethodInfo updateIntent = contextType.GetMethod("UpdateLocomotionIntent");
+        MethodInfo activateFastRun = contextType.GetMethod("ActivateFastRun");
+        PropertyInfo hasContinuation = contextType.GetProperty("HasGroundMoveContinuationIntent");
+        PropertyInfo isFastRunLatched = contextType.GetProperty("IsFastRunLatched");
+        PropertyInfo isWalkMode = contextType.GetProperty("IsWalkMode");
+        FieldInfo moveInput = inputType.GetField("<MoveInput>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
+        FieldInfo walkModeSignal = inputType.GetField("<IsWalkMode>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(contextConstructor, Is.Not.Null);
+        Assert.That(updateIntent, Is.Not.Null);
+        Assert.That(activateFastRun, Is.Not.Null);
+        Assert.That(hasContinuation, Is.Not.Null);
+        Assert.That(isFastRunLatched, Is.Not.Null);
+        Assert.That(isWalkMode, Is.Not.Null);
+        Assert.That(moveInput, Is.Not.Null);
+        Assert.That(walkModeSignal, Is.Not.Null);
+        if (contextConstructor == null || updateIntent == null || activateFastRun == null || hasContinuation == null || isFastRunLatched == null || isWalkMode == null || moveInput == null || walkModeSignal == null)
+        {
+            Object.DestroyImmediate(inputObject);
+            Object.DestroyImmediate(config);
+            return;
+        }
+        object context = contextConstructor.Invoke(new object[] { null, null, input, null, config });
+        updateIntent.Invoke(context, new object[] { 0f });
+        Assert.That((bool)isWalkMode.GetValue(context), Is.False);
+        walkModeSignal.SetValue(input, true);
+        updateIntent.Invoke(context, new object[] { 0f });
+        Assert.That((bool)isWalkMode.GetValue(context), Is.True);
+        moveInput.SetValue(input, Vector2.up);
+        updateIntent.Invoke(context, new object[] { 0f });
+        moveInput.SetValue(input, Vector2.zero);
+        updateIntent.Invoke(context, new object[] { config.Locomotion.GroundMoveInputReleaseGraceTime });
+        Assert.That((bool)isWalkMode.GetValue(context), Is.True);
+        activateFastRun.Invoke(context, null);
+        Assert.That((bool)isWalkMode.GetValue(context), Is.False);
+        walkModeSignal.SetValue(input, false);
+        updateIntent.Invoke(context, new object[] { 0f });
+        walkModeSignal.SetValue(input, true);
+        updateIntent.Invoke(context, new object[] { 0f });
+        Assert.That((bool)isWalkMode.GetValue(context), Is.False);
+        moveInput.SetValue(input, new Vector2(0f, 1f));
+        updateIntent.Invoke(context, new object[] { 0f });
+        Assert.That((bool)hasContinuation.GetValue(context), Is.True);
+        Assert.That((bool)isFastRunLatched.GetValue(context), Is.True);
+        moveInput.SetValue(input, Vector2.zero);
+        updateIntent.Invoke(context, new object[] { config.Locomotion.GroundMoveInputReleaseGraceTime * 0.5f });
+        Assert.That((bool)hasContinuation.GetValue(context), Is.True);
+        moveInput.SetValue(input, Vector2.right);
+        updateIntent.Invoke(context, new object[] { 1f / fps });
+        moveInput.SetValue(input, Vector2.zero);
+        float deltaTime = 1f / fps;
+        int frames = 0;
+        while ((bool)hasContinuation.GetValue(context) && frames < fps)
+        {
+            updateIntent.Invoke(context, new object[] { deltaTime });
+            frames++;
+        }
+        float elapsedTime = frames * deltaTime;
+        Assert.That(elapsedTime, Is.GreaterThanOrEqualTo(config.Locomotion.GroundMoveInputReleaseGraceTime - 0.0001f));
+        Assert.That(elapsedTime, Is.LessThanOrEqualTo(config.Locomotion.GroundMoveInputReleaseGraceTime + deltaTime + 0.0001f));
+        Assert.That((bool)hasContinuation.GetValue(context), Is.False);
+        Assert.That((bool)isFastRunLatched.GetValue(context), Is.False);
+        Assert.That((bool)isWalkMode.GetValue(context), Is.False);
+        walkModeSignal.SetValue(input, false);
+        updateIntent.Invoke(context, new object[] { 0f });
+        Assert.That((bool)isWalkMode.GetValue(context), Is.True);
+        Object.DestroyImmediate(inputObject);
+        Object.DestroyImmediate(config);
     }
 
     [Test]
@@ -336,4 +495,5 @@ public sealed class PlayerMotionRuntimeTests
         definition.Configure(profile, PlayerMotionTranslationPolicy.TravelAlongDesiredDirection, PlayerMotionRotationPolicy.ProfileYaw, PlayerMotionBasisPolicy.EntryFacing, 0f, 1f, 0.8f, 1f);
         return definition;
     }
+
 }

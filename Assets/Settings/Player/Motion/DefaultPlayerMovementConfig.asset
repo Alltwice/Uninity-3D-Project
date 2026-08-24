@@ -21,7 +21,8 @@ MonoBehaviour:
     groundDeceleration: 25
     groundTurnAcceleration: 80
     airAcceleration: 1
-    rotationSmoothSpeed: 12
+    rotationSmoothSpeed: 15
+    groundMoveInputReleaseGraceTime: 0.1
   motorPhysics:
     gravity: -20
     groundedVerticalVelocity: -2

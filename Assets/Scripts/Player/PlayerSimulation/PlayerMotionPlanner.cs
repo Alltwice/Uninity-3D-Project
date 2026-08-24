@@ -17,7 +17,19 @@ public class PlayerMotionPlanner : MonoBehaviour
 
     public void HandleStateTransition(PlayerStateTransition transition, PlayerGameplayIntent intent, PlayerMotorResult motorResult)
     {
-        if (TryResolveTransitionMotion(transition, intent, out PlayerMotionDefinition definition))
+        if (TryResolveTargetTransitionMotion(transition, intent, out PlayerMotionDefinition definition))
+        {
+            Begin(definition, intent, motorResult);
+            return;
+        }
+        PlayerMotionSnapshot motion = runtime.Snapshot;
+        //如果动画被锁定runtime模拟停止
+        if (motion.IsActive && motion.ActiveDefinition != null && motion.ActiveDefinition.InterruptedExitPolicy == PlayerMotionInterruptedExitPolicy.DirectToTargetPresentation)
+        {
+            runtime.Cancel();
+            return;
+        }
+        if (TryResolveSourceExitMotion(transition, out definition))
         {
             Begin(definition, intent, motorResult);
             return;
@@ -59,9 +71,9 @@ public class PlayerMotionPlanner : MonoBehaviour
         return runtime.Advance(deltaTime, intent);
     }
     /// <summary>
-    /// 处理边界动画选用
+    /// 先解析目标进入 Motion，再按当前 Motion 的中断策略处理源状态退出 Motion
     /// </summary>
-    private bool TryResolveTransitionMotion(PlayerStateTransition transition, PlayerGameplayIntent intent, out PlayerMotionDefinition definition)
+    private bool TryResolveTargetTransitionMotion(PlayerStateTransition transition, PlayerGameplayIntent intent, out PlayerMotionDefinition definition)
     {
         Type previous = transition.PreviousStateType;
         Type current = transition.CurrentStateType;
@@ -69,7 +81,19 @@ public class PlayerMotionPlanner : MonoBehaviour
         if (current == typeof(PlayerDodgeState)) id = PlayerMotionId.Dodge;
         else if (previous == typeof(PlayerIdleState) && current == typeof(PlayerWalkState)) id = ResolveStartId(PlayerMotionId.IdleToWalk, PlayerMotionId.WalkStart180Left, PlayerMotionId.WalkStart180Right, intent);
         else if (previous == typeof(PlayerIdleState) && current == typeof(PlayerRunState)) id = ResolveStartId(PlayerMotionId.IdleToRun, PlayerMotionId.RunStart180Left, PlayerMotionId.RunStart180Right, intent);
-        else if (previous == typeof(PlayerWalkState) && current == typeof(PlayerIdleState)) id = PlayerMotionId.WalkToIdle;
+        else { definition = null; return false; }
+        return catalog.TryGet(id, out definition);
+    }
+
+    /// <summary>
+    /// 解析源状态的停止表现；DirectToTargetPresentation 会在调用方中跳过此分支
+    /// </summary>
+    private bool TryResolveSourceExitMotion(PlayerStateTransition transition, out PlayerMotionDefinition definition)
+    {
+        Type previous = transition.PreviousStateType;
+        Type current = transition.CurrentStateType;
+        PlayerMotionId id;
+        if (previous == typeof(PlayerWalkState) && current == typeof(PlayerIdleState)) id = PlayerMotionId.WalkToIdle;
         else if (previous == typeof(PlayerRunState) && current == typeof(PlayerIdleState)) id = PlayerMotionId.RunToIdle;
         else if (previous == typeof(PlayerDodgeState) && current == typeof(PlayerIdleState)) id = PlayerMotionId.FastRunToIdle;
         else if (previous == typeof(PlayerFastRunState) && current == typeof(PlayerIdleState)) id = PlayerMotionId.FastRunToIdle;

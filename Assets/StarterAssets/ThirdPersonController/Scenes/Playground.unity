@@ -683,6 +683,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1126623778274932028, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1126623778274932028, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 2115747542254858949, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: runLoopTransition._Clip
       value: 

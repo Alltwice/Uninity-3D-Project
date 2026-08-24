@@ -42,6 +42,11 @@ public class PlayerStateController : MonoBehaviour
         context.SetSimulationFacts(motorResult, motionSnapshot);
     }
 
+    public void UpdateLocomotionIntent(float deltaTime)
+    {
+        context.UpdateLocomotionIntent(deltaTime);
+    }
+
     public PlayerStateTransition? ProcessPreTickTransition()
     {
         return TryChangeState(currentState?.EvaluateInputTransition(), out PlayerStateTransition transition) ? transition : (PlayerStateTransition?)null;
@@ -75,6 +80,11 @@ public class PlayerStateController : MonoBehaviour
         {
             return false;
         }
+        //锁定期只拒绝本次普通候选；下一帧仍由当前状态按最新事实重新评估
+        if (context.MotionSnapshot.IsTransitionLocked && !IsForcedTransition(request.Reason))
+        {
+            return false;
+        }
         if (!states.TryGetValue(request.TargetStateType, out PlayerStateBase nextState))
         {
             return false;
@@ -89,6 +99,11 @@ public class PlayerStateController : MonoBehaviour
         currentState = nextState;
         currentState.Enter(transition);
         return true;
+    }
+
+    private static bool IsForcedTransition(PlayerStateTransitionReason reason)
+    {
+        return reason == PlayerStateTransitionReason.Initialized || reason == PlayerStateTransitionReason.Fell || reason == PlayerStateTransitionReason.Landed || reason == PlayerStateTransitionReason.HardLanded;
     }
 
     private void AddState<TState>(TState state) where TState : PlayerStateBase
