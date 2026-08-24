@@ -21,7 +21,7 @@ MonoBehaviour:
   basisPolicy: 2
   durationOverride: 0
   translationScale: 1
-  handoffStartProgress: 0.8
+  handoffStartProgress: 0.35
   handoffEndProgress: 1
   transitionLockEndProgress: 0
   interruptedExitPolicy: 0

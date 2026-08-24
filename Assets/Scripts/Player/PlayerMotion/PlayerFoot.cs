@@ -8,7 +8,9 @@ public enum PlayerFoot
     Left,
     Right
 }
-
+/// <summary>
+/// 记录单脚在某个采样点的状态
+/// </summary>
 [Serializable]
 public struct PlayerFootContactMarker
 {
@@ -27,7 +29,9 @@ public struct PlayerFootContactMarker
     public bool Plant => plant;
     public bool Lift => lift;
 }
-
+/// <summary>
+/// 双脚接触情况
+/// </summary>
 [Serializable]
 public struct PlayerFootContact
 {
@@ -47,6 +51,7 @@ public struct PlayerFootContact
     public bool RightPlant { get; }
     public bool LeftLift { get; }
     public bool RightLift { get; }
+    //C#中位或同样支持bool运算，同false，不同true
     public bool HasSingleContact => LeftContact ^ RightContact;
     public bool HasAnyContact => LeftContact || RightContact;
     public PlayerFoot SingleContactFoot => LeftContact == RightContact ? PlayerFoot.Unknown : LeftContact ? PlayerFoot.Left : PlayerFoot.Right;
@@ -61,7 +66,9 @@ public class PlayerFootMotionBakeData
     public float[] StableTime;
     public PlayerFootContactMarker[] AutoMarkers;
 }
-
+/// <summary>
+/// 单足的数据分析结果和供外部的数据查询
+/// </summary>
 [Serializable]
 public class PlayerFootMotionChannel
 {
@@ -82,14 +89,18 @@ public class PlayerFootMotionChannel
     public IReadOnlyList<float> StableTime => stableTime;
     public IReadOnlyList<PlayerFootContactMarker> AutoMarkers => autoMarkers;
     public IReadOnlyList<PlayerFootContactMarker> ManualMarkers => manualMarkers;
-
+    /// <summary>
+    /// 拿到采样点的标注数据
+    /// </summary>
     public PlayerFootContactMarker EvaluateMarker(float normalizedTime)
     {
         if (!HasData) return default;
         int index = Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01(normalizedTime) * (SampleCount - 1)), 0, SampleCount - 1);
         return GetMarker(index);
     }
-
+    /// <summary>
+    /// 实际利用某个采样点拿到标注数据
+    /// </summary>
     public PlayerFootContactMarker GetMarker(int index)
     {
         if (!HasData) return default;

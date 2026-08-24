@@ -80,14 +80,18 @@ public class PlayerMotionProfile : ScriptableObject
 
     public float EvaluateTravelDistance(float progress) => Evaluate(cumulativeTravelDistance, progress);
     public float EvaluateYaw(float progress) => Evaluate(cumulativeYaw, progress);
-
+    /// <summary>
+    /// 依据动画播放进程拿到采样点数据，并最终合成双脚接地情况
+    /// </summary>
     public PlayerFootContact EvaluateFootContact(float progress)
     {
         PlayerFootContactMarker leftMarker = leftFoot == null ? default : leftFoot.EvaluateMarker(progress);
         PlayerFootContactMarker rightMarker = rightFoot == null ? default : rightFoot.EvaluateMarker(progress);
         return new PlayerFootContact(leftMarker.Contact, rightMarker.Contact, leftMarker.Plant, rightMarker.Plant, leftMarker.Lift, rightMarker.Lift);
     }
-
+    /// <summary>
+    /// 处理支撑脚
+    /// </summary>
     public PlayerFoot ResolveSupportFoot(float progress, PlayerFoot fallback)
     {
         PlayerFootContact contact = EvaluateFootContact(progress);
@@ -194,19 +198,26 @@ public class PlayerMotionProfile : ScriptableObject
     private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
 
     private PlayerFootMotionChannel ResolveChannel(PlayerFoot foot) => foot == PlayerFoot.Left ? leftFoot : foot == PlayerFoot.Right ? rightFoot : null;
-
+    /// <summary>
+    /// 处理开始动画迈什么脚
+    /// </summary>
     private PlayerFoot ResolveEntrySupportFoot()
     {
         if (!HasFootData) return PlayerFoot.Unknown;
         PlayerFootContact entry = EvaluateFootContact(0f);
+        //单脚接触直接返回支撑脚
         if (entry.HasSingleContact) return entry.SingleContactFoot;
         if (!entry.HasAnyContact) return PlayerFoot.Unknown;
         int leftLift = FindFirstMarkerIndex(leftFoot, true, false);
         int rightLift = FindFirstMarkerIndex(rightFoot, true, false);
+        //如果无法确认默认右脚
         if (leftLift == rightLift) return PlayerFoot.Right;
+        //左脚比右脚在前就优先左脚动画
         return leftLift > rightLift ? PlayerFoot.Left : PlayerFoot.Right;
     }
-
+    /// <summary>
+    /// 动画结束迈什么脚
+    /// </summary>
     private PlayerFoot ResolveExitSupportFoot()
     {
         if (!HasFootData) return PlayerFoot.Unknown;
@@ -218,7 +229,7 @@ public class PlayerMotionProfile : ScriptableObject
         if (leftPlant == rightPlant) return PlayerFoot.Right;
         return leftPlant > rightPlant ? PlayerFoot.Left : PlayerFoot.Right;
     }
-
+    
     private static int FindFirstMarkerIndex(PlayerFootMotionChannel channel, bool lift, bool plant)
     {
         if (channel == null || !channel.HasData) return -1;

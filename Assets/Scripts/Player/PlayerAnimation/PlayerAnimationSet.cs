@@ -74,7 +74,9 @@ public class PlayerMotionAnimationBinding
     }
 #endif
 }
-
+/// <summary>
+/// 专门用于处理脚步相位情况下的循环动画选用
+/// </summary>
 [Serializable]
 public class PlayerLoopAnimationPair
 {

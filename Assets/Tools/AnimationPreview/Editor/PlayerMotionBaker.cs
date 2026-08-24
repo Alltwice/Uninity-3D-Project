@@ -42,7 +42,8 @@ namespace ProjectTools.AnimationPreview
             //写为永久SO，target已经是so文件
             PlayerFootMotionBakeData leftFoot = DetectFootMotion(result.LeftFootPositions, result.SampleRate, calibration);
             PlayerFootMotionBakeData rightFoot = DetectFootMotion(result.RightFootPositions, result.SampleRate, calibration);
-            target.SetBakedData(result.Duration, result.SampleRate, result.PlanarPosition, result.TravelDistance, result.Yaw, clipGuid, clipLocalId, modelGuid, dependencyHash, leftFoot, rightFoot, calibrationGuid, calibrationHash);
+            target.SetBakedData(result.Duration, result.SampleRate, result.PlanarPosition, result.TravelDistance, 
+                result.Yaw, clipGuid, clipLocalId, modelGuid, dependencyHash, leftFoot, rightFoot, calibrationGuid, calibrationHash);
             //数据被更改
             EditorUtility.SetDirty(target);
             //修改先前被保存的so文件
@@ -74,11 +75,14 @@ namespace ProjectTools.AnimationPreview
             if (currentHash != metadata.SourceDependencyHash) { messages?.Add(profile.name + ": Source Clip/Avatar 已变化，需要 Rebake。"); valid = false; }
             return valid;
         }
-
+        /// <summary>
+        /// 拿到模型足部数据
+        /// </summary>
         public static PlayerFootCalibration FindCalibration(GameObject modelAsset)
         {
             if (modelAsset == null) return null;
             string modelPath = AssetDatabase.GetAssetPath(modelAsset);
+            //搜索类型为PlayerFootCalibration的资源
             foreach (string guid in AssetDatabase.FindAssets("t:PlayerFootCalibration"))
             {
                 PlayerFootCalibration calibration = AssetDatabase.LoadAssetAtPath<PlayerFootCalibration>(AssetDatabase.GUIDToAssetPath(guid));
@@ -105,34 +109,42 @@ namespace ProjectTools.AnimationPreview
             if (positions == null || positions.Length < 2) throw new System.InvalidOperationException("脚底轨迹采样数量不足。");
             if (calibration == null) throw new System.ArgumentNullException(nameof(calibration));
             int count = positions.Length;
+            //采集速率
             float deltaTime = 1f / Mathf.Max(1, sampleRate);
             float[] rawVertical = new float[count];
             float[] rawHorizontal = new float[count];
+            //离地面高度
+            float[] heights = new float[count];
             float[] vertical = new float[count];
             float[] horizontal = new float[count];
-            float[] heights = new float[count];
             float[] stable = new float[count];
             PlayerFootContactMarker[] markers = new PlayerFootContactMarker[count];
+            //拿到一组原始数据
             for (int index = 0; index < count; index++)
             {
+                //使用中央差分
                 Vector3 previous = positions[Mathf.Max(0, index - 1)];
                 Vector3 next = positions[Mathf.Min(count - 1, index + 1)];
                 float divisor = index == 0 || index == count - 1 ? deltaTime : deltaTime * 2f;
+                //速度
                 Vector3 velocity = (next - previous) / Mathf.Max(0.0001f, divisor);
                 rawVertical[index] = velocity.y;
                 rawHorizontal[index] = new Vector2(velocity.x, velocity.z).magnitude;
                 heights[index] = positions[index].y - calibration.VirtualGroundHeight;
             }
+            //做了两层平滑，拿到可用的速度数据
             for (int index = 0; index < count; index++)
             {
                 int from = Mathf.Max(0, index - 1);
                 int to = Mathf.Min(count - 1, index + 1);
+                //计算采样数量
                 int samples = to - from + 1;
                 for (int sample = from; sample <= to; sample++)
                 {
                     vertical[index] += rawVertical[sample];
                     horizontal[index] += rawHorizontal[sample];
                 }
+                //得到每个采样点的平均速度
                 vertical[index] /= samples;
                 horizontal[index] /= samples;
             }
@@ -140,9 +152,11 @@ namespace ProjectTools.AnimationPreview
             float stableTime = 0f;
             for (int index = 0; index < count; index++)
             {
+                //判断接地条件
                 bool candidate = heights[index] <= calibration.ContactHeightThreshold && Mathf.Abs(vertical[index]) <= calibration.VerticalSpeedThreshold && horizontal[index] <= calibration.HorizontalSpeedThreshold;
                 bool plant = false;
                 bool lift = false;
+                //若没接地进行接地判断和接地时间判断
                 if (!contact)
                 {
                     stableTime = candidate ? stableTime + deltaTime : 0f;
@@ -152,6 +166,7 @@ namespace ProjectTools.AnimationPreview
                         plant = true;
                     }
                 }
+                //不满足接地条件就再空中
                 else if (heights[index] >= calibration.ReleaseHeightThreshold || Mathf.Abs(vertical[index]) > calibration.VerticalSpeedThreshold || horizontal[index] > calibration.HorizontalSpeedThreshold)
                 {
                     contact = false;

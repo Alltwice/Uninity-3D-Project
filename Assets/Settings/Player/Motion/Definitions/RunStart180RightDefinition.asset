@@ -13,13 +13,18 @@ MonoBehaviour:
   m_Name: RunStart180RightDefinition
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMotionDefinition
   profile: {fileID: 11400000, guid: 46b5eb3264c15dc4699bc00048de3413, type: 2}
+  leftFootProfile: {fileID: 0}
+  rightFootProfile: {fileID: 0}
+  requiresFootProfiles: 0
   translationPolicy: 4
   rotationPolicy: 2
   basisPolicy: 2
   durationOverride: 0
   translationScale: 1
-  handoffStartProgress: 0.6
+  handoffStartProgress: 0.35
   handoffEndProgress: 1
+  transitionLockEndProgress: 0
+  interruptedExitPolicy: 0
   translationAuthority:
     serializedVersion: 2
     m_Curve:

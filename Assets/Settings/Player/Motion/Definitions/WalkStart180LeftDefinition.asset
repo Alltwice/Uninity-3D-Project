@@ -13,12 +13,15 @@ MonoBehaviour:
   m_Name: WalkStart180LeftDefinition
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMotionDefinition
   profile: {fileID: 11400000, guid: 1336bb0d0a6f26f499c4df8e7c82ea3c, type: 2}
+  leftFootProfile: {fileID: 0}
+  rightFootProfile: {fileID: 0}
+  requiresFootProfiles: 0
   translationPolicy: 4
   rotationPolicy: 2
   basisPolicy: 2
   durationOverride: 0
   translationScale: 1
-  handoffStartProgress: 0.6
+  handoffStartProgress: 0.7
   handoffEndProgress: 1
   transitionLockEndProgress: 0
   interruptedExitPolicy: 0

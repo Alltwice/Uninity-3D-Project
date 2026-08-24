@@ -691,6 +691,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1827226128182048838, guid: ea9956f046d63b146b793cac83c4d2a7, type: 3}
     - target: {fileID: 2115747542254858949, guid: a74b765abd4140c479f1c698562ce026, type: 3}
+      propertyPath: runLoopTransition._FadeDuration
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2115747542254858949, guid: a74b765abd4140c479f1c698562ce026, type: 3}
       propertyPath: groundLocomotionTransition._FadeDuration
       value: 0.5
       objectReference: {fileID: 0}

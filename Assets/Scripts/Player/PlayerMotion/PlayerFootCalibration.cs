@@ -1,18 +1,27 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-
+/// <summary>
+/// 模型足部校准数据
+/// </summary>
 [CreateAssetMenu(fileName = "PlayerFootCalibration", menuName = "Player/Motion/Foot Calibration")]
 public class PlayerFootCalibration : ScriptableObject
 {
     [SerializeField] private GameObject modelAsset;
+    //从骨骼位置到真实鞋底的偏移点
     [SerializeField] private Vector3 leftFootSoleOffset;
     [SerializeField] private Vector3 rightFootSoleOffset;
+    //定义地面高度
     [SerializeField] private float virtualGroundHeight;
+    //接触阈值
     [Min(0f)] [SerializeField] private float contactHeightThreshold = 0.04f;
+    //离地阈值
     [Min(0f)] [SerializeField] private float releaseHeightThreshold = 0.07f;
+    //垂直速度阈值
     [Min(0f)] [SerializeField] private float verticalSpeedThreshold = 0.2f;
+    //水平速度阈值
     [Min(0f)] [SerializeField] private float horizontalSpeedThreshold = 0.25f;
+    //稳定时间阈值
     [Min(0f)] [SerializeField] private float stableTimeThreshold = 0.05f;
 
     public GameObject ModelAsset => modelAsset;
@@ -24,6 +33,7 @@ public class PlayerFootCalibration : ScriptableObject
     public float VerticalSpeedThreshold => verticalSpeedThreshold;
     public float HorizontalSpeedThreshold => horizontalSpeedThreshold;
     public float StableTimeThreshold => stableTimeThreshold;
+    //哈希值
     public string SettingsHash => Hash128.Compute(string.Join("|", modelAsset == null ? string.Empty : modelAsset.name, leftFootSoleOffset.x, leftFootSoleOffset.y, leftFootSoleOffset.z, rightFootSoleOffset.x, rightFootSoleOffset.y, rightFootSoleOffset.z, virtualGroundHeight, contactHeightThreshold, releaseHeightThreshold, verticalSpeedThreshold, horizontalSpeedThreshold, stableTimeThreshold)).ToString();
 
     public bool Validate(GameObject expectedModel, ICollection<string> errors)

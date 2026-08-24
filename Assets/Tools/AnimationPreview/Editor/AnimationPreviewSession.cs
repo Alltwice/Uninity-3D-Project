@@ -287,12 +287,13 @@ namespace ProjectTools.AnimationPreview
         internal PlayerMotionBakeResult SampleMotion(int requestedSampleRate, PlayerFootCalibration calibration)
         {
             if (!IsReady) throw new InvalidOperationException("请先选择有效 Model/Avatar 和 AnimationClip");
-            if (IsSequence) throw new InvalidOperationException("Animation Sequence 暂不支持 Motion Profile Bake，请切换到 Single Clip。");
-            if (!animator.isHuman) throw new InvalidOperationException("Motion Profile 脚步烘焙只接受有效 Humanoid Avatar。");
+            if (IsSequence) throw new InvalidOperationException("Animation Sequence 暂不支持 Motion Profile Bake，请切换到 Single Clip");
+            if (!animator.isHuman) throw new InvalidOperationException("Motion Profile 脚步烘焙只接受有效 Humanoid Avatar");
+            //足部骨骼
             Transform leftFoot = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
             Transform rightFoot = animator.GetBoneTransform(HumanBodyBones.RightFoot);
-            if (leftFoot == null || rightFoot == null) throw new InvalidOperationException("Humanoid Avatar 缺少 LeftFoot 或 RightFoot 骨骼，已终止脚步烘焙。");
-            if (calibration == null) throw new InvalidOperationException("当前模型缺少 PlayerFootCalibration，请先创建并配置左右 Foot 校准资源。");
+            if (leftFoot == null || rightFoot == null) throw new InvalidOperationException("Humanoid Avatar 缺少 LeftFoot 或 RightFoot 骨骼，已终止脚步烘焙");
+            if (calibration == null) throw new InvalidOperationException("当前模型缺少 PlayerFootCalibration，请先创建并配置左右 Foot 校准资源");
             List<string> calibrationErrors = new List<string>();
             if (!calibration.Validate(ModelAsset, calibrationErrors)) throw new InvalidOperationException(string.Join("\n", calibrationErrors));
             footCalibration = calibration;
@@ -305,6 +306,7 @@ namespace ProjectTools.AnimationPreview
             float[] distances = new float[count];
             //角度
             float[] yaws = new float[count];
+            //左右足落点
             Vector3[] leftFootPositions = new Vector3[count];
             Vector3[] rightFootPositions = new Vector3[count];
             //给预览窗口用的，bake后能保持原行为
@@ -312,7 +314,7 @@ namespace ProjectTools.AnimationPreview
             bool wasPlaying = playing;
             playing = false;
             previewInstance.transform.SetPositionAndRotation(modelOrigin, modelRotation);
-            //使用 AnimationClip 的绝对时间采样，避免从任意预览时间回到 0 秒时把负向 Root Motion 累加进脚底世界轨迹。
+            //使用 AnimationClip 的绝对时间采样将动画模型强制设为启动时姿态
             clip.SampleAnimation(previewInstance, 0f);
             leftFootPositions[0] = CaptureFootPosition(leftFoot, calibration.LeftFootSoleOffset);
             rightFootPositions[0] = CaptureFootPosition(rightFoot, calibration.RightFootSoleOffset);
@@ -340,6 +342,7 @@ namespace ProjectTools.AnimationPreview
                 //Vector3.ProjectOnPlane将三维向量投影到法线平面上并开方以计算距离
                 distances[i] = distances[i - 1] + Vector3.ProjectOnPlane(localDelta, Vector3.up).magnitude;
                 yaws[i] = accumulatedYaw;
+                //逐帧采样足部落点
                 leftFootPositions[i] = CaptureFootPosition(leftFoot, calibration.LeftFootSoleOffset);
                 rightFootPositions[i] = CaptureFootPosition(rightFoot, calibration.RightFootSoleOffset);
                 //这里不是乘法，四元数*Vector3代表将Vector3向四元数方向旋转
@@ -731,7 +734,9 @@ namespace ProjectTools.AnimationPreview
             AddLine(vertices, indices, center + Vector3.left * radius, center + Vector3.right * radius);
             AddLine(vertices, indices, center + Vector3.forward * radius, center + Vector3.back * radius);
         }
-
+        /// <summary>
+        /// 将足部的局部坐标转化为空间坐标
+        /// </summary>
         private static Vector3 CaptureFootPosition(Transform foot, Vector3 soleOffset)
         {
             return foot.TransformPoint(soleOffset);
