@@ -55,6 +55,9 @@ public class PlayerMotionDefinition : ScriptableObject
 {
     //用哪一份动画数据的轨迹
     [SerializeField] private PlayerMotionProfile profile;
+    [SerializeField] private PlayerMotionProfile leftFootProfile;
+    [SerializeField] private PlayerMotionProfile rightFootProfile;
+    [SerializeField] private bool requiresFootProfiles;
     [SerializeField] private PlayerMotionTranslationPolicy translationPolicy;
     [SerializeField] private PlayerMotionRotationPolicy rotationPolicy;
     [SerializeField] private PlayerMotionBasisPolicy basisPolicy;
@@ -73,17 +76,30 @@ public class PlayerMotionDefinition : ScriptableObject
     [SerializeField] private bool requiresPresentation = true;
 
     public PlayerMotionProfile Profile => profile;
+    public PlayerMotionProfile LeftFootProfile => leftFootProfile;
+    public PlayerMotionProfile RightFootProfile => rightFootProfile;
+    public bool RequiresFootProfiles => requiresFootProfiles;
     public PlayerMotionTranslationPolicy TranslationPolicy => translationPolicy;
     public PlayerMotionRotationPolicy RotationPolicy => rotationPolicy;
     public PlayerMotionBasisPolicy BasisPolicy => basisPolicy;
     //可控制动画播放时间，若没设设定使用默认的动画时长
-    public float Duration => durationOverride > 0f ? durationOverride : profile == null ? 0f : profile.Duration;
+    public float Duration => GetDuration(PlayerFoot.Unknown);
     public float TranslationScale => translationScale;
     public float HandoffStartProgress => handoffStartProgress;
     public float HandoffEndProgress => handoffEndProgress;
     public float TransitionLockEndProgress => transitionLockEndProgress;
     public PlayerMotionInterruptedExitPolicy InterruptedExitPolicy => interruptedExitPolicy;
     public bool RequiresPresentation => requiresPresentation;
+
+    public PlayerMotionProfile ResolveProfile(PlayerFoot foot)
+    {
+        if (foot == PlayerFoot.Left && leftFootProfile != null) return leftFootProfile;
+        if (foot == PlayerFoot.Right && rightFootProfile != null) return rightFootProfile;
+        return profile;
+    }
+
+    public float GetDuration(PlayerFoot foot) => durationOverride > 0f ? durationOverride : ResolveProfile(foot)?.Duration ?? 0f;
+    public float GetDuration(PlayerMotionProfile selectedProfile) => durationOverride > 0f ? durationOverride : selectedProfile?.Duration ?? 0f;
     /// <summary>
     /// 将Handoff的过程从0.8-1.0重映射为0-1；
     /// </summary>
@@ -103,6 +119,10 @@ public class PlayerMotionDefinition : ScriptableObject
         bool valid = true;
         if (profile == null) { errors?.Add(name + ": 缺少 MotionProfile。"); return false; }
         valid &= profile.Validate(errors);
+        if (leftFootProfile != null) valid &= leftFootProfile.Validate(errors);
+        if (rightFootProfile != null) valid &= rightFootProfile.Validate(errors);
+        if (requiresFootProfiles && leftFootProfile == null) { errors?.Add(name + ": 缺少 Left Foot MotionProfile。"); valid = false; }
+        if (requiresFootProfiles && rightFootProfile == null) { errors?.Add(name + ": 缺少 Right Foot MotionProfile。"); valid = false; }
         if (float.IsNaN(Duration) || float.IsInfinity(Duration) || Duration <= 0f) { errors?.Add(name + ": Runtime Duration 必须是大于 0 的有限值。"); valid = false; }
         if (float.IsNaN(translationScale) || float.IsInfinity(translationScale)) { errors?.Add(name + ": TranslationScale 必须是有限值。"); valid = false; }
         if (handoffEndProgress < handoffStartProgress) { errors?.Add(name + ": HandoffEndProgress 不能早于 Start。"); valid = false; }
@@ -118,7 +138,7 @@ public class PlayerMotionDefinition : ScriptableObject
     /// Unity 编辑器中配置轨迹、状态锁承诺窗口和中断表现策略。
     /// </summary>
     public void Configure(PlayerMotionProfile motionProfile, PlayerMotionTranslationPolicy translation, PlayerMotionRotationPolicy rotation, PlayerMotionBasisPolicy basis, 
-        float runtimeDuration, float scale, float handoffStart, float handoffEnd, bool presentation = true, float transitionLockEndProgress = 0f, PlayerMotionInterruptedExitPolicy interruptedExitPolicy = PlayerMotionInterruptedExitPolicy.ResolveNormalTransitionMotion)
+        float runtimeDuration, float scale, float handoffStart, float handoffEnd, bool presentation = true, float transitionLockEndProgress = 0f, PlayerMotionInterruptedExitPolicy interruptedExitPolicy = PlayerMotionInterruptedExitPolicy.ResolveNormalTransitionMotion, bool requireFootProfiles = false)
     {
         profile = motionProfile;
         translationPolicy = translation;
@@ -131,7 +151,15 @@ public class PlayerMotionDefinition : ScriptableObject
         this.transitionLockEndProgress = transitionLockEndProgress;
         this.interruptedExitPolicy = interruptedExitPolicy;
         requiresPresentation = presentation;
+        requiresFootProfiles = requireFootProfiles;
         translationAuthority = AnimationCurve.Linear(0f, 1f, 1f, 0f);
+    }
+
+    public void ConfigureFootProfiles(PlayerMotionProfile left, PlayerMotionProfile right, bool requireProfiles)
+    {
+        leftFootProfile = left;
+        rightFootProfile = right;
+        requiresFootProfiles = requireProfiles;
     }
 #endif
     /// <summary>

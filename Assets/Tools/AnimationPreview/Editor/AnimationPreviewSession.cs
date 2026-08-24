@@ -51,8 +51,10 @@ namespace ProjectTools.AnimationPreview
         private float playbackSpeed = 1f;
         private Color backgroundColor = new Color(0.105f, 0.115f, 0.13f, 1f);
         private AnimationPreviewRootMotionMode rootMotionMode;
+        private PlayerFootCalibration footCalibration;
 
         public GameObject ModelAsset { get; private set; }
+        public PlayerFootCalibration FootCalibration => footCalibration;
         public AnimationClip Clip => clip;
         public AnimationPreviewSequence Sequence => sequence;
         public Animator Animator => animator;
@@ -60,6 +62,7 @@ namespace ProjectTools.AnimationPreview
         public bool IsSequence => sequence != null;
         public bool IsReady => animator != null && graph.IsValid() && (clip != null || sequence != null);
         public bool HasFiniteLength => !double.IsInfinity(Length);
+        public bool ShowFootProbes { get; set; }
         public double Time => time;
         public double Length => sequence != null ? sequenceLength : clip == null ? 0d : clip.length;
         public Bounds ModelBounds => modelBounds;
@@ -92,6 +95,7 @@ namespace ProjectTools.AnimationPreview
         public bool SetModel(GameObject modelAsset)
         {
             ModelAsset = modelAsset;
+            footCalibration = PlayerMotionBaker.FindCalibration(modelAsset);
             ModelError = null;
             CompatibilityMessage = null;
             //清理场地
@@ -168,6 +172,9 @@ namespace ProjectTools.AnimationPreview
             //不使用AnimatorController
             animator.runtimeAnimatorController = null;
             animator.applyRootMotion = true;
+            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            animator.Rebind();
+            animator.Update(0f);
             //统计骨骼数量
             BoneCount = animator.isHuman ? Enumerable.Range(0, (int)HumanBodyBones.LastBone).Count(index => animator.GetBoneTransform((HumanBodyBones)index) != null) : TransformCount;
             modelOrigin = previewInstance.transform.position;
@@ -274,8 +281,21 @@ namespace ProjectTools.AnimationPreview
         /// </summary>
         internal PlayerMotionBakeResult SampleMotion(int requestedSampleRate)
         {
+            return SampleMotion(requestedSampleRate, PlayerMotionBaker.FindCalibration(ModelAsset));
+        }
+
+        internal PlayerMotionBakeResult SampleMotion(int requestedSampleRate, PlayerFootCalibration calibration)
+        {
             if (!IsReady) throw new InvalidOperationException("请先选择有效 Model/Avatar 和 AnimationClip");
             if (IsSequence) throw new InvalidOperationException("Animation Sequence 暂不支持 Motion Profile Bake，请切换到 Single Clip。");
+            if (!animator.isHuman) throw new InvalidOperationException("Motion Profile 脚步烘焙只接受有效 Humanoid Avatar。");
+            Transform leftFoot = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
+            Transform rightFoot = animator.GetBoneTransform(HumanBodyBones.RightFoot);
+            if (leftFoot == null || rightFoot == null) throw new InvalidOperationException("Humanoid Avatar 缺少 LeftFoot 或 RightFoot 骨骼，已终止脚步烘焙。");
+            if (calibration == null) throw new InvalidOperationException("当前模型缺少 PlayerFootCalibration，请先创建并配置左右 Foot 校准资源。");
+            List<string> calibrationErrors = new List<string>();
+            if (!calibration.Validate(ModelAsset, calibrationErrors)) throw new InvalidOperationException(string.Join("\n", calibrationErrors));
+            footCalibration = calibration;
             int rate = Math.Max(1, requestedSampleRate);
             //被采样的数量，+1意味着算上起始点，CeilToInt向上取整，确保动画非整时也能取得精确的开始点和结束点从而控制取样间隔均等
             int count = Math.Max(2, Mathf.CeilToInt(clip.length * rate) + 1);
@@ -285,41 +305,47 @@ namespace ProjectTools.AnimationPreview
             float[] distances = new float[count];
             //角度
             float[] yaws = new float[count];
+            Vector3[] leftFootPositions = new Vector3[count];
+            Vector3[] rightFootPositions = new Vector3[count];
             //给预览窗口用的，bake后能保持原行为
             double previousSessionTime = time;
             bool wasPlaying = playing;
             playing = false;
             previewInstance.transform.SetPositionAndRotation(modelOrigin, modelRotation);
-            //设定动画时间为0f
-            clipPlayable.SetTime(0d);
-            clipPlayable.SetDone(false);
-            //正真执行动画时间为0f
-            graph.Evaluate(0f);
+            //使用 AnimationClip 的绝对时间采样，避免从任意预览时间回到 0 秒时把负向 Root Motion 累加进脚底世界轨迹。
+            clip.SampleAnimation(previewInstance, 0f);
+            leftFootPositions[0] = CaptureFootPosition(leftFoot, calibration.LeftFootSoleOffset);
+            rightFootPositions[0] = CaptureFootPosition(rightFoot, calibration.RightFootSoleOffset);
+            Vector3 previousRootPosition = animator.transform.position;
+            Quaternion previousRootRotation = animator.transform.rotation;
             //变化量置0
             Vector3 accumulatedPosition = Vector3.zero;
             float accumulatedYaw = 0f;
-            double previousSampleTime = 0d;
             trajectoryPoints.Clear();
             trajectoryPoints.Add(modelOrigin);
             for (int i = 1; i < count; i++)
             {
                 //每一份动画长度除以采样点从而平均铺满整个动画
                 double sampleTime = clip.length * i / (count - 1);
-                //真正前进每次推进的时间
-                graph.Evaluate((float)(sampleTime - previousSampleTime));
+                clip.SampleAnimation(previewInstance, (float)sampleTime);
+                Vector3 frameDeltaPosition = animator.transform.position - previousRootPosition;
+                Quaternion frameDeltaRotation = Quaternion.Inverse(previousRootRotation) * animator.transform.rotation;
                 //烘焙不依赖模型朝向，用于撤销模型的初始旋转
-                Vector3 localDelta = Quaternion.Inverse(modelRotation) * animator.deltaPosition;
+                Vector3 localDelta = Quaternion.Inverse(modelRotation) * frameDeltaPosition;
                 //去除y轴分量影响投影到xz平面上
                 accumulatedPosition += Vector3.ProjectOnPlane(localDelta, Vector3.up);
                 //四元数转为欧拉角并用DeltaAngle始终记录有符号的最小值（350°和-10°取后者）
-                accumulatedYaw += Mathf.DeltaAngle(0f, animator.deltaRotation.eulerAngles.y);
+                accumulatedYaw += Mathf.DeltaAngle(0f, frameDeltaRotation.eulerAngles.y);
                 positions[i] = new Vector2(accumulatedPosition.x, accumulatedPosition.z);
                 //Vector3.ProjectOnPlane将三维向量投影到法线平面上并开方以计算距离
                 distances[i] = distances[i - 1] + Vector3.ProjectOnPlane(localDelta, Vector3.up).magnitude;
                 yaws[i] = accumulatedYaw;
+                leftFootPositions[i] = CaptureFootPosition(leftFoot, calibration.LeftFootSoleOffset);
+                rightFootPositions[i] = CaptureFootPosition(rightFoot, calibration.RightFootSoleOffset);
                 //这里不是乘法，四元数*Vector3代表将Vector3向四元数方向旋转
                 trajectoryPoints.Add(modelOrigin + modelRotation * accumulatedPosition);
-                previousSampleTime = sampleTime;
+                previousRootPosition = animator.transform.position;
+                previousRootRotation = animator.transform.rotation;
             }
             //记录轨迹终点
             trajectoryEnd = trajectoryPoints[trajectoryPoints.Count - 1];
@@ -330,9 +356,27 @@ namespace ProjectTools.AnimationPreview
             clipPlayable.SetTime(time);
             clipPlayable.SetDone(time >= Length);
             graph.Evaluate(0f);
+            animator.Update(0f);
             if (rootMotionMode != AnimationPreviewRootMotionMode.Actual) previewInstance.transform.SetPositionAndRotation(modelOrigin, modelRotation);
             playing = wasPlaying;
-            return new PlayerMotionBakeResult(clip.length, rate, positions, distances, yaws);
+            return new PlayerMotionBakeResult(clip.length, rate, positions, distances, yaws, leftFootPositions, rightFootPositions);
+        }
+
+        public void SetFootCalibration(PlayerFootCalibration calibration)
+        {
+            footCalibration = calibration;
+        }
+
+        internal bool TryGetSoleProbePositions(out Vector3 left, out Vector3 right)
+        {
+            left = right = Vector3.zero;
+            if (!ShowFootProbes || footCalibration == null || animator == null || !animator.isHuman) return false;
+            Transform leftFoot = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
+            Transform rightFoot = animator.GetBoneTransform(HumanBodyBones.RightFoot);
+            if (leftFoot == null || rightFoot == null) return false;
+            left = CaptureFootPosition(leftFoot, footCalibration.LeftFootSoleOffset);
+            right = CaptureFootPosition(rightFoot, footCalibration.RightFootSoleOffset);
+            return true;
         }
 
         public bool Update(double deltaTime)
@@ -435,6 +479,7 @@ namespace ProjectTools.AnimationPreview
                 clipPlayable.SetDone(time >= Length);
             }
             graph.Evaluate(0f);
+            animator.Update(0f);
             trajectoryEnd = previewInstance.transform.position;
             if (rootMotionMode != AnimationPreviewRootMotionMode.Actual) previewInstance.transform.SetPositionAndRotation(modelOrigin, modelRotation);
         }
@@ -606,7 +651,7 @@ namespace ProjectTools.AnimationPreview
         {
             if (gridObject == null) CreateGuideGeometry();
             if (gridObject == null) return;
-            gridObject.SetActive(showGrid || rootMotionMode == AnimationPreviewRootMotionMode.Trajectory);
+            gridObject.SetActive(showGrid || rootMotionMode == AnimationPreviewRootMotionMode.Trajectory || ShowFootProbes);
             if (!gridObject.activeSelf) return;
             List<Vector3> vertices = new List<Vector3>();
             List<int> indices = new List<int>();
@@ -631,6 +676,16 @@ namespace ProjectTools.AnimationPreview
                     for (int i = 1; i < trajectoryPoints.Count; i++) AddLine(vertices, indices, trajectoryPoints[i - 1], trajectoryPoints[i]);
                 }
                 else AddLine(vertices, indices, modelOrigin, trajectoryEnd);
+            }
+            if (TryGetSoleProbePositions(out Vector3 leftSole, out Vector3 rightSole))
+            {
+                Vector3 ground = modelOrigin + modelRotation * (Vector3.up * footCalibration.VirtualGroundHeight);
+                AddLine(vertices, indices, leftSole, leftSole + Vector3.up * 0.12f);
+                AddLine(vertices, indices, rightSole, rightSole + Vector3.up * 0.12f);
+                AddProbeCross(vertices, indices, leftSole, 0.04f);
+                AddProbeCross(vertices, indices, rightSole, 0.04f);
+                AddLine(vertices, indices, ground + modelRotation * new Vector3(-0.1f, 0f, -0.1f), ground + modelRotation * new Vector3(0.1f, 0f, 0.1f));
+                AddLine(vertices, indices, ground + modelRotation * new Vector3(-0.1f, 0f, 0.1f), ground + modelRotation * new Vector3(0.1f, 0f, -0.1f));
             }
             gridMesh.Clear();
             gridMesh.SetVertices(vertices);
@@ -669,6 +724,17 @@ namespace ProjectTools.AnimationPreview
             vertices.Add(end);
             indices.Add(index);
             indices.Add(index + 1);
+        }
+
+        private static void AddProbeCross(ICollection<Vector3> vertices, ICollection<int> indices, Vector3 center, float radius)
+        {
+            AddLine(vertices, indices, center + Vector3.left * radius, center + Vector3.right * radius);
+            AddLine(vertices, indices, center + Vector3.forward * radius, center + Vector3.back * radius);
+        }
+
+        private static Vector3 CaptureFootPosition(Transform foot, Vector3 soleOffset)
+        {
+            return foot.TransformPoint(soleOffset);
         }
         /// <summary>
         /// 拿Avatar，优先模型的

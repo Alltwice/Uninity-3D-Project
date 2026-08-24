@@ -15,7 +15,7 @@ MonoBehaviour:
   motionCatalog: {fileID: 11400000, guid: 7e7b584da779b5e42aac77d4ec67ea6d, type: 2}
   motionBindings:
   - definition: {fileID: 11400000, guid: e0aad969cd095344ab0d8497f8121581, type: 2}
-    transition:
+    defaultTransition:
       _FadeDuration: 0.08
       _Speed: 1
       _Events:
@@ -24,15 +24,33 @@ MonoBehaviour:
         _Names: []
       _Clip: {fileID: 1827226128182048838, guid: 1f2d9195576535b429e1b2e370ba7d34, type: 3}
       _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.08
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: 1f2d9195576535b429e1b2e370ba7d34, type: 3}
+      _NormalizedStartTime: NaN
+    rightTransition:
+      _FadeDuration: 0.08
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: 3a14f330c6c12724ebc08fd33fc4956d, type: 3}
+      _NormalizedStartTime: NaN
     poseFadeWeight:
       serializedVersion: 2
       m_Curve:
       - serializedVersion: 3
         time: 0
         value: 0
-        inSlope: 1
+        inSlope: 0
         outSlope: 1
-        tangentMode: 34
+        tangentMode: 0
         weightedMode: 0
         inWeight: 0
         outWeight: 0
@@ -40,8 +58,8 @@ MonoBehaviour:
         time: 1
         value: 1
         inSlope: 1
-        outSlope: 1
-        tangentMode: 34
+        outSlope: 0
+        tangentMode: 0
         weightedMode: 0
         inWeight: 0
         outWeight: 0
@@ -49,7 +67,25 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: be86cb4280f514a4ba6093542d5fc49d, type: 2}
-    transition:
+    defaultTransition:
+      _FadeDuration: 0.08
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: 3299c8fc6f9861a4eadc99f2de26204f, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.08
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: bf14d94448ab82e459dadac7cbb18d72, type: 3}
+      _NormalizedStartTime: NaN
+    rightTransition:
       _FadeDuration: 0.08
       _Speed: 1
       _Events:
@@ -83,7 +119,7 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: 4437c1a77929315498589ebf3cad360d, type: 2}
-    transition:
+    defaultTransition:
       _FadeDuration: 0.5
       _Speed: 1
       _Events:
@@ -91,6 +127,24 @@ MonoBehaviour:
         _Callbacks: []
         _Names: []
       _Clip: {fileID: 8365845064023093217, guid: 88455f4608381aa4db4ca74a2b1c96fc, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.5
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 8365845064023093217, guid: 88455f4608381aa4db4ca74a2b1c96fc, type: 3}
+      _NormalizedStartTime: NaN
+    rightTransition:
+      _FadeDuration: 0.5
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 5687401409094618642, guid: 35992bdcd19478c4691d10e366e1546f, type: 3}
       _NormalizedStartTime: NaN
     poseFadeWeight:
       serializedVersion: 2
@@ -117,7 +171,25 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: 29b98e4aead077b4d85e3488b4cad4dc, type: 2}
-    transition:
+    defaultTransition:
+      _FadeDuration: 0.5
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1323507923967955738, guid: c05870e3ec3168b4a94f488e7ada5f40, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.5
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 2799641648231834601, guid: de3245b22eef9b54ba175258e06c8cd6, type: 3}
+      _NormalizedStartTime: NaN
+    rightTransition:
       _FadeDuration: 0.5
       _Speed: 1
       _Events:
@@ -151,7 +223,25 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: 1b657801f384c0e46bc9e358d99f73e1, type: 2}
-    transition:
+    defaultTransition:
+      _FadeDuration: 0.08
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 3193550521350188915, guid: 6b3dc1f0684c2ef48a74c1972ab35eb8, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.08
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 178221261423805455, guid: c917afa904b74864f8a0c172772b771b, type: 3}
+      _NormalizedStartTime: NaN
+    rightTransition:
       _FadeDuration: 0.08
       _Speed: 1
       _Events:
@@ -185,7 +275,7 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: 730ab8478ce2eba489ec4d5cdb35a697, type: 2}
-    transition:
+    defaultTransition:
       _FadeDuration: 0.1
       _Speed: 1
       _Events:
@@ -193,6 +283,24 @@ MonoBehaviour:
         _Callbacks: []
         _Names: []
       _Clip: {fileID: 1827226128182048838, guid: b337c3eb2e9a4dc458129ed3ece18204, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
+      _NormalizedStartTime: NaN
+    rightTransition:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
       _NormalizedStartTime: NaN
     poseFadeWeight:
       serializedVersion: 2
@@ -219,7 +327,7 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: 9c97860f6c3d54746b1491244e18b920, type: 2}
-    transition:
+    defaultTransition:
       _FadeDuration: 0.1
       _Speed: 1
       _Events:
@@ -227,6 +335,24 @@ MonoBehaviour:
         _Callbacks: []
         _Names: []
       _Clip: {fileID: 1827226128182048838, guid: 27b709865ece9fe4ca079b72f861dadc, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
+      _NormalizedStartTime: NaN
+    rightTransition:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
       _NormalizedStartTime: NaN
     poseFadeWeight:
       serializedVersion: 2
@@ -253,7 +379,7 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: d6b9744694736d44d91bedac5484f89f, type: 2}
-    transition:
+    defaultTransition:
       _FadeDuration: 0.1
       _Speed: 1
       _Events:
@@ -261,6 +387,24 @@ MonoBehaviour:
         _Callbacks: []
         _Names: []
       _Clip: {fileID: 8034530165171743655, guid: 10b30ca96a6512d4d8b8fb18ea838b3c, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
+      _NormalizedStartTime: NaN
+    rightTransition:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
       _NormalizedStartTime: NaN
     poseFadeWeight:
       serializedVersion: 2
@@ -287,7 +431,7 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: 8dc5c363c8ad20346be2c49bbbd2360c, type: 2}
-    transition:
+    defaultTransition:
       _FadeDuration: 0.1
       _Speed: 1
       _Events:
@@ -295,6 +439,24 @@ MonoBehaviour:
         _Callbacks: []
         _Names: []
       _Clip: {fileID: -674942085841761895, guid: 51da021bcef937d44a2de0ca0c0c661a, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
+      _NormalizedStartTime: NaN
+    rightTransition:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
       _NormalizedStartTime: NaN
     poseFadeWeight:
       serializedVersion: 2
@@ -321,7 +483,25 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: b340a1599cd9eeb498c27cb55ff66c39, type: 2}
-    transition:
+    defaultTransition:
+      _FadeDuration: 0.1
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: 752a0f155bfb7c1458200c10ec0ce4b2, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.1
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: 02b9a909919d2654a8948e44bac64951, type: 3}
+      _NormalizedStartTime: NaN
+    rightTransition:
       _FadeDuration: 0.1
       _Speed: 1
       _Events:
@@ -355,7 +535,25 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: cec93278cce717540803fceaf2b996e2, type: 2}
-    transition:
+    defaultTransition:
+      _FadeDuration: 0.1
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: 24fa0fb8c77ffc0419a27c27713955f3, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.1
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: 4d153a9998ffc76499b880a30dd0cb69, type: 3}
+      _NormalizedStartTime: NaN
+    rightTransition:
       _FadeDuration: 0.1
       _Speed: 1
       _Events:
@@ -389,7 +587,25 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: 769578c4118a821418be8038cd7b2398, type: 2}
-    transition:
+    defaultTransition:
+      _FadeDuration: 0.1
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 934423465960791222, guid: 4425a3223627498409b4a469e48d9e77, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.1
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: -7836378658146244128, guid: 628b757b966f24d4c9f0072e5ebc9c2f, type: 3}
+      _NormalizedStartTime: NaN
+    rightTransition:
       _FadeDuration: 0.1
       _Speed: 1
       _Events:
@@ -423,7 +639,25 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: a2730d71fb6f9b345adb6c34f4d8234f, type: 2}
-    transition:
+    defaultTransition:
+      _FadeDuration: 0.1
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 8242617978284009519, guid: a1969baaa6134ad4f972ef6d57c356cc, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.1
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 4521375890317941169, guid: 79bcac6ab04200344891ec101d08fcbf, type: 3}
+      _NormalizedStartTime: NaN
+    rightTransition:
       _FadeDuration: 0.1
       _Speed: 1
       _Events:
@@ -457,7 +691,25 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: acbf8be054897ba4b915ffffd196422c, type: 2}
-    transition:
+    defaultTransition:
+      _FadeDuration: 0.1
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 8568171489415138635, guid: 4736608bca693914893d52d1e89071ed, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.1
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 7999116254279726571, guid: 9c1c47cc436f3264cb73f362030dc02b, type: 3}
+      _NormalizedStartTime: NaN
+    rightTransition:
       _FadeDuration: 0.1
       _Speed: 1
       _Events:
@@ -491,7 +743,25 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: bf1c2571de630e642b36a5850b332b7d, type: 2}
-    transition:
+    defaultTransition:
+      _FadeDuration: 0.1
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: -816637831197849413, guid: 10d8330a2ecd83d449f557497ae84489, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.1
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 35166679454203821, guid: ca3eaedd0944eba43a3dc889109be14e, type: 3}
+      _NormalizedStartTime: NaN
+    rightTransition:
       _FadeDuration: 0.1
       _Speed: 1
       _Events:
@@ -525,7 +795,7 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   - definition: {fileID: 11400000, guid: e05c0ed7f402437499a78d5207b93b8e, type: 2}
-    transition:
+    defaultTransition:
       _FadeDuration: 0.08
       _Speed: 1
       _Events:
@@ -533,6 +803,24 @@ MonoBehaviour:
         _Callbacks: []
         _Names: []
       _Clip: {fileID: -3054987363531364738, guid: c219afade880c694790f0e2a5758e321, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
+      _NormalizedStartTime: NaN
+    rightTransition:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 0}
       _NormalizedStartTime: NaN
     poseFadeWeight:
       serializedVersion: 2
@@ -558,6 +846,99 @@ MonoBehaviour:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
+  walkLoop:
+    defaultTransition:
+      _FadeDuration: 0.4
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: 28f94a65124f3284b8882da5e12ea584, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.4
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: 105f69986ba4be442824e85aa7dfff14, type: 3}
+      _NormalizedStartTime: NaN
+    rightTransition:
+      _FadeDuration: 0.4
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: 28f94a65124f3284b8882da5e12ea584, type: 3}
+      _NormalizedStartTime: NaN
+    defaultProfile: {fileID: 11400000, guid: 4fc4d00ff7bdfd4459abe29460a7d4cb, type: 2}
+    leftProfile: {fileID: 11400000, guid: 0813702f0159bb34d827669cd07fa131, type: 2}
+    rightProfile: {fileID: 11400000, guid: 4fc4d00ff7bdfd4459abe29460a7d4cb, type: 2}
+  runLoop:
+    defaultTransition:
+      _FadeDuration: 0.4
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: 99e4eb5572885a74b8602df50dac4516, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.4
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: 892ac20ab63595d4c8fa3c38dcf3bdaf, type: 3}
+      _NormalizedStartTime: NaN
+    rightTransition:
+      _FadeDuration: 0.4
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: 99e4eb5572885a74b8602df50dac4516, type: 3}
+      _NormalizedStartTime: NaN
+    defaultProfile: {fileID: 11400000, guid: 26b24586e7c31fc44ac65d663db4c6c5, type: 2}
+    leftProfile: {fileID: 11400000, guid: 44ec0196510a5924293948ecaa97c6bd, type: 2}
+    rightProfile: {fileID: 11400000, guid: 26b24586e7c31fc44ac65d663db4c6c5, type: 2}
+  fastRunLoop:
+    defaultTransition:
+      _FadeDuration: 0.15
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: 3e2e69d8336b4a944969c564b91de69e, type: 3}
+      _NormalizedStartTime: NaN
+    leftTransition:
+      _FadeDuration: 0.15
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: 22915549b80c9d84ab57c8150bb9e980, type: 3}
+      _NormalizedStartTime: NaN
+    rightTransition:
+      _FadeDuration: 0.15
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 1827226128182048838, guid: 3e2e69d8336b4a944969c564b91de69e, type: 3}
+      _NormalizedStartTime: NaN
+    defaultProfile: {fileID: 11400000, guid: a91127b0c4ccfc34895e0ae3607a6b9c, type: 2}
+    leftProfile: {fileID: 11400000, guid: d3a00f56f5095df4082885a63f59285b, type: 2}
+    rightProfile: {fileID: 11400000, guid: a91127b0c4ccfc34895e0ae3607a6b9c, type: 2}
   references:
     version: 2
     RefIds: []

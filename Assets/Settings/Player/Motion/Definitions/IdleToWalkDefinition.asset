@@ -13,6 +13,9 @@ MonoBehaviour:
   m_Name: IdleToWalkDefinition
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMotionDefinition
   profile: {fileID: 11400000, guid: fbe3033ee57253e4b93aa35444dbe9d6, type: 2}
+  leftFootProfile: {fileID: 11400000, guid: 25e0e489cae877b489de5902ea32f795, type: 2}
+  rightFootProfile: {fileID: 11400000, guid: 77544c377c33afc4ebec8116e22eb326, type: 2}
+  requiresFootProfiles: 1
   translationPolicy: 4
   rotationPolicy: 1
   basisPolicy: 0
@@ -20,6 +23,8 @@ MonoBehaviour:
   translationScale: 1
   handoffStartProgress: 1
   handoffEndProgress: 1
+  transitionLockEndProgress: 0
+  interruptedExitPolicy: 0
   translationAuthority:
     serializedVersion: 2
     m_Curve:

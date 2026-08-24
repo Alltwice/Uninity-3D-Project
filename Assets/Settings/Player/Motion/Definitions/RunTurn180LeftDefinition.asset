@@ -13,6 +13,9 @@ MonoBehaviour:
   m_Name: RunTurn180LeftDefinition
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMotionDefinition
   profile: {fileID: 11400000, guid: b88cf4dd9e1dd7741a76cf14d9744458, type: 2}
+  leftFootProfile: {fileID: 11400000, guid: 809b841630c04634c98fd694fa7b66d5, type: 2}
+  rightFootProfile: {fileID: 11400000, guid: 24eda0df48d7f7b48aeec5dd2d9f0329, type: 2}
+  requiresFootProfiles: 1
   translationPolicy: 3
   rotationPolicy: 2
   basisPolicy: 2

@@ -26,13 +26,17 @@ public sealed class PlayerAnimationController : MonoBehaviour
 
     private AnimancerState boundaryState;
     private AnimancerState handoffLoopState;
+    private AnimancerState stableLoopState;
     private AnimancerState hardLandingState;
     private PlayerMotionAnimationBinding activeBinding;
+    private PlayerMotionProfile stableLoopProfile;
     private ulong presentedMotionInstanceId;
     private ulong presentationSequence;
     private Type gameplayStateType;
+    private PlayerFoot currentSupportFoot;
 
     public float DebugBoundaryPhase { get; private set; }
+    public PlayerFoot CurrentSupportFoot => currentSupportFoot == PlayerFoot.Unknown ? PlayerFoot.Right : currentSupportFoot;
 
     private void Awake()
     {
@@ -46,7 +50,14 @@ public sealed class PlayerAnimationController : MonoBehaviour
 
     public void Present(Type currentGameplayStateType, PlayerStateTransition? transition, PlayerMotionSnapshot motion, float stateProgress)
     {
+        UpdateStableLoopSupportFoot();
         gameplayStateType = currentGameplayStateType;
+        if (motion.SupportFoot != PlayerFoot.Unknown) currentSupportFoot = motion.SupportFoot;
+        if (motion.ActiveProfile != null)
+        {
+            UpdateSupportFoot(motion.ActiveProfile, motion.Progress);
+            if (motion.JustCompleted && motion.ActiveProfile.ExitSupportFoot != PlayerFoot.Unknown) currentSupportFoot = motion.ActiveProfile.ExitSupportFoot;
+        }
         bool newMotion = motion.ActiveDefinition != null && motion.InstanceId != presentedMotionInstanceId;
         bool motionCancelled = motion.JustCancelled && motion.InstanceId == presentedMotionInstanceId;
         if (newMotion) PlayMotion(motion);
@@ -74,13 +85,13 @@ public sealed class PlayerAnimationController : MonoBehaviour
         handoffLoopState = null;
         activeBinding = null;
         //没拿到烘焙动画数据就播放普通循环
-        if (!animationSet.TryGetBinding(motion.ActiveDefinition, out activeBinding))
+        if (!animationSet.TryGetBinding(motion.ActiveDefinition, motion.ActiveProfile, out activeBinding, out ClipTransition transition))
         {
             PlayStableLoop(gameplayStateType);
             return;
         }
         //拿到绑定播放动画，动画不自己播放，其播放进程绑定motionruntime
-        boundaryState = animancer.Play(activeBinding.Transition, activeBinding.Transition.FadeDuration, FadeMode.FixedDuration);
+        boundaryState = animancer.Play(transition, transition.FadeDuration, FadeMode.FixedDuration);
         boundaryState.Speed = 0f;
         boundaryState.IsPlaying = false;
         //依据motion状态判断动画现在播放到哪
@@ -118,9 +129,11 @@ public sealed class PlayerAnimationController : MonoBehaviour
     private void EnsureHandoffLoop()
     {
         if (handoffLoopState != null) return;
-        ClipTransition loop = ResolveLoop(gameplayStateType);
+        ClipTransition loop = ResolveLoop(gameplayStateType, out stableLoopProfile);
         if (loop == null) return;
         handoffLoopState = animancer.Play(loop);
+        stableLoopState = handoffLoopState;
+        SetLoopPhase(handoffLoopState, stableLoopProfile);
         boundaryState.Weight = 1f;
         handoffLoopState.Weight = 0f;
     }
@@ -173,20 +186,30 @@ public sealed class PlayerAnimationController : MonoBehaviour
 
     private void PlayStableLoop(Type stateType)
     {
-        ClipTransition loop = ResolveLoop(stateType);
-        if (loop != null) animancer.Play(loop);
+        ClipTransition loop = ResolveLoop(stateType, out stableLoopProfile);
+        if (loop == null) return;
+        stableLoopState = animancer.Play(loop);
+        SetLoopPhase(stableLoopState, stableLoopProfile);
     }
 
     private void PlayStableLoopWithFade(Type stateType)
     {
-        ClipTransition loop = ResolveLoop(stateType);
+        ClipTransition loop = ResolveLoop(stateType, out stableLoopProfile);
         if (loop == null) return;
         AnimancerState state = animancer.Play(loop, loop.FadeDuration, FadeMode.FixedDuration);
-        state.NormalizedTime = loop.NormalizedStartTime;
+        stableLoopState = state;
+        SetLoopPhase(state, stableLoopProfile);
     }
 
-    private ClipTransition ResolveLoop(Type stateType)
+    private ClipTransition ResolveLoop(Type stateType, out PlayerMotionProfile profile)
     {
+        PlayerLocomotionMode locomotionMode = stateType == typeof(PlayerWalkState) ? PlayerLocomotionMode.Walk : stateType == typeof(PlayerRunState) ? PlayerLocomotionMode.Run : stateType == typeof(PlayerFastRunState) ? PlayerLocomotionMode.FastRun : PlayerLocomotionMode.Idle;
+        if (animationSet != null && animationSet.TryResolveLoop(locomotionMode, CurrentSupportFoot, out PlayerAnimationSelection selection))
+        {
+            profile = selection.Profile;
+            return selection.Transition;
+        }
+        profile = null;
         if (stateType == typeof(PlayerIdleState) || stateType == typeof(PlayerHardLandingState)) return idleLoopTransition;
         if (stateType == typeof(PlayerWalkState)) return walkLoopTransition;
         if (stateType == typeof(PlayerRunState)) return runLoopTransition;
@@ -195,11 +218,34 @@ public sealed class PlayerAnimationController : MonoBehaviour
         return null;
     }
 
+    private void UpdateStableLoopSupportFoot()
+    {
+        if (stableLoopState == null || stableLoopProfile == null) return;
+        UpdateSupportFoot(stableLoopProfile, Mathf.Repeat(stableLoopState.NormalizedTime, 1f));
+    }
+
+    private void UpdateSupportFoot(PlayerMotionProfile profile, float normalizedTime)
+    {
+        PlayerFoot resolved = profile.ResolveSupportFoot(normalizedTime, CurrentSupportFoot);
+        if (resolved != PlayerFoot.Unknown) currentSupportFoot = resolved;
+    }
+
+    private void SetLoopPhase(AnimancerState state, PlayerMotionProfile profile)
+    {
+        if (state == null) return;
+        state.NormalizedTime = profile == null ? state.NormalizedTime : profile.GetSupportPhase(CurrentSupportFoot);
+    }
+
     private void ClearBoundary(bool clearLoop = true)
     {
         boundaryState = null;
         activeBinding = null;
         DebugBoundaryPhase = 0f;
-        if (clearLoop) handoffLoopState = null;
+        if (clearLoop)
+        {
+            handoffLoopState = null;
+            stableLoopState = null;
+            stableLoopProfile = null;
+        }
     }
 }

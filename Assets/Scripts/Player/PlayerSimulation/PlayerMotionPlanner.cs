@@ -9,9 +9,15 @@ public class PlayerMotionPlanner : MonoBehaviour
     [SerializeField] private PlayerMotionCatalog catalog;
 
     private readonly PlayerMotionRuntime runtime = new PlayerMotionRuntime();
+    private PlayerAnimationController animationController;
 
     public PlayerMotionCatalog Catalog => catalog;
     public PlayerMotionSnapshot Snapshot => runtime.Snapshot;
+
+    private void Awake()
+    {
+        animationController = GetComponent<PlayerAnimationController>();
+    }
 
     public void BeginFrame() => runtime.BeginFrame();
 
@@ -118,7 +124,8 @@ public class PlayerMotionPlanner : MonoBehaviour
         Vector3 desired = intent.DesiredMoveDirection.sqrMagnitude > 0.0001f ? intent.DesiredMoveDirection : transform.forward;
         Vector3 entryVelocity = motorResult.HorizontalVelocity.sqrMagnitude > 0.0001f ? motorResult.HorizontalVelocity : transform.forward;
         Vector3 basis = definition.BasisPolicy == PlayerMotionBasisPolicy.DesiredDirection ? desired : definition.BasisPolicy == PlayerMotionBasisPolicy.EntryVelocityDirection ? entryVelocity : transform.forward;
-        runtime.Begin(definition, basis, desired);
+        PlayerFoot supportFoot = animationController == null ? PlayerFoot.Right : animationController.CurrentSupportFoot;
+        runtime.Begin(definition, definition.ResolveProfile(supportFoot), supportFoot, basis, desired);
     }
     /// <summary>
     /// 角度计算

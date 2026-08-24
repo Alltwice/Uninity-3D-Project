@@ -13,6 +13,9 @@ MonoBehaviour:
   m_Name: RunToIdleDefinition
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMotionDefinition
   profile: {fileID: 11400000, guid: 4b8acaeee57a56949a44d1aef3d55dce, type: 2}
+  leftFootProfile: {fileID: 11400000, guid: 3d4b0ed3d691fbc4f9b7f17dbea4f0af, type: 2}
+  rightFootProfile: {fileID: 11400000, guid: 11b6ea42f15a505479f481043e0034cb, type: 2}
+  requiresFootProfiles: 1
   translationPolicy: 3
   rotationPolicy: 0
   basisPolicy: 1
@@ -20,6 +23,8 @@ MonoBehaviour:
   translationScale: 1
   handoffStartProgress: 0.6
   handoffEndProgress: 1
+  transitionLockEndProgress: 0
+  interruptedExitPolicy: 0
   translationAuthority:
     serializedVersion: 2
     m_Curve:

@@ -13,6 +13,9 @@ MonoBehaviour:
   m_Name: FastRunToIdleDefinition
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMotionDefinition
   profile: {fileID: 11400000, guid: 3ae3d4318adf10041aee33fcb3a6979b, type: 2}
+  leftFootProfile: {fileID: 11400000, guid: a65cb5e6f7b0ec14e9dda6ab2a2e362e, type: 2}
+  rightFootProfile: {fileID: 11400000, guid: abfe6d6bc2a45d64a873876be6f4f8e9, type: 2}
+  requiresFootProfiles: 1
   translationPolicy: 4
   rotationPolicy: 0
   basisPolicy: 1

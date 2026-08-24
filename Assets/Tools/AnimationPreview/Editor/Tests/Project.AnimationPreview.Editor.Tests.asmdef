@@ -1,7 +1,7 @@
 {
   "name": "Project.AnimationPreview.Editor.Tests",
   "rootNamespace": "ProjectTools.AnimationPreview.Tests",
-  "references": ["Project.AnimationPreview.Editor"],
+  "references": ["Project.AnimationPreview.Editor", "Project.PlayerMotion.Runtime"],
   "includePlatforms": ["Editor"],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

@@ -13,6 +13,9 @@ MonoBehaviour:
   m_Name: WalkTurn180RightDefinition
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMotionDefinition
   profile: {fileID: 11400000, guid: 6b050146eade0324eb29102f7b6304ef, type: 2}
+  leftFootProfile: {fileID: 11400000, guid: 5256ac0c9ed652748a1d8e8da2fc8245, type: 2}
+  rightFootProfile: {fileID: 11400000, guid: c92fa30a0bbcb694f938a22a45a3d1fe, type: 2}
+  requiresFootProfiles: 1
   translationPolicy: 3
   rotationPolicy: 2
   basisPolicy: 2

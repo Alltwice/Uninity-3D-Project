@@ -31,8 +31,19 @@ namespace ProjectTools.AnimationPreview
         private ObjectField sourceField;
         private ObjectField sequenceField;
         private ObjectField motionProfileField;
+        private ObjectField footCalibrationField;
         private IntegerField motionSampleRateField;
         private Label motionValidationLabel;
+        private Vector3Field leftFootOffsetField;
+        private Vector3Field rightFootOffsetField;
+        private FloatField virtualGroundField;
+        private FloatField contactHeightField;
+        private FloatField releaseHeightField;
+        private FloatField verticalSpeedField;
+        private FloatField horizontalSpeedField;
+        private FloatField stableTimeField;
+        private Toggle footProbesToggle;
+        private Label footDiagnosticsLabel;
         private ListView sourceList;
         private ListView clipList;
         private ListView sequenceEntryList;
@@ -65,6 +76,7 @@ namespace ProjectTools.AnimationPreview
         private bool libraryDirty = true;
         private bool focusMode;
         private double lastEditorTime;
+        private bool applyingFootCalibration;
 
         [MenuItem("Window/Animation/Model Animation Preview")]
         public static void Open()
@@ -132,8 +144,19 @@ namespace ProjectTools.AnimationPreview
             sourceField = rootVisualElement.Q<ObjectField>("source-field");
             sequenceField = rootVisualElement.Q<ObjectField>("sequence-field");
             motionProfileField = rootVisualElement.Q<ObjectField>("motion-profile-field");
+            footCalibrationField = rootVisualElement.Q<ObjectField>("foot-calibration-field");
             motionSampleRateField = rootVisualElement.Q<IntegerField>("motion-sample-rate-field");
             motionValidationLabel = rootVisualElement.Q<Label>("motion-validation-label");
+            leftFootOffsetField = rootVisualElement.Q<Vector3Field>("left-foot-offset-field");
+            rightFootOffsetField = rootVisualElement.Q<Vector3Field>("right-foot-offset-field");
+            virtualGroundField = rootVisualElement.Q<FloatField>("virtual-ground-field");
+            contactHeightField = rootVisualElement.Q<FloatField>("contact-height-field");
+            releaseHeightField = rootVisualElement.Q<FloatField>("release-height-field");
+            verticalSpeedField = rootVisualElement.Q<FloatField>("vertical-speed-field");
+            horizontalSpeedField = rootVisualElement.Q<FloatField>("horizontal-speed-field");
+            stableTimeField = rootVisualElement.Q<FloatField>("stable-time-field");
+            footProbesToggle = rootVisualElement.Q<Toggle>("foot-probes-toggle");
+            footDiagnosticsLabel = rootVisualElement.Q<Label>("foot-diagnostics-label");
             sourceList = rootVisualElement.Q<ListView>("source-list");
             clipList = rootVisualElement.Q<ListView>("clip-list");
             sequenceEntryList = rootVisualElement.Q<ListView>("sequence-entry-list");
@@ -172,6 +195,8 @@ namespace ProjectTools.AnimationPreview
             sequenceField.allowSceneObjects = false;
             motionProfileField.objectType = typeof(PlayerMotionProfile);
             motionProfileField.allowSceneObjects = false;
+            footCalibrationField.objectType = typeof(PlayerFootCalibration);
+            footCalibrationField.allowSceneObjects = false;
             rootMotionField.Init(AnimationPreviewRootMotionMode.Locked);
             modeField = new RadioButtonGroup { label = "Mode" };
             modeField.Add(new RadioButton("Single Clip"));
@@ -219,6 +244,8 @@ namespace ProjectTools.AnimationPreview
         {
             profileField.RegisterValueChangedCallback(evt => LoadProfile(evt.newValue as AnimationPreviewProfile));
             modelField.RegisterValueChangedCallback(evt => SetModel(evt.newValue as GameObject));
+            footCalibrationField.RegisterValueChangedCallback(evt => SetFootCalibration(evt.newValue as PlayerFootCalibration));
+            motionProfileField.RegisterValueChangedCallback(_ => UpdateFootDiagnostics());
             sequenceField.RegisterValueChangedCallback(evt => SelectSequence(evt.newValue as AnimationPreviewSequence));
             modeField.RegisterValueChangedCallback(evt => SelectPreviewMode((PreviewMode)evt.newValue));
             sourceField.RegisterValueChangedCallback(evt =>
@@ -236,6 +263,19 @@ namespace ProjectTools.AnimationPreview
             backgroundField.RegisterValueChangedCallback(_ => OnSettingsChanged());
             lightIntensitySlider.RegisterValueChangedCallback(_ => OnSettingsChanged());
             lightRotationField.RegisterValueChangedCallback(_ => OnSettingsChanged());
+            leftFootOffsetField.RegisterValueChangedCallback(_ => ApplyFootCalibrationSettings());
+            rightFootOffsetField.RegisterValueChangedCallback(_ => ApplyFootCalibrationSettings());
+            virtualGroundField.RegisterValueChangedCallback(_ => ApplyFootCalibrationSettings());
+            contactHeightField.RegisterValueChangedCallback(_ => ApplyFootCalibrationSettings());
+            releaseHeightField.RegisterValueChangedCallback(_ => ApplyFootCalibrationSettings());
+            verticalSpeedField.RegisterValueChangedCallback(_ => ApplyFootCalibrationSettings());
+            horizontalSpeedField.RegisterValueChangedCallback(_ => ApplyFootCalibrationSettings());
+            stableTimeField.RegisterValueChangedCallback(_ => ApplyFootCalibrationSettings());
+            footProbesToggle.RegisterValueChangedCallback(evt =>
+            {
+                if (session != null) session.ShowFootProbes = evt.newValue;
+                viewport?.MarkDirtyRepaint();
+            });
             timeSlider.RegisterValueChangedCallback(evt =>
             {
                 if (session == null || !session.IsReady) return;
@@ -263,6 +303,8 @@ namespace ProjectTools.AnimationPreview
             rootVisualElement.Q<Button>("motion-rebake-button").clicked += () => BakeMotion(false);
             rootVisualElement.Q<Button>("motion-validate-button").clicked += ValidateMotionProfile;
             rootVisualElement.Q<Button>("motion-trajectory-button").clicked += ShowMotionTrajectory;
+            rootVisualElement.Q<Button>("copy-foot-markers-button").clicked += CopyFootMarkers;
+            rootVisualElement.Q<Button>("restore-foot-markers-button").clicked += RestoreFootMarkers;
             RegisterSourceDropArea(rootVisualElement.Q("animation-drop-zone"));
         }
 
@@ -281,6 +323,8 @@ namespace ProjectTools.AnimationPreview
             EnsureSession();
             modelField.SetValueWithoutNotify(model);
             bool ready = session.SetModel(model);
+            session.ShowFootProbes = footProbesToggle == null || footProbesToggle.value;
+            LoadFootCalibrationForModel(model);
             viewport.OverlayMessage = ready ? null : session.ModelError;
             if (ready && previewMode == PreviewMode.Sequence && sequenceField.value is AnimationPreviewSequence selectedSequence)
             {
@@ -297,7 +341,51 @@ namespace ProjectTools.AnimationPreview
             UpdateFavoriteButton();
             UpdateMotionToolsUI();
             UpdatePlaybackUI();
+            UpdateFootDiagnostics();
             viewport.MarkDirtyRepaint();
+        }
+
+        private void SetFootCalibration(PlayerFootCalibration calibration)
+        {
+            session?.SetFootCalibration(calibration);
+            if (calibration != null) PopulateFootCalibrationFields(calibration);
+            UpdateFootDiagnostics();
+            viewport?.MarkDirtyRepaint();
+        }
+
+        private void LoadFootCalibrationForModel(GameObject model)
+        {
+            PlayerFootCalibration calibration = model == null ? null : PlayerMotionBaker.FindCalibration(model);
+            footCalibrationField?.SetValueWithoutNotify(calibration);
+            session?.SetFootCalibration(calibration);
+            if (calibration != null) PopulateFootCalibrationFields(calibration);
+            UpdateFootDiagnostics();
+        }
+
+        private void PopulateFootCalibrationFields(PlayerFootCalibration calibration)
+        {
+            leftFootOffsetField?.SetValueWithoutNotify(calibration.LeftFootSoleOffset);
+            rightFootOffsetField?.SetValueWithoutNotify(calibration.RightFootSoleOffset);
+            virtualGroundField?.SetValueWithoutNotify(calibration.VirtualGroundHeight);
+            contactHeightField?.SetValueWithoutNotify(calibration.ContactHeightThreshold);
+            releaseHeightField?.SetValueWithoutNotify(calibration.ReleaseHeightThreshold);
+            verticalSpeedField?.SetValueWithoutNotify(calibration.VerticalSpeedThreshold);
+            horizontalSpeedField?.SetValueWithoutNotify(calibration.HorizontalSpeedThreshold);
+            stableTimeField?.SetValueWithoutNotify(calibration.StableTimeThreshold);
+        }
+
+        private void ApplyFootCalibrationSettings()
+        {
+            if (applyingFootCalibration || footCalibrationField?.value is not PlayerFootCalibration calibration || modelField?.value is not GameObject model) return;
+            applyingFootCalibration = true;
+            calibration.Configure(model, leftFootOffsetField.value, rightFootOffsetField.value, virtualGroundField.value, contactHeightField.value, releaseHeightField.value, verticalSpeedField.value, horizontalSpeedField.value, stableTimeField.value);
+            EditorUtility.SetDirty(calibration);
+            AssetDatabase.SaveAssetIfDirty(calibration);
+            session?.SetFootCalibration(calibration);
+            applyingFootCalibration = false;
+            MarkProfileDirty();
+            UpdateFootDiagnostics();
+            viewport?.MarkDirtyRepaint();
         }
 
         private void SelectClip(AnimationPreviewClipEntry entry)
@@ -559,6 +647,7 @@ namespace ProjectTools.AnimationPreview
             UpdateFavoriteButton();
             UpdateMotionToolsUI();
             UpdateDirtyLabel();
+            UpdateFootDiagnostics();
         }
 
         private void UpdateModelInfo()
@@ -632,6 +721,28 @@ namespace ProjectTools.AnimationPreview
             rootVisualElement.Q<Button>("motion-bake-button")?.SetEnabled(supportsSingleClip);
             rootVisualElement.Q<Button>("motion-rebake-button")?.SetEnabled(supportsSingleClip);
             rootVisualElement.Q<Button>("motion-trajectory-button")?.SetEnabled(supportsSingleClip);
+            UpdateFootDiagnostics();
+        }
+
+        private void UpdateFootDiagnostics()
+        {
+            if (footDiagnosticsLabel == null) return;
+            PlayerFootCalibration calibration = footCalibrationField?.value as PlayerFootCalibration;
+            if (calibration == null)
+            {
+                footDiagnosticsLabel.text = "未配置 PlayerFootCalibration";
+                return;
+            }
+            List<string> errors = new List<string>();
+            bool calibrationValid = calibration.Validate(modelField?.value as GameObject, errors);
+            PlayerMotionProfile motionProfile = motionProfileField?.value as PlayerMotionProfile;
+            if (motionProfile == null || !motionProfile.HasFootData)
+            {
+                footDiagnosticsLabel.text = (calibrationValid ? "校准参数有效" : string.Join("\n", errors)) + "\n尚未加载左右脚诊断数据。";
+                return;
+            }
+            PlayerFootContact contact = motionProfile.GetFootPhase(session == null || session.Length <= 0d ? 0f : (float)(session.Time / session.Length));
+            footDiagnosticsLabel.text = (calibrationValid ? "校准参数有效" : string.Join("\n", errors)) + $"\nEntry {motionProfile.EntrySupportFoot} / Exit {motionProfile.ExitSupportFoot}\n当前接触：L={contact.LeftContact} R={contact.RightContact} / Plant L={contact.LeftPlant} R={contact.RightPlant}\nProfile：{(PlayerMotionBaker.Validate(motionProfile, errors) ? "有效" : "需要 Rebake")}";
         }
 
         private static string FormatSequenceEntry(AnimationPreviewSequenceEntry entry, int index)
@@ -686,6 +797,36 @@ namespace ProjectTools.AnimationPreview
             if (viewport != null) BindViewport();
         }
 
+        private void CopyFootMarkers()
+        {
+            PlayerMotionProfile profile = motionProfileField?.value as PlayerMotionProfile;
+            if (profile == null)
+            {
+                motionValidationLabel.text = "请先选择包含左右脚数据的 Motion Profile";
+                return;
+            }
+            profile.CopyAutoFootMarkersToManual(PlayerFoot.Left);
+            profile.CopyAutoFootMarkersToManual(PlayerFoot.Right);
+            EditorUtility.SetDirty(profile);
+            AssetDatabase.SaveAssetIfDirty(profile);
+            UpdateFootDiagnostics();
+        }
+
+        private void RestoreFootMarkers()
+        {
+            PlayerMotionProfile profile = motionProfileField?.value as PlayerMotionProfile;
+            if (profile == null)
+            {
+                motionValidationLabel.text = "请先选择包含左右脚数据的 Motion Profile";
+                return;
+            }
+            profile.RestoreAutomaticFootMarkers(PlayerFoot.Left);
+            profile.RestoreAutomaticFootMarkers(PlayerFoot.Right);
+            EditorUtility.SetDirty(profile);
+            AssetDatabase.SaveAssetIfDirty(profile);
+            UpdateFootDiagnostics();
+        }
+
         private void BakeMotion(bool createIfMissing)
         {
             if (session == null || !session.IsReady)
@@ -719,6 +860,7 @@ namespace ProjectTools.AnimationPreview
             rootMotionField.SetValueWithoutNotify(AnimationPreviewRootMotionMode.Trajectory);
             ApplySessionSettings();
             motionValidationLabel.text = $"已 Bake：{target.SampleCount} samples / {target.Duration:F3}s / Travel {target.EvaluateTravelDistance(1f):F3}m / Yaw {target.EvaluateYaw(1f):F1}°";
+            UpdateFootDiagnostics();
             Selection.activeObject = target;
         }
 
@@ -727,6 +869,7 @@ namespace ProjectTools.AnimationPreview
             List<string> messages = new List<string>();
             bool valid = PlayerMotionBaker.Validate(motionProfileField.value as PlayerMotionProfile, messages);
             motionValidationLabel.text = valid ? "Profile 有效且 Source 未过期。" : string.Join("\n", messages);
+            UpdateFootDiagnostics();
         }
 
         private void ShowMotionTrajectory()
@@ -742,6 +885,7 @@ namespace ProjectTools.AnimationPreview
             ApplySessionSettings();
             int last = result.PlanarPosition.Length - 1;
             motionValidationLabel.text = $"Trajectory：XZ ({result.PlanarPosition[last].x:F3}, {result.PlanarPosition[last].y:F3}) / Travel {result.TravelDistance[last]:F3}m / Yaw {result.Yaw[last]:F1}°";
+            UpdateFootDiagnostics();
             viewport.MarkDirtyRepaint();
         }
     }

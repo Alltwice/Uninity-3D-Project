@@ -13,6 +13,9 @@ MonoBehaviour:
   m_Name: FastRunTurn180RightDefinition
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMotionDefinition
   profile: {fileID: 11400000, guid: 0105b6f6ca209fa4193f6ac7f9502c47, type: 2}
+  leftFootProfile: {fileID: 11400000, guid: f23d76dc19916c446b5fb7dfd623f4b8, type: 2}
+  rightFootProfile: {fileID: 11400000, guid: 5de2f1e5b8b6d7f469d3bd2193970990, type: 2}
+  requiresFootProfiles: 1
   translationPolicy: 3
   rotationPolicy: 2
   basisPolicy: 1

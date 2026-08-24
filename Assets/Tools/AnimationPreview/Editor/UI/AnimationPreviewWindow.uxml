@@ -66,6 +66,22 @@
                 </ui:VisualElement>
                 <ui:Button name="motion-trajectory-button" text="Show Trajectory" />
                 <ui:Label name="motion-validation-label" class="status-label" />
+                <ui:Label text="Foot Calibration" class="section-title" />
+                <uie:ObjectField name="foot-calibration-field" label="校准资源" />
+                <uie:Vector3Field name="left-foot-offset-field" label="左脚底偏移" />
+                <uie:Vector3Field name="right-foot-offset-field" label="右脚底偏移" />
+                <uie:FloatField name="virtual-ground-field" label="虚拟地面高度" />
+                <uie:FloatField name="contact-height-field" label="接触高度阈值" />
+                <uie:FloatField name="release-height-field" label="离开高度阈值" />
+                <uie:FloatField name="vertical-speed-field" label="垂直速度阈值" />
+                <uie:FloatField name="horizontal-speed-field" label="水平速度阈值" />
+                <uie:FloatField name="stable-time-field" label="连续稳定时间" />
+                <ui:Toggle name="foot-probes-toggle" label="显示脚底探针" value="true" />
+                <ui:VisualElement class="source-actions">
+                    <ui:Button name="copy-foot-markers-button" text="复制自动标记" />
+                    <ui:Button name="restore-foot-markers-button" text="恢复自动标记" />
+                </ui:VisualElement>
+                <ui:Label name="foot-diagnostics-label" class="status-label" />
                 <ui:Label text="显示设置" class="section-title" />
                 <uie:ColorField name="background-field" label="背景" value="#1B1D21" />
                 <ui:Slider name="light-intensity-slider" label="主光强度" low-value="0" high-value="5" value="1.2" show-input-field="true" />
