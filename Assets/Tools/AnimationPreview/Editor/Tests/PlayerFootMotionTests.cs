@@ -25,37 +25,21 @@ public class PlayerFootMotionTests
         }
 
         [Test]
-        public void DetectFootMotionProducesPlantAndLiftWithHysteresis()
+        public void SampleFootMotionProducesThreeFiniteEqualLengthArrays()
         {
             PlayerFootCalibration calibration = CreateCalibration();
             Vector3[] positions = new Vector3[36];
-            for (int index = 0; index < positions.Length; index++)
-            {
-                float height = index < 20 ? 0f : Mathf.Lerp(0f, 0.12f, (index - 20) / 8f);
-                positions[index] = new Vector3(0f, height, 0f);
-            }
-            PlayerFootMotionBakeData data = PlayerMotionBaker.DetectFootMotion(positions, 60, calibration);
-            Assert.That(Array.Exists(data.AutoMarkers, marker => marker.Plant), Is.True);
-            Assert.That(Array.Exists(data.AutoMarkers, marker => marker.Lift), Is.True);
-            Assert.That(data.AutoMarkers[10].Contact, Is.True);
-            Assert.That(data.AutoMarkers[data.AutoMarkers.Length - 1].Contact, Is.False);
-            UnityEngine.Object.DestroyImmediate(calibration);
-        }
-
-        [Test]
-        public void DetectFootMotionKeepsContactBetweenContactAndReleaseHeight()
-        {
-            PlayerFootCalibration calibration = CreateCalibration();
-            Vector3[] positions = new Vector3[60];
-            for (int index = 0; index < positions.Length; index++)
-            {
-                float height = index < 20 ? 0f : index < 50 ? Mathf.Lerp(0f, 0.05f, (index - 20) / 30f) : Mathf.Lerp(0.05f, 0.09f, (index - 50) / 9f);
-                positions[index] = new Vector3(0f, height, 0f);
-            }
-            PlayerFootMotionBakeData data = PlayerMotionBaker.DetectFootMotion(positions, 60, calibration);
-            Assert.That(data.AutoMarkers[35].Contact, Is.True);
-            Assert.That(data.AutoMarkers[35].Lift, Is.False);
-            Assert.That(Array.Exists(data.AutoMarkers, marker => marker.Lift), Is.True);
+            for (int index = 0; index < positions.Length; index++) positions[index] = new Vector3(index * 0.01f, Mathf.Sin(index * 0.2f) * 0.03f, index * 0.005f);
+            PlayerFootMotionBakeData data = PlayerMotionBaker.SampleFootMotion(positions, 60, calibration);
+            Assert.That(data.SoleHeight, Is.Not.Null);
+            Assert.That(data.VerticalSpeed, Is.Not.Null);
+            Assert.That(data.HorizontalSpeed, Is.Not.Null);
+            Assert.That(data.SoleHeight.Length, Is.EqualTo(positions.Length));
+            Assert.That(data.VerticalSpeed.Length, Is.EqualTo(positions.Length));
+            Assert.That(data.HorizontalSpeed.Length, Is.EqualTo(positions.Length));
+            Assert.That(data.SoleHeight.All(IsFinite), Is.True);
+            Assert.That(data.VerticalSpeed.All(IsFinite), Is.True);
+            Assert.That(data.HorizontalSpeed.All(IsFinite), Is.True);
             UnityEngine.Object.DestroyImmediate(calibration);
         }
 
@@ -86,58 +70,130 @@ public class PlayerFootMotionTests
         }
 
         [Test]
-        public void ManualFootMarkersCanBeCopiedAndRestored()
+        public void RunLoopRightProfile_ContainsConfiguredPlantMarkers()
         {
-            PlayerMotionProfile profile = CreateProfile(1f);
-            PlayerFootMotionBakeData left = CreateFootData(true);
-            PlayerFootMotionBakeData right = CreateFootData(false);
-            profile.SetBakedData(1f, 60, CreatePositions(), CreateFloats(), CreateFloats(), "clip", 1L, "model", "dependency", left, right, "calibration", "settings");
-            profile.CopyAutoFootMarkersToManual(PlayerFoot.Left);
-            Assert.That(profile.LeftFoot.UseManualOverride, Is.True);
-            profile.RestoreAutomaticFootMarkers(PlayerFoot.Left);
-            Assert.That(profile.LeftFoot.UseManualOverride, Is.False);
+            PlayerMotionProfile profile = AssetDatabase.LoadAssetAtPath<PlayerMotionProfile>("Assets/Settings/Player/Motion/Profiles/RunLoopRightFootMotionProfile.asset");
+            Assert.That(profile, Is.Not.Null);
+            List<PlayerFootPlantMarkerEditor.MarkerValue> markers = PlayerFootPlantMarkerEditor.Read(profile);
+            Assert.That(markers.Count, Is.EqualTo(3));
+            Assert.That(markers[0].Foot, Is.EqualTo(PlayerFoot.Right));
+            Assert.That(markers[0].NormalizedTime, Is.EqualTo(0f).Within(0.0001f));
+            Assert.That(markers[1].Foot, Is.EqualTo(PlayerFoot.Left));
+            Assert.That(markers[1].NormalizedTime, Is.EqualTo(0.41055f).Within(0.0001f));
+            Assert.That(markers[2].Foot, Is.EqualTo(PlayerFoot.Right));
+            Assert.That(markers[2].NormalizedTime, Is.EqualTo(0.9375f).Within(0.0001f));
+        }
+
+        [Test]
+        public void PlantMarkersAreSortedAndPreserveRepeatedFootMarkers()
+        {
+            PlayerMotionProfile profile = CreateProfile(1f, 11);
+            Assert.That(PlayerFootPlantMarkerEditor.TryAdd(profile, PlayerFoot.Right, 0.8f), Is.True);
+            Assert.That(PlayerFootPlantMarkerEditor.TryAdd(profile, PlayerFoot.Left, 0.6f), Is.True);
+            Assert.That(PlayerFootPlantMarkerEditor.TryAdd(profile, PlayerFoot.Right, 0.89f), Is.True);
+            Assert.That(PlayerFootPlantMarkerEditor.TryAdd(profile, PlayerFoot.Left, 0.55f), Is.True);
+            List<PlayerFootPlantMarkerEditor.MarkerValue> markers = PlayerFootPlantMarkerEditor.Read(profile);
+            Assert.That(markers.Count, Is.EqualTo(4));
+            Assert.That(markers[0].Foot, Is.EqualTo(PlayerFoot.Left));
+            Assert.That(markers[0].NormalizedTime, Is.EqualTo(0.55f).Within(0.0001f));
+            Assert.That(markers[1].Foot, Is.EqualTo(PlayerFoot.Left));
+            Assert.That(markers[1].NormalizedTime, Is.EqualTo(0.6f).Within(0.0001f));
+            Assert.That(markers[2].Foot, Is.EqualTo(PlayerFoot.Right));
+            Assert.That(markers[2].NormalizedTime, Is.EqualTo(0.8f).Within(0.0001f));
+            Assert.That(markers[3].Foot, Is.EqualTo(PlayerFoot.Right));
+            Assert.That(markers[3].NormalizedTime, Is.EqualTo(0.89f).Within(0.0001f));
             UnityEngine.Object.DestroyImmediate(profile);
         }
 
         [Test]
-        public void CalibrationHashChangesWhenThresholdChanges()
+        public void DeletePlantRemovesNearestMarkerOnlyWithinOneSampleInterval()
+        {
+            PlayerMotionProfile profile = CreateProfile(1f, 21);
+            PlayerFootPlantMarkerEditor.TryAdd(profile, PlayerFoot.Left, 0.2f);
+            PlayerFootPlantMarkerEditor.TryAdd(profile, PlayerFoot.Right, 0.5f);
+            PlayerFootPlantMarkerEditor.TryAdd(profile, PlayerFoot.Left, 0.8f);
+            Assert.That(PlayerFootPlantMarkerEditor.TryRemoveNearest(profile, 0.52f, out PlayerFoot removedFoot), Is.True);
+            Assert.That(removedFoot, Is.EqualTo(PlayerFoot.Right));
+            Assert.That(PlayerFootPlantMarkerEditor.Read(profile).Count, Is.EqualTo(2));
+            Assert.That(PlayerFootPlantMarkerEditor.TryRemoveNearest(profile, 0.95f, out _), Is.False);
+            Assert.That(PlayerFootPlantMarkerEditor.Read(profile).Count, Is.EqualTo(2));
+            UnityEngine.Object.DestroyImmediate(profile);
+        }
+
+        [Test]
+        public void RebakePreservesPlantMarkers()
+        {
+            PlayerMotionProfile profile = CreateProfile(1f, 11);
+            PlayerFootPlantMarkerEditor.TryAdd(profile, PlayerFoot.Left, 0.2f);
+            PlayerFootPlantMarkerEditor.TryAdd(profile, PlayerFoot.Right, 0.8f);
+            List<PlayerFootPlantMarkerEditor.MarkerValue> before = PlayerFootPlantMarkerEditor.Read(profile);
+            profile.SetBakedData(1f, 60, CreatePositions(11), CreateFloats(11), CreateFloats(11), "clip", 1L, "model", "dependency", CreateFootData(), CreateFootData(), "calibration", "settings");
+            List<PlayerFootPlantMarkerEditor.MarkerValue> after = PlayerFootPlantMarkerEditor.Read(profile);
+            Assert.That(after.Select(marker => marker.Foot), Is.EqualTo(before.Select(marker => marker.Foot)));
+            Assert.That(after.Select(marker => marker.NormalizedTime), Is.EqualTo(before.Select(marker => marker.NormalizedTime)));
+            UnityEngine.Object.DestroyImmediate(profile);
+        }
+
+        [Test]
+        public void InvalidClipProfileCombinationCannotWritePlantMarker()
+        {
+            PlayerMotionProfile profile = CreateProfile(1f, 11);
+            AnimationClip clip = new AnimationClip();
+            Assert.That(PlayerFootPlantMarkerEditor.TryAddForClip(profile, clip, PlayerFoot.Left, 0.25f), Is.False);
+            Assert.That(PlayerFootPlantMarkerEditor.Read(profile), Is.Empty);
+            UnityEngine.Object.DestroyImmediate(clip);
+            UnityEngine.Object.DestroyImmediate(profile);
+        }
+
+        [Test]
+        public void CalibrationHashChangesWhenRemainingSettingsChange()
         {
             PlayerFootCalibration calibration = CreateCalibration();
             string before = calibration.SettingsHash;
-            calibration.Configure(null, Vector3.zero, Vector3.zero, 0f, 0.03f, 0.07f, 0.2f, 0.25f, 0.05f);
+            calibration.Configure(null, new Vector3(0.01f, 0f, 0f), Vector3.zero, 0f);
             Assert.That(calibration.SettingsHash, Is.Not.EqualTo(before));
+            SerializedObject serialized = new SerializedObject(calibration);
+            Assert.That(serialized.FindProperty("contactHeightThreshold"), Is.Null);
+            Assert.That(serialized.FindProperty("releaseHeightThreshold"), Is.Null);
+            Assert.That(serialized.FindProperty("verticalSpeedThreshold"), Is.Null);
+            Assert.That(serialized.FindProperty("horizontalSpeedThreshold"), Is.Null);
+            Assert.That(serialized.FindProperty("stableTimeThreshold"), Is.Null);
             UnityEngine.Object.DestroyImmediate(calibration);
         }
 
         private static PlayerFootCalibration CreateCalibration()
         {
             PlayerFootCalibration calibration = ScriptableObject.CreateInstance<PlayerFootCalibration>();
-            calibration.Configure(null, Vector3.zero, Vector3.zero, 0f, 0.04f, 0.07f, 0.2f, 0.25f, 0.05f);
+            calibration.Configure(null, Vector3.zero, Vector3.zero, 0f);
             return calibration;
         }
 
-        private static PlayerMotionProfile CreateProfile(float duration)
+        private static PlayerMotionProfile CreateProfile(float duration, int sampleCount = 3)
         {
             PlayerMotionProfile profile = ScriptableObject.CreateInstance<PlayerMotionProfile>();
-            profile.SetBakedData(duration, 60, CreatePositions(), CreateFloats(), CreateFloats(), "clip", 1L, "model", "dependency");
+            profile.SetBakedData(duration, 60, CreatePositions(sampleCount), CreateFloats(sampleCount), CreateFloats(sampleCount), "clip", 1L, "model", "dependency");
             return profile;
         }
 
-        private static Vector2[] CreatePositions() => new[] { Vector2.zero, new Vector2(1f, 0f), new Vector2(2f, 0f) };
-        private static float[] CreateFloats() => new[] { 0f, 0.5f, 1f };
-
-        private static PlayerFootMotionBakeData CreateFootData(bool contact)
+        private static Vector2[] CreatePositions(int count = 3)
         {
-            PlayerFootContactMarker[] markers = contact
-                ? new[] { new PlayerFootContactMarker(false, false, false), new PlayerFootContactMarker(true, true, false), new PlayerFootContactMarker(false, false, true) }
-                : new[] { new PlayerFootContactMarker(false, false, false), new PlayerFootContactMarker(false, false, false), new PlayerFootContactMarker(false, false, false) };
+            return Enumerable.Range(0, count).Select(index => new Vector2(index, 0f)).ToArray();
+        }
+
+        private static float[] CreateFloats(int count = 3)
+        {
+            return Enumerable.Range(0, count).Select(index => index / (float)Math.Max(1, count - 1)).ToArray();
+        }
+
+        private static PlayerFootMotionBakeData CreateFootData()
+        {
             return new PlayerFootMotionBakeData
             {
-                SoleHeight = new[] { 0f, 0f, 0.1f },
-                VerticalSpeed = new[] { 0f, 0f, 0f },
-                HorizontalSpeed = new[] { 0f, 0f, 0f },
-                StableTime = new[] { 0f, 0.05f, 0f },
-                AutoMarkers = markers
+                SoleHeight = CreateFloats(11),
+                VerticalSpeed = CreateFloats(11),
+                HorizontalSpeed = CreateFloats(11)
             };
         }
+
+        private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
 }

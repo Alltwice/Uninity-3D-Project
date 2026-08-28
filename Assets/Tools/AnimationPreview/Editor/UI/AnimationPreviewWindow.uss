@@ -31,6 +31,8 @@
 .status-label { color: #91d39b; }
 .status-error { color: #ef8b86; background-color: #382426; }
 .playback-row { min-height: 42px; padding-left: 7px; padding-right: 7px; border-top-width: 1px; border-top-color: #111214; background-color: #292c31; }
+.plant-marker-track { position: relative; height: 18px; margin-left: 7px; margin-right: 7px; border-top-width: 1px; border-top-color: #111214; background-color: #202226; }
+.plant-marker { position: absolute; width: 14px; height: 16px; unity-text-align: middle-center; font-size: 10px; color: #f1cf76; background-color: #4f4223; border-radius: 2px; }
 .speed-slider { width: 185px; }
 .time-slider { flex-grow: 1; min-width: 160px; margin-left: 8px; }
 .time-label { width: 100px; unity-text-align: middle-right; }

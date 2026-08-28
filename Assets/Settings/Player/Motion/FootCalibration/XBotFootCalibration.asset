@@ -15,9 +15,4 @@ MonoBehaviour:
   modelAsset: {fileID: 919132149155446097, guid: 9e9dd8d32cf76fa43941fa1ff36e6b86, type: 3}
   leftFootSoleOffset: {x: 0, y: 0.1, z: -0.12}
   rightFootSoleOffset: {x: 0, y: 0.1, z: -0.12}
-  virtualGroundHeight: -0.0699
-  contactHeightThreshold: 0.04
-  releaseHeightThreshold: 0.07
-  verticalSpeedThreshold: 0.2
-  horizontalSpeedThreshold: 0.25
-  stableTimeThreshold: 0.05
+  virtualGroundHeight: -0.07

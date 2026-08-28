@@ -116,7 +116,7 @@ public class PlayerMotionRuntime
     /// </summary>
     public ulong Begin(PlayerMotionDefinition nextDefinition, Vector3 basisDirection, Vector3 initialTravelDirection, float startProgress = 0f)
     {
-        return Begin(nextDefinition, nextDefinition == null ? null : nextDefinition.ResolveProfile(PlayerFoot.Right), PlayerFoot.Right, basisDirection, initialTravelDirection, startProgress);
+        return Begin(nextDefinition, nextDefinition == null ? null : nextDefinition.Profile, PlayerFoot.Unknown, basisDirection, initialTravelDirection, startProgress);
     }
 
     public ulong Begin(PlayerMotionDefinition nextDefinition, PlayerMotionProfile selectedProfile, PlayerFoot selectedSupportFoot, Vector3 basisDirection, Vector3 initialTravelDirection, float startProgress = 0f)
@@ -125,7 +125,7 @@ public class PlayerMotionRuntime
         //切换动画数据
         definition = nextDefinition;
         profile = selectedProfile ?? (definition == null ? null : definition.ResolveProfile(selectedSupportFoot));
-        supportFoot = selectedSupportFoot == PlayerFoot.Unknown ? PlayerFoot.Right : selectedSupportFoot;
+        supportFoot = selectedSupportFoot;
         duration = definition == null ? 0f : definition.GetDuration(profile);
         instanceId = ++sequence;
         //当前开始动画执行时间

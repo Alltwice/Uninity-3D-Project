@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
@@ -478,6 +479,74 @@ public sealed class PlayerMotionRuntimeTests
         Object.DestroyImmediate(profile);
     }
 
+    [Test]
+    public void Profile_ResolvesMostRecentPlantForNonLoopMotion()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        SetPlantMarkers(profile, new PlantMarkerValue(PlayerFoot.Left, 0.2f), new PlantMarkerValue(PlayerFoot.Right, 0.6f), new PlantMarkerValue(PlayerFoot.Left, 0.85f));
+        Assert.That(profile.HasPlantMarkers, Is.True);
+        Assert.That(profile.ResolveSupportFoot(0.1f, PlayerFoot.Unknown), Is.EqualTo(PlayerFoot.Unknown));
+        Assert.That(profile.ResolveSupportFoot(0.2f, PlayerFoot.Unknown), Is.EqualTo(PlayerFoot.Left));
+        Assert.That(profile.ResolveSupportFoot(0.59f, PlayerFoot.Right), Is.EqualTo(PlayerFoot.Left));
+        Assert.That(profile.ResolveSupportFoot(0.6f, PlayerFoot.Left), Is.EqualTo(PlayerFoot.Right));
+        Assert.That(profile.ResolveSupportFoot(1f, PlayerFoot.Right), Is.EqualTo(PlayerFoot.Left));
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void Profile_ResolvesLastPlantBeforeFirstMarkerAcrossLoopBoundary()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        SetPlantMarkers(profile, new PlantMarkerValue(PlayerFoot.Left, 0.25f), new PlantMarkerValue(PlayerFoot.Right, 0.75f));
+        Assert.That(profile.ResolveLoopSupportFoot(0f, PlayerFoot.Unknown), Is.EqualTo(PlayerFoot.Right));
+        Assert.That(profile.ResolveLoopSupportFoot(0.24f, PlayerFoot.Left), Is.EqualTo(PlayerFoot.Right));
+        Assert.That(profile.ResolveLoopSupportFoot(0.25f, PlayerFoot.Right), Is.EqualTo(PlayerFoot.Left));
+        Assert.That(profile.ResolveLoopSupportFoot(0.8f, PlayerFoot.Left), Is.EqualTo(PlayerFoot.Right));
+        Assert.That(profile.ResolveLoopSupportFoot(1f, PlayerFoot.Unknown), Is.EqualTo(PlayerFoot.Right));
+        Assert.That(profile.ResolveLoopSupportFoot(1.25f, PlayerFoot.Right), Is.EqualTo(PlayerFoot.Left));
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void Profile_EmptyPlantMarkersPreserveFallback()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        Assert.That(profile.HasPlantMarkers, Is.False);
+        Assert.That(profile.PlantMarkers, Is.Empty);
+        Assert.That(profile.ResolveSupportFoot(0.5f, PlayerFoot.Unknown), Is.EqualTo(PlayerFoot.Unknown));
+        Assert.That(profile.ResolveLoopSupportFoot(0.5f, PlayerFoot.Left), Is.EqualTo(PlayerFoot.Left));
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void Runtime_DefaultBeginUsesDefaultProfileAndPreservesUnknownFoot()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        PlayerMotionRuntime runtime = new PlayerMotionRuntime();
+        runtime.Begin(definition, Vector3.forward, Vector3.forward);
+        Assert.That(runtime.Snapshot.ActiveProfile, Is.SameAs(profile));
+        Assert.That(runtime.Snapshot.SupportFoot, Is.EqualTo(PlayerFoot.Unknown));
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void Profile_ValidationRejectsInvalidPlantMarkers()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        SetPlantMarkers(profile, new PlantMarkerValue(PlayerFoot.Unknown, 0.25f), new PlantMarkerValue(PlayerFoot.Left, 0.1f), new PlantMarkerValue(PlayerFoot.Left, 0.2f));
+        List<string> errors = new List<string>();
+        Assert.That(profile.Validate(errors), Is.False);
+        Assert.That(errors.Exists(error => error.Contains("Plant Marker 的脚")), Is.True);
+        Assert.That(errors.Exists(error => error.Contains("Plant Marker 必须按时间排序")), Is.True);
+        Assert.That(errors.Exists(error => error.Contains("同一脚的 Plant Marker")), Is.True);
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
     private static PlayerMotionDefinition CreateDefinition(out PlayerMotionProfile profile, float handoffStart = 1f, float handoffEnd = 1f)
     {
         profile = ScriptableObject.CreateInstance<PlayerMotionProfile>();
@@ -485,6 +554,33 @@ public sealed class PlayerMotionRuntimeTests
         PlayerMotionDefinition definition = ScriptableObject.CreateInstance<PlayerMotionDefinition>();
         definition.Configure(profile, PlayerMotionTranslationPolicy.TravelAlongCapturedDirection, PlayerMotionRotationPolicy.FaceDirection, PlayerMotionBasisPolicy.DesiredDirection, 0f, 1f, handoffStart, handoffEnd);
         return definition;
+    }
+
+    private static void SetPlantMarkers(PlayerMotionProfile profile, params PlantMarkerValue[] values)
+    {
+        UnityEditor.SerializedObject serialized = new UnityEditor.SerializedObject(profile);
+        serialized.Update();
+        UnityEditor.SerializedProperty markerArray = serialized.FindProperty("plantMarkers");
+        markerArray.arraySize = values.Length;
+        for (int index = 0; index < values.Length; index++)
+        {
+            UnityEditor.SerializedProperty marker = markerArray.GetArrayElementAtIndex(index);
+            marker.FindPropertyRelative("foot").enumValueIndex = (int)values[index].Foot;
+            marker.FindPropertyRelative("normalizedTime").floatValue = values[index].NormalizedTime;
+        }
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private struct PlantMarkerValue
+    {
+        public PlantMarkerValue(PlayerFoot foot, float normalizedTime)
+        {
+            Foot = foot;
+            NormalizedTime = normalizedTime;
+        }
+
+        public PlayerFoot Foot;
+        public float NormalizedTime;
     }
 
     private static PlayerMotionDefinition CreateTurnDefinition(out PlayerMotionProfile profile)

@@ -42,12 +42,12 @@ public class PlayerMotionProfileMetadata
 #endif
 }
 /// <summary>
-/// 被烘焙后的动画数据文件
+/// 烘焙运动数据和人工 Plant 标注文件
 /// </summary>
 [CreateAssetMenu(fileName = "PlayerMotionProfile", menuName = "Player/Motion/Profile")]
 public class PlayerMotionProfile : ScriptableObject
 {
-    public const int CurrentBakeVersion = 2;
+    public const int CurrentBakeVersion = 3;
     //动画持续时间
     [Min(0f)] [SerializeField] private float duration;
     [Min(1)] [SerializeField] private int sampleRate = 60;
@@ -56,6 +56,7 @@ public class PlayerMotionProfile : ScriptableObject
     [SerializeField] private float[] cumulativeYaw = Array.Empty<float>();
     [SerializeField] private PlayerFootMotionChannel leftFoot = new PlayerFootMotionChannel();
     [SerializeField] private PlayerFootMotionChannel rightFoot = new PlayerFootMotionChannel();
+    [SerializeField] private List<PlayerFootPlantMarker> plantMarkers = new List<PlayerFootPlantMarker>();
     //保存元数据
     [SerializeField] private PlayerMotionProfileMetadata editorMetadata = new PlayerMotionProfileMetadata();
 
@@ -68,6 +69,8 @@ public class PlayerMotionProfile : ScriptableObject
     public PlayerFootMotionChannel LeftFoot => leftFoot;
     public PlayerFootMotionChannel RightFoot => rightFoot;
     public bool HasFootData => leftFoot != null && rightFoot != null && leftFoot.HasData && rightFoot.HasData;
+    public IReadOnlyList<PlayerFootPlantMarker> PlantMarkers => plantMarkers == null ? (IReadOnlyList<PlayerFootPlantMarker>)Array.Empty<PlayerFootPlantMarker>() : plantMarkers;
+    public bool HasPlantMarkers => plantMarkers != null && plantMarkers.Count > 0;
     public PlayerMotionProfileMetadata EditorMetadata => editorMetadata;
     /// <summary>
     /// 查询此刻的移动数据
@@ -80,35 +83,55 @@ public class PlayerMotionProfile : ScriptableObject
 
     public float EvaluateTravelDistance(float progress) => Evaluate(cumulativeTravelDistance, progress);
     public float EvaluateYaw(float progress) => Evaluate(cumulativeYaw, progress);
+
     /// <summary>
-    /// 依据动画播放进程拿到采样点数据，并最终合成双脚接地情况
+    /// 按非循环动画时间解析截至当前时刻最近的人工 Plant
     /// </summary>
-    public PlayerFootContact EvaluateFootContact(float progress)
+    public PlayerFoot ResolveSupportFoot(float time, PlayerFoot fallback)
     {
-        PlayerFootContactMarker leftMarker = leftFoot == null ? default : leftFoot.EvaluateMarker(progress);
-        PlayerFootContactMarker rightMarker = rightFoot == null ? default : rightFoot.EvaluateMarker(progress);
-        return new PlayerFootContact(leftMarker.Contact, rightMarker.Contact, leftMarker.Plant, rightMarker.Plant, leftMarker.Lift, rightMarker.Lift);
+        if (!HasPlantMarkers || !IsFinite(time)) return fallback;
+        float normalizedTime = Mathf.Clamp01(time);
+        PlayerFoot resolved = fallback;
+        float latestTime = float.NegativeInfinity;
+        for (int index = 0; index < plantMarkers.Count; index++)
+        {
+            PlayerFootPlantMarker marker = plantMarkers[index];
+            if (!IsValidPlantMarker(marker) || marker.NormalizedTime > normalizedTime || marker.NormalizedTime < latestTime) continue;
+            latestTime = marker.NormalizedTime;
+            resolved = marker.Foot;
+        }
+        return resolved;
     }
+
     /// <summary>
-    /// 处理支撑脚
+    /// 按循环动画时间解析 Plant；首个 Marker 之前使用上一周期最后一个 Marker
     /// </summary>
-    public PlayerFoot ResolveSupportFoot(float progress, PlayerFoot fallback)
+    public PlayerFoot ResolveLoopSupportFoot(float time, PlayerFoot fallback)
     {
-        PlayerFootContact contact = EvaluateFootContact(progress);
-        if (contact.HasSingleContact) return contact.SingleContactFoot;
-        return fallback == PlayerFoot.Unknown ? PlayerFoot.Right : fallback;
-    }
-
-    public PlayerFootContact GetFootPhase(float normalizedTime) => EvaluateFootContact(normalizedTime);
-
-    public PlayerFoot EntrySupportFoot => ResolveEntrySupportFoot();
-    public PlayerFoot ExitSupportFoot => ResolveExitSupportFoot();
-
-    public float GetSupportPhase(PlayerFoot foot)
-    {
-        if (foot == PlayerFoot.Left) return leftFoot == null ? 0f : leftFoot.GetSupportPhase();
-        if (foot == PlayerFoot.Right) return rightFoot == null ? 0f : rightFoot.GetSupportPhase();
-        return 0f;
+        if (!HasPlantMarkers || !IsFinite(time)) return fallback;
+        float normalizedTime = Mathf.Repeat(time, 1f);
+        PlayerFoot resolved = fallback;
+        PlayerFoot lastMarkerFoot = fallback;
+        float latestTime = float.NegativeInfinity;
+        float latestResolvedTime = float.NegativeInfinity;
+        for (int index = 0; index < plantMarkers.Count; index++)
+        {
+            PlayerFootPlantMarker marker = plantMarkers[index];
+            if (!IsValidPlantMarker(marker)) continue;
+            //最晚的脚步落点
+            if (marker.NormalizedTime > latestTime)
+            {
+                latestTime = marker.NormalizedTime;
+                lastMarkerFoot = marker.Foot;
+            }
+            //找到最近的脚步落点
+            if (marker.NormalizedTime <= normalizedTime && marker.NormalizedTime >= latestResolvedTime)
+            {
+                latestResolvedTime = marker.NormalizedTime;
+                resolved = marker.Foot;
+            }
+        }
+        return latestResolvedTime == float.NegativeInfinity ? lastMarkerFoot : resolved;
     }
 
     public bool Validate(ICollection<string> errors)
@@ -132,6 +155,38 @@ public class PlayerMotionProfile : ScriptableObject
             if (distance + 0.0001f < previousDistance) { errors?.Add(name + ": CumulativeTravelDistance 出现反向下降。"); valid = false; break; }
             if (i > 0 && Mathf.Abs(yaw - cumulativeYaw[i - 1]) > 180.001f) { errors?.Add(name + ": CumulativeYaw 存在未展开的 ±180 跳变。"); valid = false; break; }
             previousDistance = distance;
+        }
+        valid &= ValidatePlantMarkers(errors);
+        return valid;
+    }
+
+    private bool ValidatePlantMarkers(ICollection<string> errors)
+    {
+        if (plantMarkers == null || plantMarkers.Count == 0) return true;
+        bool valid = true;
+        float sampleInterval = SampleCount > 1 ? 1f / (SampleCount - 1) : 1f;
+        for (int index = 0; index < plantMarkers.Count; index++)
+        {
+            PlayerFootPlantMarker marker = plantMarkers[index];
+            if (!IsValidPlantFoot(marker.Foot)) { errors?.Add(name + ": Plant Marker 的脚必须是 Left 或 Right。"); valid = false; }
+            if (!IsFinite(marker.NormalizedTime) || marker.NormalizedTime < 0f || marker.NormalizedTime > 1f) { errors?.Add(name + ": Plant Marker 时间必须是 0 到 1 的有限值。"); valid = false; }
+            if (index > 0 && IsFinite(plantMarkers[index - 1].NormalizedTime) && IsFinite(marker.NormalizedTime) && marker.NormalizedTime < plantMarkers[index - 1].NormalizedTime)
+            {
+                errors?.Add(name + ": Plant Marker 必须按时间排序。");
+                valid = false;
+            }
+        }
+        for (int leftIndex = 0; leftIndex < plantMarkers.Count; leftIndex++)
+        {
+            PlayerFootPlantMarker left = plantMarkers[leftIndex];
+            if (!IsValidPlantMarker(left)) continue;
+            for (int rightIndex = leftIndex + 1; rightIndex < plantMarkers.Count; rightIndex++)
+            {
+                PlayerFootPlantMarker right = plantMarkers[rightIndex];
+                if (!IsValidPlantMarker(right) || left.Foot != right.Foot || Mathf.Abs(left.NormalizedTime - right.NormalizedTime) > sampleInterval) continue;
+                errors?.Add(name + ": 同一脚的 Plant Marker 不能位于同一采样区间。");
+                valid = false;
+            }
         }
         return valid;
     }
@@ -157,15 +212,6 @@ public class PlayerMotionProfile : ScriptableObject
         editorMetadata.Set(CurrentBakeVersion, bakedSampleRate, clipGuid, clipLocalId, modelGuid, dependencyHash, calibrationGuid, calibrationHash);
     }
 
-    public void CopyAutoFootMarkersToManual(PlayerFoot foot)
-    {
-        ResolveChannel(foot)?.CopyAutoToManual();
-    }
-
-    public void RestoreAutomaticFootMarkers(PlayerFoot foot)
-    {
-        ResolveChannel(foot)?.RestoreAutomatic();
-    }
 #endif
     /// <summary>
     /// 拿到实际的移动位置
@@ -197,58 +243,11 @@ public class PlayerMotionProfile : ScriptableObject
     /// </summary>
     private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
 
-    private PlayerFootMotionChannel ResolveChannel(PlayerFoot foot) => foot == PlayerFoot.Left ? leftFoot : foot == PlayerFoot.Right ? rightFoot : null;
-    /// <summary>
-    /// 处理开始动画迈什么脚
-    /// </summary>
-    private PlayerFoot ResolveEntrySupportFoot()
+    private static bool IsValidPlantFoot(PlayerFoot foot) => foot == PlayerFoot.Left || foot == PlayerFoot.Right;
+
+    private static bool IsValidPlantMarker(PlayerFootPlantMarker marker)
     {
-        if (!HasFootData) return PlayerFoot.Unknown;
-        PlayerFootContact entry = EvaluateFootContact(0f);
-        //单脚接触直接返回支撑脚
-        if (entry.HasSingleContact) return entry.SingleContactFoot;
-        if (!entry.HasAnyContact) return PlayerFoot.Unknown;
-        int leftLift = FindFirstMarkerIndex(leftFoot, true, false);
-        int rightLift = FindFirstMarkerIndex(rightFoot, true, false);
-        //如果无法确认默认右脚
-        if (leftLift == rightLift) return PlayerFoot.Right;
-        //左脚比右脚在前就优先左脚动画
-        return leftLift > rightLift ? PlayerFoot.Left : PlayerFoot.Right;
-    }
-    /// <summary>
-    /// 动画结束迈什么脚
-    /// </summary>
-    private PlayerFoot ResolveExitSupportFoot()
-    {
-        if (!HasFootData) return PlayerFoot.Unknown;
-        PlayerFootContact exit = EvaluateFootContact(1f);
-        if (exit.HasSingleContact) return exit.SingleContactFoot;
-        if (!exit.HasAnyContact) return PlayerFoot.Unknown;
-        int leftPlant = FindLastMarkerIndex(leftFoot, false, true);
-        int rightPlant = FindLastMarkerIndex(rightFoot, false, true);
-        if (leftPlant == rightPlant) return PlayerFoot.Right;
-        return leftPlant > rightPlant ? PlayerFoot.Left : PlayerFoot.Right;
-    }
-    
-    private static int FindFirstMarkerIndex(PlayerFootMotionChannel channel, bool lift, bool plant)
-    {
-        if (channel == null || !channel.HasData) return -1;
-        for (int index = 0; index < channel.SampleCount; index++)
-        {
-            PlayerFootContactMarker marker = channel.GetMarker(index);
-            if (lift && marker.Lift || plant && marker.Plant) return index;
-        }
-        return channel.SampleCount;
+        return IsValidPlantFoot(marker.Foot) && IsFinite(marker.NormalizedTime) && marker.NormalizedTime >= 0f && marker.NormalizedTime <= 1f;
     }
 
-    private static int FindLastMarkerIndex(PlayerFootMotionChannel channel, bool lift, bool plant)
-    {
-        if (channel == null || !channel.HasData) return -1;
-        for (int index = channel.SampleCount - 1; index >= 0; index--)
-        {
-            PlayerFootContactMarker marker = channel.GetMarker(index);
-            if (lift && marker.Lift || plant && marker.Plant) return index;
-        }
-        return -1;
-    }
 }

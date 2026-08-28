@@ -111,6 +111,12 @@ namespace ProjectTools.AnimationPreview.Tests
             Assert.That(root.Q<ObjectField>("sequence-field"), Is.Not.Null);
             Assert.That(root.Q<ListView>("sequence-entry-list"), Is.Not.Null);
             Assert.That(root.Q<Button>("stop-button"), Is.Not.Null);
+            Assert.That(root.Q<Button>("mark-left-plant-button"), Is.Not.Null);
+            Assert.That(root.Q<Button>("mark-right-plant-button"), Is.Not.Null);
+            Assert.That(root.Q<Button>("delete-plant-button"), Is.Not.Null);
+            Assert.That(root.Q("plant-marker-track"), Is.Not.Null);
+            Assert.That(root.Q("contact-height-field"), Is.Null);
+            Assert.That(root.Q("foot-diagnostics-label"), Is.Null);
         }
 
         private static AnimationClip LoadUsableClip(string assetPath)

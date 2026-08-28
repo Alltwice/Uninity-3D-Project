@@ -71,17 +71,13 @@
                 <uie:Vector3Field name="left-foot-offset-field" label="左脚底偏移" />
                 <uie:Vector3Field name="right-foot-offset-field" label="右脚底偏移" />
                 <uie:FloatField name="virtual-ground-field" label="虚拟地面高度" />
-                <uie:FloatField name="contact-height-field" label="接触高度阈值" />
-                <uie:FloatField name="release-height-field" label="离开高度阈值" />
-                <uie:FloatField name="vertical-speed-field" label="垂直速度阈值" />
-                <uie:FloatField name="horizontal-speed-field" label="水平速度阈值" />
-                <uie:FloatField name="stable-time-field" label="连续稳定时间" />
                 <ui:Toggle name="foot-probes-toggle" label="显示脚底探针" value="true" />
+                <ui:Label text="Plant Marker（仅编辑器）" class="section-title" />
                 <ui:VisualElement class="source-actions">
-                    <ui:Button name="copy-foot-markers-button" text="复制自动标记" />
-                    <ui:Button name="restore-foot-markers-button" text="恢复自动标记" />
+                    <ui:Button name="mark-left-plant-button" text="标记 Left Plant" />
+                    <ui:Button name="mark-right-plant-button" text="标记 Right Plant" />
+                    <ui:Button name="delete-plant-button" text="删除 Plant" />
                 </ui:VisualElement>
-                <ui:Label name="foot-diagnostics-label" class="status-label" />
                 <ui:Label text="显示设置" class="section-title" />
                 <uie:ColorField name="background-field" label="背景" value="#1B1D21" />
                 <ui:Slider name="light-intensity-slider" label="主光强度" low-value="0" high-value="5" value="1.2" show-input-field="true" />
@@ -90,6 +86,7 @@
                 <ui:Toggle name="grid-toggle" label="地面网格" value="true" />
             </ui:VisualElement>
         </ui:VisualElement>
+        <ui:VisualElement name="plant-marker-track" class="plant-marker-track" />
         <ui:VisualElement class="playback-row">
             <ui:Button name="previous-frame-button" text="|◀" />
             <ui:Button name="play-button" text="播放" />

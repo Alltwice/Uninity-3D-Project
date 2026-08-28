@@ -38,6 +38,7 @@ public class PlayerMotionAnimationBinding
     {
         bool valid = definition != null && defaultTransition != null && defaultTransition.Clip != null;
         if (!valid) errors?.Add("Motion Binding 缺少默认 Definition 或 Clip。");
+        if (definition != null) valid &= PlayerAnimationSet.ValidateProfilePlantMarkers(definition.Profile, definition.name + ".Default", errors);
 #if UNITY_EDITOR
         if (definition != null) valid &= PlayerAnimationSet.ValidateProfileClip(definition.Profile, defaultTransition, definition.name + ".Default", errors);
 #endif
@@ -48,6 +49,8 @@ public class PlayerMotionAnimationBinding
         valid &= PlayerAnimationSet.ValidateProfileClip(definition.LeftFootProfile, leftTransition, definition.name + ".Left", errors);
         valid &= PlayerAnimationSet.ValidateProfileClip(definition.RightFootProfile, rightTransition, definition.name + ".Right", errors);
 #endif
+        valid &= PlayerAnimationSet.ValidateProfilePlantMarkers(definition.LeftFootProfile, definition.name + ".Left", errors);
+        valid &= PlayerAnimationSet.ValidateProfilePlantMarkers(definition.RightFootProfile, definition.name + ".Right", errors);
         return valid;
     }
 
@@ -75,7 +78,7 @@ public class PlayerMotionAnimationBinding
 #endif
 }
 /// <summary>
-/// 专门用于处理脚步相位情况下的循环动画选用
+/// 按当前脚选择循环动画及其 MotionProfile
 /// </summary>
 [Serializable]
 public class PlayerLoopAnimationPair
@@ -107,6 +110,9 @@ public class PlayerLoopAnimationPair
         if (!valid) errors?.Add(label + ": 缺少默认循环 Clip 或 Profile。");
         if (leftTransition == null || leftTransition.Clip == null || leftProfile == null) { errors?.Add(label + ": 缺少 Left Foot 循环 Clip/Profile。"); valid = false; }
         if (rightTransition == null || rightTransition.Clip == null || rightProfile == null) { errors?.Add(label + ": 缺少 Right Foot 循环 Clip/Profile。"); valid = false; }
+        valid &= PlayerAnimationSet.ValidateProfilePlantMarkers(defaultProfile, label + ".Default", errors);
+        valid &= PlayerAnimationSet.ValidateProfilePlantMarkers(leftProfile, label + ".Left", errors);
+        valid &= PlayerAnimationSet.ValidateProfilePlantMarkers(rightProfile, label + ".Right", errors);
 #if UNITY_EDITOR
         valid &= PlayerAnimationSet.ValidateProfileClip(defaultProfile, defaultTransition, label + ".Default", errors);
         valid &= PlayerAnimationSet.ValidateProfileClip(leftProfile, leftTransition, label + ".Left", errors);
@@ -235,6 +241,18 @@ public class PlayerAnimationSet : ScriptableObject
         if (fastRunLoop == null) { errors?.Add(name + ": 缺少 Sprint Loop Pair。"); valid = false; }
         else valid &= fastRunLoop.Validate(name + ".SprintLoop", errors);
         return valid;
+    }
+
+    internal static bool ValidateProfilePlantMarkers(PlayerMotionProfile profile, string label, ICollection<string> errors)
+    {
+        if (profile == null)
+        {
+            errors?.Add(label + ": 缺少 MotionProfile。");
+            return false;
+        }
+        if (profile.HasPlantMarkers) return true;
+        errors?.Add(label + ": MotionProfile 缺少人工 Plant Marker。");
+        return false;
     }
 
 #if UNITY_EDITOR

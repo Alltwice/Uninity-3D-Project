@@ -124,7 +124,7 @@ public class PlayerMotionPlanner : MonoBehaviour
         Vector3 desired = intent.DesiredMoveDirection.sqrMagnitude > 0.0001f ? intent.DesiredMoveDirection : transform.forward;
         Vector3 entryVelocity = motorResult.HorizontalVelocity.sqrMagnitude > 0.0001f ? motorResult.HorizontalVelocity : transform.forward;
         Vector3 basis = definition.BasisPolicy == PlayerMotionBasisPolicy.DesiredDirection ? desired : definition.BasisPolicy == PlayerMotionBasisPolicy.EntryVelocityDirection ? entryVelocity : transform.forward;
-        PlayerFoot supportFoot = animationController == null ? PlayerFoot.Right : animationController.CurrentSupportFoot;
+        PlayerFoot supportFoot = animationController == null ? PlayerFoot.Unknown : animationController.CurrentSupportFoot;
         runtime.Begin(definition, definition.ResolveProfile(supportFoot), supportFoot, basis, desired);
     }
     /// <summary>

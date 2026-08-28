@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c27a41366a55064e865923a5a0217ab, type: 3}
   m_Name: WalkTurn180LeftDefinition
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMotionDefinition
-  profile: {fileID: 11400000, guid: bac74e81b04cff54aacf020fcd44681a, type: 2}
+  profile: {fileID: 11400000, guid: a3b7d7b85f893514caac874c8aa87f87, type: 2}
   leftFootProfile: {fileID: 11400000, guid: ef5049d2110025d4e92404fbd9899149, type: 2}
   rightFootProfile: {fileID: 11400000, guid: a3b7d7b85f893514caac874c8aa87f87, type: 2}
   requiresFootProfiles: 1

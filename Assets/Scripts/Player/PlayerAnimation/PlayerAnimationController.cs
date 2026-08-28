@@ -36,7 +36,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
     private PlayerFoot currentSupportFoot;
 
     public float DebugBoundaryPhase { get; private set; }
-    public PlayerFoot CurrentSupportFoot => currentSupportFoot == PlayerFoot.Unknown ? PlayerFoot.Right : currentSupportFoot;
+    public PlayerFoot CurrentSupportFoot => currentSupportFoot;
 
     private void Awake()
     {
@@ -50,14 +50,9 @@ public sealed class PlayerAnimationController : MonoBehaviour
 
     public void Present(Type currentGameplayStateType, PlayerStateTransition? transition, PlayerMotionSnapshot motion, float stateProgress)
     {
-        UpdateStableLoopSupportFoot();
         gameplayStateType = currentGameplayStateType;
         if (motion.SupportFoot != PlayerFoot.Unknown) currentSupportFoot = motion.SupportFoot;
-        if (motion.ActiveProfile != null)
-        {
-            UpdateSupportFoot(motion.ActiveProfile, motion.Progress);
-            if (motion.JustCompleted && motion.ActiveProfile.ExitSupportFoot != PlayerFoot.Unknown) currentSupportFoot = motion.ActiveProfile.ExitSupportFoot;
-        }
+        UpdateMotionSupportFoot(motion);
         bool newMotion = motion.ActiveDefinition != null && motion.InstanceId != presentedMotionInstanceId;
         bool motionCancelled = motion.JustCancelled && motion.InstanceId == presentedMotionInstanceId;
         if (newMotion) PlayMotion(motion);
@@ -70,19 +65,25 @@ public sealed class PlayerAnimationController : MonoBehaviour
             hardLandingState.Speed = 0f;
             hardLandingState.NormalizedTime = stateProgress;
         }
+        UpdateLoopSupportFoot();
     }
 
     public void EvaluateGraph(float deltaTime)
     {
         animancer.Evaluate(Mathf.Max(0f, deltaTime));
+        UpdateLoopSupportFoot();
     }
-    //实际处理动画播放，包括对烘焙动画的处理
+    /// <summary>
+    /// 处理烘焙动画播放
+    /// </summary>
     private void PlayMotion(PlayerMotionSnapshot motion)
     {
         ++presentationSequence;
         presentedMotionInstanceId = motion.InstanceId;
         boundaryState = null;
         handoffLoopState = null;
+        stableLoopState = null;
+        stableLoopProfile = null;
         activeBinding = null;
         //没拿到烘焙动画数据就播放普通循环
         if (!animationSet.TryGetBinding(motion.ActiveDefinition, motion.ActiveProfile, out activeBinding, out ClipTransition transition))
@@ -111,6 +112,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
         if (motion.HandoffActive || motion.JustCompleted)
         {
             EnsureHandoffLoop();
+            //依据播放进程调整权重
             float loopWeight = motion.JustCompleted ? 1f : activeBinding.EvaluatePoseFade(motion.HandoffProgress);
             boundaryState.Weight = 1f - loopWeight;
             if (handoffLoopState != null) handoffLoopState.Weight = loopWeight;
@@ -125,15 +127,19 @@ public sealed class PlayerAnimationController : MonoBehaviour
             ClearBoundary(false);
         }
     }
-
+    /// <summary>
+    /// 实际做出混合的逻辑
+    /// </summary>
     private void EnsureHandoffLoop()
     {
         if (handoffLoopState != null) return;
-        ClipTransition loop = ResolveLoop(gameplayStateType, out stableLoopProfile);
-        if (loop == null) return;
-        handoffLoopState = animancer.Play(loop);
+        PlayerAnimationSelection selection = ResolveLoop(gameplayStateType);
+        if (!selection.IsValid) return;
+        //提前播放loop并调低其权重
+        handoffLoopState = animancer.Play(selection.Transition);
         stableLoopState = handoffLoopState;
-        SetLoopPhase(handoffLoopState, stableLoopProfile);
+        stableLoopProfile = selection.Profile;
+        UpdateLoopSupportFoot();
         boundaryState.Weight = 1f;
         handoffLoopState.Weight = 0f;
     }
@@ -156,13 +162,13 @@ public sealed class PlayerAnimationController : MonoBehaviour
         }
         if (transition.CurrentStateType == typeof(PlayerAirState))
         {
-            if (transition.Reason == PlayerStateTransitionReason.Jumped) PlayPresentationEdge(jumpStartTransition, airLoopTransition, presentationSequence);
-            else animancer.Play(airLoopTransition);
+            if (transition.Reason == PlayerStateTransitionReason.Jumped) PlayPresentationEdge(jumpStartTransition, typeof(PlayerAirState), presentationSequence);
+            else PlayStableLoop(typeof(PlayerAirState));
             return;
         }
         if (transition.PreviousStateType == typeof(PlayerAirState) && transition.CurrentStateType == typeof(PlayerIdleState))
         {
-            PlayPresentationEdge(landingTransition, idleLoopTransition, presentationSequence);
+            PlayPresentationEdge(landingTransition, typeof(PlayerIdleState), presentationSequence);
             return;
         }
         PlayStableLoop(transition.CurrentStateType);
@@ -170,70 +176,64 @@ public sealed class PlayerAnimationController : MonoBehaviour
     /// <summary>
     /// 处理动画边
     /// </summary>
-    private void PlayPresentationEdge(ClipTransition edge, ITransition targetLoop, ulong sequence)
+    private void PlayPresentationEdge(ClipTransition edge, Type targetLoopStateType, ulong sequence)
     {
         if (edge == null || edge.Clip == null)
         {
-            if (targetLoop != null) animancer.Play(targetLoop);
+            PlayStableLoop(targetLoopStateType);
             return;
         }
         edge.Events.OnEnd = () =>
         {
-            if (sequence == presentationSequence && targetLoop != null) animancer.Play(targetLoop);
+            if (sequence == presentationSequence) PlayStableLoop(targetLoopStateType);
         };
         animancer.Play(edge);
     }
 
     private void PlayStableLoop(Type stateType)
     {
-        ClipTransition loop = ResolveLoop(stateType, out stableLoopProfile);
-        if (loop == null) return;
-        stableLoopState = animancer.Play(loop);
-        SetLoopPhase(stableLoopState, stableLoopProfile);
+        PlayerAnimationSelection selection = ResolveLoop(stateType);
+        if (!selection.IsValid) return;
+        stableLoopState = animancer.Play(selection.Transition);
+        stableLoopProfile = selection.Profile;
+        UpdateLoopSupportFoot();
     }
 
     private void PlayStableLoopWithFade(Type stateType)
     {
-        ClipTransition loop = ResolveLoop(stateType, out stableLoopProfile);
-        if (loop == null) return;
-        AnimancerState state = animancer.Play(loop, loop.FadeDuration, FadeMode.FixedDuration);
-        stableLoopState = state;
-        SetLoopPhase(state, stableLoopProfile);
+        PlayerAnimationSelection selection = ResolveLoop(stateType);
+        if (!selection.IsValid) return;
+        stableLoopState = animancer.Play(selection.Transition, selection.Transition.FadeDuration, FadeMode.FixedDuration);
+        stableLoopProfile = selection.Profile;
+        UpdateLoopSupportFoot();
     }
 
-    private ClipTransition ResolveLoop(Type stateType, out PlayerMotionProfile profile)
+    private PlayerAnimationSelection ResolveLoop(Type stateType)
     {
         PlayerLocomotionMode locomotionMode = stateType == typeof(PlayerWalkState) ? PlayerLocomotionMode.Walk : stateType == typeof(PlayerRunState) ? PlayerLocomotionMode.Run : stateType == typeof(PlayerFastRunState) ? PlayerLocomotionMode.FastRun : PlayerLocomotionMode.Idle;
         if (animationSet != null && animationSet.TryResolveLoop(locomotionMode, CurrentSupportFoot, out PlayerAnimationSelection selection))
         {
-            profile = selection.Profile;
-            return selection.Transition;
+            return selection;
         }
-        profile = null;
-        if (stateType == typeof(PlayerIdleState) || stateType == typeof(PlayerHardLandingState)) return idleLoopTransition;
-        if (stateType == typeof(PlayerWalkState)) return walkLoopTransition;
-        if (stateType == typeof(PlayerRunState)) return runLoopTransition;
-        if (stateType == typeof(PlayerFastRunState)) return fastRunLoopTransition;
-        if (stateType == typeof(PlayerAirState)) return airLoopTransition;
-        return null;
+        if (stateType == typeof(PlayerIdleState) || stateType == typeof(PlayerHardLandingState)) return new PlayerAnimationSelection(idleLoopTransition, null);
+        if (stateType == typeof(PlayerWalkState)) return new PlayerAnimationSelection(walkLoopTransition, null);
+        if (stateType == typeof(PlayerRunState)) return new PlayerAnimationSelection(runLoopTransition, null);
+        if (stateType == typeof(PlayerFastRunState)) return new PlayerAnimationSelection(fastRunLoopTransition, null);
+        if (stateType == typeof(PlayerAirState)) return new PlayerAnimationSelection(airLoopTransition, null);
+        return default;
     }
-
-    private void UpdateStableLoopSupportFoot()
+    /// <summary>处理motion驱动动画脚步选择</summary>
+    private void UpdateMotionSupportFoot(PlayerMotionSnapshot motion)
     {
-        if (stableLoopState == null || stableLoopProfile == null) return;
-        UpdateSupportFoot(stableLoopProfile, Mathf.Repeat(stableLoopState.NormalizedTime, 1f));
+        if (motion.ActiveProfile == null) return;
+        PlayerFoot fallback = motion.SupportFoot == PlayerFoot.Unknown ? currentSupportFoot : motion.SupportFoot;
+        currentSupportFoot = motion.ActiveProfile.ResolveSupportFoot(motion.Progress, fallback);
     }
-
-    private void UpdateSupportFoot(PlayerMotionProfile profile, float normalizedTime)
+    /// <summary>处理循环脚步选择</summary>
+    private void UpdateLoopSupportFoot()
     {
-        PlayerFoot resolved = profile.ResolveSupportFoot(normalizedTime, CurrentSupportFoot);
-        if (resolved != PlayerFoot.Unknown) currentSupportFoot = resolved;
-    }
-
-    private void SetLoopPhase(AnimancerState state, PlayerMotionProfile profile)
-    {
-        if (state == null) return;
-        state.NormalizedTime = profile == null ? state.NormalizedTime : profile.GetSupportPhase(CurrentSupportFoot);
+        if (stableLoopState == null || stableLoopProfile == null || !stableLoopProfile.HasPlantMarkers) return;
+        currentSupportFoot = stableLoopProfile.ResolveLoopSupportFoot(stableLoopState.NormalizedTime, currentSupportFoot);
     }
 
     private void ClearBoundary(bool clearLoop = true)

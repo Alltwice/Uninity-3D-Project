@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c27a41366a55064e865923a5a0217ab, type: 3}
   m_Name: RunToIdleDefinition
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMotionDefinition
-  profile: {fileID: 11400000, guid: 4b8acaeee57a56949a44d1aef3d55dce, type: 2}
+  profile: {fileID: 11400000, guid: 11b6ea42f15a505479f481043e0034cb, type: 2}
   leftFootProfile: {fileID: 11400000, guid: 3d4b0ed3d691fbc4f9b7f17dbea4f0af, type: 2}
   rightFootProfile: {fileID: 11400000, guid: 11b6ea42f15a505479f481043e0034cb, type: 2}
   requiresFootProfiles: 1

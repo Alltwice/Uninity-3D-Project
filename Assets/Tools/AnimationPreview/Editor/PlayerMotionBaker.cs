@@ -40,8 +40,8 @@ namespace ProjectTools.AnimationPreview
             string calibrationHash = calibration.SettingsHash;
             string dependencyHash = ComputeDependencyHash(clipPath, modelPath, calibrationPath, calibrationHash);
             //写为永久SO，target已经是so文件
-            PlayerFootMotionBakeData leftFoot = DetectFootMotion(result.LeftFootPositions, result.SampleRate, calibration);
-            PlayerFootMotionBakeData rightFoot = DetectFootMotion(result.RightFootPositions, result.SampleRate, calibration);
+            PlayerFootMotionBakeData leftFoot = SampleFootMotion(result.LeftFootPositions, result.SampleRate, calibration);
+            PlayerFootMotionBakeData rightFoot = SampleFootMotion(result.RightFootPositions, result.SampleRate, calibration);
             target.SetBakedData(result.Duration, result.SampleRate, result.PlanarPosition, result.TravelDistance, 
                 result.Yaw, clipGuid, clipLocalId, modelGuid, dependencyHash, leftFoot, rightFoot, calibrationGuid, calibrationHash);
             //数据被更改
@@ -104,7 +104,7 @@ namespace ProjectTools.AnimationPreview
             });
         }
 
-        internal static PlayerFootMotionBakeData DetectFootMotion(Vector3[] positions, int sampleRate, PlayerFootCalibration calibration)
+        internal static PlayerFootMotionBakeData SampleFootMotion(Vector3[] positions, int sampleRate, PlayerFootCalibration calibration)
         {
             if (positions == null || positions.Length < 2) throw new System.InvalidOperationException("脚底轨迹采样数量不足。");
             if (calibration == null) throw new System.ArgumentNullException(nameof(calibration));
@@ -117,8 +117,6 @@ namespace ProjectTools.AnimationPreview
             float[] heights = new float[count];
             float[] vertical = new float[count];
             float[] horizontal = new float[count];
-            float[] stable = new float[count];
-            PlayerFootContactMarker[] markers = new PlayerFootContactMarker[count];
             //拿到一组原始数据
             for (int index = 0; index < count; index++)
             {
@@ -148,41 +146,11 @@ namespace ProjectTools.AnimationPreview
                 vertical[index] /= samples;
                 horizontal[index] /= samples;
             }
-            bool contact = false;
-            float stableTime = 0f;
-            for (int index = 0; index < count; index++)
-            {
-                //判断接地条件
-                bool candidate = heights[index] <= calibration.ContactHeightThreshold && Mathf.Abs(vertical[index]) <= calibration.VerticalSpeedThreshold && horizontal[index] <= calibration.HorizontalSpeedThreshold;
-                bool plant = false;
-                bool lift = false;
-                //若没接地进行接地判断和接地时间判断
-                if (!contact)
-                {
-                    stableTime = candidate ? stableTime + deltaTime : 0f;
-                    if (candidate && stableTime >= calibration.StableTimeThreshold)
-                    {
-                        contact = true;
-                        plant = true;
-                    }
-                }
-                //不满足接地条件就再空中
-                else if (heights[index] >= calibration.ReleaseHeightThreshold || Mathf.Abs(vertical[index]) > calibration.VerticalSpeedThreshold || horizontal[index] > calibration.HorizontalSpeedThreshold)
-                {
-                    contact = false;
-                    stableTime = 0f;
-                    lift = true;
-                }
-                stable[index] = stableTime;
-                markers[index] = new PlayerFootContactMarker(contact, plant, lift);
-            }
             return new PlayerFootMotionBakeData
             {
                 SoleHeight = heights,
                 VerticalSpeed = vertical,
-                HorizontalSpeed = horizontal,
-                StableTime = stable,
-                AutoMarkers = markers
+                HorizontalSpeed = horizontal
             };
         }
 
