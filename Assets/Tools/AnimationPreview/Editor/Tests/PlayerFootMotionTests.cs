@@ -60,7 +60,7 @@ public class PlayerFootMotionTests
             runtime.Begin(definition, leftProfile, PlayerFoot.Left, Vector3.forward, Vector3.forward);
             PlayerMotionFrame frame = runtime.Advance(1f, default);
             Assert.That(runtime.Snapshot.ActiveProfile, Is.SameAs(leftProfile));
-            Assert.That(runtime.Snapshot.SupportFoot, Is.EqualTo(PlayerFoot.Left));
+            Assert.That(runtime.Snapshot.EntryLastPlantFoot, Is.EqualTo(PlayerFoot.Left));
             Assert.That(frame.CurrentProgress, Is.EqualTo(0.5f).Within(0.001f));
 
             UnityEngine.Object.DestroyImmediate(defaultProfile);
@@ -70,18 +70,37 @@ public class PlayerFootMotionTests
         }
 
         [Test]
-        public void RunLoopRightProfile_ContainsConfiguredPlantMarkers()
+        public void ConfiguredLoopProfilesSatisfyPhaseContractAcrossCycle()
         {
-            PlayerMotionProfile profile = AssetDatabase.LoadAssetAtPath<PlayerMotionProfile>("Assets/Settings/Player/Motion/Profiles/RunLoopRightFootMotionProfile.asset");
-            Assert.That(profile, Is.Not.Null);
-            List<PlayerFootPlantMarkerEditor.MarkerValue> markers = PlayerFootPlantMarkerEditor.Read(profile);
-            Assert.That(markers.Count, Is.EqualTo(3));
-            Assert.That(markers[0].Foot, Is.EqualTo(PlayerFoot.Right));
-            Assert.That(markers[0].NormalizedTime, Is.EqualTo(0f).Within(0.0001f));
-            Assert.That(markers[1].Foot, Is.EqualTo(PlayerFoot.Left));
-            Assert.That(markers[1].NormalizedTime, Is.EqualTo(0.41055f).Within(0.0001f));
-            Assert.That(markers[2].Foot, Is.EqualTo(PlayerFoot.Right));
-            Assert.That(markers[2].NormalizedTime, Is.EqualTo(0.9375f).Within(0.0001f));
+            HashSet<PlayerMotionProfile> profiles = new HashSet<PlayerMotionProfile>();
+            string[] profileGuids = AssetDatabase.FindAssets("t:PlayerMotionProfile", new[] { "Assets/Settings/Player/Motion/Profiles" });
+            foreach (string profileGuid in profileGuids)
+            {
+                string profilePath = AssetDatabase.GUIDToAssetPath(profileGuid);
+                if (!profilePath.Contains("Loop")) continue;
+                PlayerMotionProfile profile = AssetDatabase.LoadAssetAtPath<PlayerMotionProfile>(profilePath);
+                Assert.That(profile, Is.Not.Null, profilePath);
+                profiles.Add(profile);
+            }
+            Assert.That(profiles.Count, Is.EqualTo(6));
+            foreach (PlayerMotionProfile profile in profiles)
+            {
+                Assert.That(profile.ValidateLoopPhase(new List<string>()), Is.True, profile.name);
+                IReadOnlyList<PlayerFootPlantMarker> markers = profile.PlantMarkers;
+                for (int index = 0; index < markers.Count; index++)
+                {
+                    Assert.That(profile.TryEvaluateLoopPhase(markers[index].NormalizedTime, 1f, out PlayerLocomotionPhaseSnapshot markerSnapshot), Is.True, profile.name);
+                    Assert.That(markerSnapshot.LastPlantFoot, Is.EqualTo(markers[index].Foot), profile.name);
+                    Assert.That(markerSnapshot.StepProgress, Is.EqualTo(0f).Within(0.0001f), profile.name);
+                    int previousIndex = (index + markers.Count - 1) % markers.Count;
+                    float previousTime = index == 0 ? markers[previousIndex].NormalizedTime - 1f : markers[previousIndex].NormalizedTime;
+                    float midpoint = (previousTime + markers[index].NormalizedTime) * 0.5f;
+                    Assert.That(profile.TryEvaluateLoopPhase(midpoint, 1f, out PlayerLocomotionPhaseSnapshot midpointSnapshot), Is.True, profile.name);
+                    Assert.That(midpointSnapshot.HasPhase, Is.True, profile.name);
+                    Assert.That(midpointSnapshot.NextPlantFoot, Is.EqualTo(markers[index].Foot), profile.name);
+                    Assert.That(midpointSnapshot.StepProgress, Is.GreaterThan(0f).And.LessThan(1f), profile.name);
+                }
+            }
         }
 
         [Test]

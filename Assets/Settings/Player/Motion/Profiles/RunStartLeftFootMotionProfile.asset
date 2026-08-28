@@ -657,9 +657,9 @@ MonoBehaviour:
     - 0.5581139
   plantMarkers:
   - foot: 1
-    normalizedTime: 0.632647
+    normalizedTime: 0.5982352
   - foot: 2
-    normalizedTime: 0.9997058
+    normalizedTime: 0.96088225
   editorMetadata:
     bakeVersion: 3
     sampleRate: 60

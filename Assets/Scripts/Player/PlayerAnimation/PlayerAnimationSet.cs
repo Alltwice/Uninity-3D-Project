@@ -106,13 +106,21 @@ public class PlayerLoopAnimationPair
 
     public bool Validate(string label, ICollection<string> errors)
     {
+        return Validate(label, errors, null);
+    }
+
+    internal bool Validate(string label, ICollection<string> errors, HashSet<PlayerMotionProfile> validatedProfiles)
+    {
         bool valid = defaultTransition != null && defaultTransition.Clip != null && defaultProfile != null;
         if (!valid) errors?.Add(label + ": 缺少默认循环 Clip 或 Profile。");
         if (leftTransition == null || leftTransition.Clip == null || leftProfile == null) { errors?.Add(label + ": 缺少 Left Foot 循环 Clip/Profile。"); valid = false; }
         if (rightTransition == null || rightTransition.Clip == null || rightProfile == null) { errors?.Add(label + ": 缺少 Right Foot 循环 Clip/Profile。"); valid = false; }
-        valid &= PlayerAnimationSet.ValidateProfilePlantMarkers(defaultProfile, label + ".Default", errors);
-        valid &= PlayerAnimationSet.ValidateProfilePlantMarkers(leftProfile, label + ".Left", errors);
-        valid &= PlayerAnimationSet.ValidateProfilePlantMarkers(rightProfile, label + ".Right", errors);
+        if (validatedProfiles == null)
+        {
+            valid &= PlayerAnimationSet.ValidateProfilePlantMarkers(defaultProfile, label + ".Default", errors);
+            valid &= PlayerAnimationSet.ValidateProfilePlantMarkers(leftProfile, label + ".Left", errors);
+            valid &= PlayerAnimationSet.ValidateProfilePlantMarkers(rightProfile, label + ".Right", errors);
+        }
 #if UNITY_EDITOR
         valid &= PlayerAnimationSet.ValidateProfileClip(defaultProfile, defaultTransition, label + ".Default", errors);
         valid &= PlayerAnimationSet.ValidateProfileClip(leftProfile, leftTransition, label + ".Left", errors);
@@ -219,6 +227,7 @@ public class PlayerAnimationSet : ScriptableObject
     {
         bool valid = true;
         HashSet<PlayerMotionDefinition> seen = new HashSet<PlayerMotionDefinition>();
+        HashSet<PlayerMotionProfile> validatedLoopProfiles = new HashSet<PlayerMotionProfile>();
         for (int i = 0; i < motionBindings.Count; i++)
         {
             PlayerMotionAnimationBinding binding = motionBindings[i];
@@ -235,12 +244,27 @@ public class PlayerAnimationSet : ScriptableObject
             if (definition.RequiresPresentation && !seen.Contains(definition)) { errors?.Add(name + ": " + definition.name + " 缺少 Animation Binding。"); valid = false; }
         }
         if (walkLoop == null) { errors?.Add(name + ": 缺少 Walk Loop Pair。"); valid = false; }
-        else valid &= walkLoop.Validate(name + ".WalkLoop", errors);
+        else { valid &= walkLoop.Validate(name + ".WalkLoop", errors, validatedLoopProfiles); valid &= ValidateLoopProfiles(walkLoop, validatedLoopProfiles, errors); }
         if (runLoop == null) { errors?.Add(name + ": 缺少 Run Loop Pair。"); valid = false; }
-        else valid &= runLoop.Validate(name + ".RunLoop", errors);
+        else { valid &= runLoop.Validate(name + ".RunLoop", errors, validatedLoopProfiles); valid &= ValidateLoopProfiles(runLoop, validatedLoopProfiles, errors); }
         if (fastRunLoop == null) { errors?.Add(name + ": 缺少 Sprint Loop Pair。"); valid = false; }
-        else valid &= fastRunLoop.Validate(name + ".SprintLoop", errors);
+        else { valid &= fastRunLoop.Validate(name + ".SprintLoop", errors, validatedLoopProfiles); valid &= ValidateLoopProfiles(fastRunLoop, validatedLoopProfiles, errors); }
         return valid;
+    }
+
+    private static bool ValidateLoopProfiles(PlayerLoopAnimationPair pair, HashSet<PlayerMotionProfile> validatedProfiles, ICollection<string> errors)
+    {
+        bool valid = true;
+        valid &= ValidateLoopProfile(pair.DefaultProfile, validatedProfiles, errors);
+        valid &= ValidateLoopProfile(pair.LeftProfile, validatedProfiles, errors);
+        valid &= ValidateLoopProfile(pair.RightProfile, validatedProfiles, errors);
+        return valid;
+    }
+
+    private static bool ValidateLoopProfile(PlayerMotionProfile profile, HashSet<PlayerMotionProfile> validatedProfiles, ICollection<string> errors)
+    {
+        if (profile == null) return false;
+        return !validatedProfiles.Add(profile) || profile.ValidateLoopPhase(errors);
     }
 
     internal static bool ValidateProfilePlantMarkers(PlayerMotionProfile profile, string label, ICollection<string> errors)

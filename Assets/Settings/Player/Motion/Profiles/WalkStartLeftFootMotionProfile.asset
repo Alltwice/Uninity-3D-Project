@@ -807,9 +807,9 @@ MonoBehaviour:
   editorMetadata:
     bakeVersion: 3
     sampleRate: 60
-    sourceClipGuid: 1f2d9195576535b429e1b2e370ba7d34
+    sourceClipGuid: cc9312a1fceb8664a8cb3d8d159f727e
     sourceClipLocalId: 1827226128182048838
     modelGuid: 9e9dd8d32cf76fa43941fa1ff36e6b86
-    sourceDependencyHash: 1405bfbe1a5ef2bc2760f71db6cd4db8
+    sourceDependencyHash: 32930661d1f025a393e9cdac1af34667
     footCalibrationGuid: cc92b83732174694caf42bea35eba681
     footCalibrationHash: 6654720bd9dcb8024a7edb7329c53ec2

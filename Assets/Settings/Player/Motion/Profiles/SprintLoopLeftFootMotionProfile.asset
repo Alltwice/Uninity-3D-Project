@@ -130,43 +130,43 @@ MonoBehaviour:
   - 0
   leftFoot:
     soleHeight:
-    - -0.010672487
-    - -0.015754797
-    - -0.01817844
-    - -0.011465527
-    - 0.013335489
-    - 0.013683818
-    - 0.021043919
-    - 0.049132966
-    - 0.08250763
-    - 0.10673573
-    - 0.1739752
-    - 0.22985968
-    - 0.29251656
-    - 0.3996834
-    - 0.5106431
-    - 0.60327005
-    - 0.6961289
-    - 0.7603586
-    - 0.8219509
-    - 0.86251724
-    - 0.899743
-    - 0.91438776
-    - 0.92777294
-    - 0.9060975
-    - 0.887786
-    - 0.8213684
-    - 0.7687098
-    - 0.6822569
-    - 0.5940863
-    - 0.46483025
-    - 0.3474171
-    - 0.23118654
-    - 0.14884803
-    - 0.09615805
-    - 0.07168534
-    - 0.028445147
-    - -0.010058202
+    - -0.010572486
+    - -0.015654795
+    - -0.018078439
+    - -0.011365525
+    - 0.01343549
+    - 0.01378382
+    - 0.02114392
+    - 0.049232967
+    - 0.082607634
+    - 0.10683573
+    - 0.17407519
+    - 0.22995967
+    - 0.29261655
+    - 0.39978337
+    - 0.51074314
+    - 0.6033701
+    - 0.6962289
+    - 0.7604586
+    - 0.8220509
+    - 0.86261725
+    - 0.89984304
+    - 0.9144878
+    - 0.92787296
+    - 0.9061975
+    - 0.887886
+    - 0.8214684
+    - 0.7688098
+    - 0.6823569
+    - 0.5941863
+    - 0.46493024
+    - 0.34751707
+    - 0.23128653
+    - 0.14894801
+    - 0.09625805
+    - 0.07178534
+    - 0.028545149
+    - -0.0099582
     verticalSpeed:
     - -0.26505855
     - -0.13381301
@@ -243,197 +243,45 @@ MonoBehaviour:
     - 6.4229903
     - 3.0998752
     - 1.3751566
-    stableTime:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    autoMarkers:
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    manualMarkers: []
-    useManualOverride: 0
   rightFoot:
     soleHeight:
-    - 0.8341028
-    - 0.8686446
-    - 0.9005242
-    - 0.91140336
-    - 0.921773
-    - 0.8942856
-    - 0.86126906
-    - 0.8021724
-    - 0.7554316
-    - 0.6756609
-    - 0.59801054
-    - 0.4878847
-    - 0.38194284
-    - 0.22588655
-    - 0.124610566
-    - 0.08788773
-    - 0.072166346
-    - 0.03266742
-    - -0.0021080151
-    - -0.0059233084
-    - -0.0069212094
-    - -0.006511487
-    - 0.011675917
-    - 0.013567768
-    - 0.019412003
-    - 0.042659186
-    - 0.08467474
-    - 0.104381524
-    - 0.16793665
-    - 0.22762254
-    - 0.29445538
-    - 0.37550375
-    - 0.45789912
-    - 0.53723353
-    - 0.6173087
-    - 0.68649185
-    - 0.75477797
+    - 0.8342028
+    - 0.8687446
+    - 0.9006242
+    - 0.9115034
+    - 0.92187303
+    - 0.89438564
+    - 0.8613691
+    - 0.80227244
+    - 0.7555316
+    - 0.6757609
+    - 0.59811056
+    - 0.4879847
+    - 0.38204283
+    - 0.22598654
+    - 0.12471057
+    - 0.08798773
+    - 0.07226635
+    - 0.032767422
+    - -0.0020080134
+    - -0.0058233067
+    - -0.0068212077
+    - -0.0064114854
+    - 0.011775918
+    - 0.01366777
+    - 0.019512005
+    - 0.042759188
+    - 0.08477474
+    - 0.104481526
+    - 0.16803664
+    - 0.22772253
+    - 0.29455537
+    - 0.37560374
+    - 0.4579991
+    - 0.53733355
+    - 0.6174087
+    - 0.68659186
+    - 0.754878
     verticalSpeed:
     - 2.0325744
     - 1.7826372
@@ -510,164 +358,17 @@ MonoBehaviour:
     - 4.9531455
     - 6.0158124
     - 6.574502
-    stableTime:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    autoMarkers:
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    - contact: 0
-      plant: 0
-      lift: 0
-    manualMarkers: []
-    useManualOverride: 0
+  plantMarkers:
+  - foot: 2
+    normalizedTime: 0.43866667
+  - foot: 1
+    normalizedTime: 0.96449995
   editorMetadata:
-    bakeVersion: 2
+    bakeVersion: 3
     sampleRate: 60
     sourceClipGuid: 22915549b80c9d84ab57c8150bb9e980
     sourceClipLocalId: 1827226128182048838
     modelGuid: 9e9dd8d32cf76fa43941fa1ff36e6b86
-    sourceDependencyHash: 410b94130857d5b4801249289b68a411
+    sourceDependencyHash: 19b00b4ff6d00e3940f815cba9b93a34
     footCalibrationGuid: cc92b83732174694caf42bea35eba681
-    footCalibrationHash: 8c4feb832e6c60e3af95b30405e3fa3a
+    footCalibrationHash: 6654720bd9dcb8024a7edb7329c53ec2

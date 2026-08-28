@@ -801,7 +801,7 @@ MonoBehaviour:
     - 0.11193154
   plantMarkers:
   - foot: 2
-    normalizedTime: 0.6164285
+    normalizedTime: 0.5892857
   - foot: 1
     normalizedTime: 0.99999994
   editorMetadata:

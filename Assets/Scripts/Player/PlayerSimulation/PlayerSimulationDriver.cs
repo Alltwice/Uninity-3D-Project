@@ -44,6 +44,7 @@ public class PlayerSimulationDriver : MonoBehaviour
     {
         //设定标准时间供下层组件使用
         float deltaTime = Time.deltaTime;
+        PlayerLocomotionPhaseSnapshot phaseSnapshot = animationController.PhaseSnapshot;
         actionBuffer.Tick(deltaTime);
         motionPlanner.BeginFrame();
         dodge.TickCooldown(deltaTime);
@@ -56,11 +57,11 @@ public class PlayerSimulationDriver : MonoBehaviour
         PlayerGameplayIntent intent = PlayerGameplayIntent.Create(desiredMoveDirection, transform.forward);
         intent.LocomotionMode = stateController.CurrentLocomotionMode;
         //可空类型和一般类型完全是两个东西，需要通过.value获取
-        if (transition.HasValue) motionPlanner.HandleStateTransition(transition.Value, intent, motor.CurrentResult);
-        else if (pendingTransition.HasValue) motionPlanner.HandleStateTransition(pendingTransition.Value, intent, motor.CurrentResult);
+        if (transition.HasValue) motionPlanner.HandleStateTransition(transition.Value, intent, motor.CurrentResult, phaseSnapshot);
+        else if (pendingTransition.HasValue) motionPlanner.HandleStateTransition(pendingTransition.Value, intent, motor.CurrentResult, phaseSnapshot);
         //给状态机输入意图切换当前的运动状态，ref是确保tick中的修改修改到了原值而不是副本
         stateController.Tick(deltaTime, ref intent);
-        motionPlanner.ResolveContinuousMotion(stateController.CurrentState.GetType(), intent, motor.CurrentResult);
+        motionPlanner.ResolveContinuousMotion(stateController.CurrentState.GetType(), intent, motor.CurrentResult, phaseSnapshot);
         //依据数据真正的执行移动
         PlayerMotionFrame motionFrame = motionPlanner.Advance(deltaTime, intent);
         //拿到动画数据驱动时的命令
@@ -76,7 +77,7 @@ public class PlayerSimulationDriver : MonoBehaviour
         {
             PlayerGameplayIntent postTransitionIntent = PlayerGameplayIntent.Create(desiredMoveDirection, transform.forward);
             postTransitionIntent.LocomotionMode = stateController.CurrentLocomotionMode;
-            motionPlanner.HandleStateTransition(resultTransition.Value, postTransitionIntent, motorResult);
+            motionPlanner.HandleStateTransition(resultTransition.Value, postTransitionIntent, motorResult, phaseSnapshot);
         }
         PlayerStateTransition? presentationTransition = resultTransition ?? transition ?? pendingTransition;
         pendingTransition = null;

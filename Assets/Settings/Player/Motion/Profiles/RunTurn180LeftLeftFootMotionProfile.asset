@@ -782,14 +782,12 @@ MonoBehaviour:
     - 0.7475686
     - 0.98834956
   plantMarkers:
-  - foot: 1
-    normalizedTime: 0
   - foot: 2
-    normalizedTime: 0.23195119
+    normalizedTime: 0.22902437
   - foot: 1
-    normalizedTime: 0.71414626
+    normalizedTime: 0.70317066
   - foot: 2
-    normalizedTime: 1
+    normalizedTime: 0.9592682
   editorMetadata:
     bakeVersion: 3
     sampleRate: 60

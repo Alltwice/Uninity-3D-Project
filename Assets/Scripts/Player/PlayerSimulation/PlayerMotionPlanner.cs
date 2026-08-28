@@ -9,23 +9,17 @@ public class PlayerMotionPlanner : MonoBehaviour
     [SerializeField] private PlayerMotionCatalog catalog;
 
     private readonly PlayerMotionRuntime runtime = new PlayerMotionRuntime();
-    private PlayerAnimationController animationController;
 
     public PlayerMotionCatalog Catalog => catalog;
     public PlayerMotionSnapshot Snapshot => runtime.Snapshot;
 
-    private void Awake()
-    {
-        animationController = GetComponent<PlayerAnimationController>();
-    }
-
     public void BeginFrame() => runtime.BeginFrame();
 
-    public void HandleStateTransition(PlayerStateTransition transition, PlayerGameplayIntent intent, PlayerMotorResult motorResult)
+    public void HandleStateTransition(PlayerStateTransition transition, PlayerGameplayIntent intent, PlayerMotorResult motorResult, PlayerLocomotionPhaseSnapshot phaseSnapshot)
     {
         if (TryResolveTargetTransitionMotion(transition, intent, out PlayerMotionDefinition definition))
         {
-            Begin(definition, intent, motorResult);
+            Begin(definition, intent, motorResult, phaseSnapshot);
             return;
         }
         PlayerMotionSnapshot motion = runtime.Snapshot;
@@ -37,7 +31,7 @@ public class PlayerMotionPlanner : MonoBehaviour
         }
         if (TryResolveSourceExitMotion(transition, out definition))
         {
-            Begin(definition, intent, motorResult);
+            Begin(definition, intent, motorResult, phaseSnapshot);
             return;
         }
         if (runtime.Snapshot.IsActive) runtime.Cancel();
@@ -45,7 +39,7 @@ public class PlayerMotionPlanner : MonoBehaviour
     /// <summary>
     /// 处理了左右转向的动画
     /// </summary>
-    public void ResolveContinuousMotion(Type stateType, PlayerGameplayIntent intent, PlayerMotorResult motorResult)
+    public void ResolveContinuousMotion(Type stateType, PlayerGameplayIntent intent, PlayerMotorResult motorResult, PlayerLocomotionPhaseSnapshot phaseSnapshot)
     {
         if (runtime.Snapshot.IsActive || intent.DesiredMoveDirection.sqrMagnitude < 0.0001f) return;
         PlayerMotionId left;
@@ -69,7 +63,7 @@ public class PlayerMotionPlanner : MonoBehaviour
         Vector3 reference = motorResult.HorizontalVelocity.sqrMagnitude > 0.0001f ? motorResult.HorizontalVelocity : transform.forward;
         float signedAngle = SignedPlanarAngle(reference, intent.DesiredMoveDirection);
         if (Mathf.Abs(signedAngle) < catalog.Turn180Threshold) return;
-        if (catalog.TryGet(signedAngle < 0f ? left : right, out PlayerMotionDefinition definition)) Begin(definition, intent, motorResult);
+        if (catalog.TryGet(signedAngle < 0f ? left : right, out PlayerMotionDefinition definition)) Begin(definition, intent, motorResult, phaseSnapshot);
     }
 
     public PlayerMotionFrame Advance(float deltaTime, PlayerGameplayIntent intent)
@@ -119,13 +113,13 @@ public class PlayerMotionPlanner : MonoBehaviour
         return catalog.TryGet(turnId, out _) ? turnId : standard;
     }
 
-    private void Begin(PlayerMotionDefinition definition, PlayerGameplayIntent intent, PlayerMotorResult motorResult)
+    private void Begin(PlayerMotionDefinition definition, PlayerGameplayIntent intent, PlayerMotorResult motorResult, PlayerLocomotionPhaseSnapshot phaseSnapshot)
     {
         Vector3 desired = intent.DesiredMoveDirection.sqrMagnitude > 0.0001f ? intent.DesiredMoveDirection : transform.forward;
         Vector3 entryVelocity = motorResult.HorizontalVelocity.sqrMagnitude > 0.0001f ? motorResult.HorizontalVelocity : transform.forward;
         Vector3 basis = definition.BasisPolicy == PlayerMotionBasisPolicy.DesiredDirection ? desired : definition.BasisPolicy == PlayerMotionBasisPolicy.EntryVelocityDirection ? entryVelocity : transform.forward;
-        PlayerFoot supportFoot = animationController == null ? PlayerFoot.Unknown : animationController.CurrentSupportFoot;
-        runtime.Begin(definition, definition.ResolveProfile(supportFoot), supportFoot, basis, desired);
+        PlayerFoot entryLastPlantFoot = phaseSnapshot.LastPlantFoot;
+        runtime.Begin(definition, definition.ResolveProfile(entryLastPlantFoot), entryLastPlantFoot, basis, desired);
     }
     /// <summary>
     /// 角度计算

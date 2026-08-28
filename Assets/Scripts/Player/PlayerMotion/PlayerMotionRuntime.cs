@@ -10,12 +10,12 @@ public struct PlayerMotionFrame
     {
     }
 
-    public PlayerMotionFrame(PlayerMotionDefinition definition, PlayerMotionProfile profile, PlayerFoot supportFoot, Vector3 authoredPlanarDisplacement, float authoredYawDelta, float remainingAuthoredYaw, float previousProgress, float currentProgress, float translationAuthority)
+    public PlayerMotionFrame(PlayerMotionDefinition definition, PlayerMotionProfile profile, PlayerFoot entryLastPlantFoot, Vector3 authoredPlanarDisplacement, float authoredYawDelta, float remainingAuthoredYaw, float previousProgress, float currentProgress, float translationAuthority)
     {
         //定义由谁产生
         Definition = definition;
         Profile = profile;
-        SupportFoot = supportFoot;
+        EntryLastPlantFoot = entryLastPlantFoot;
         //这一帧应该产生多少位移
         AuthoredPlanarDisplacement = authoredPlanarDisplacement;
         //一帧产生旋转
@@ -29,7 +29,7 @@ public struct PlayerMotionFrame
 
     public PlayerMotionDefinition Definition { get; }
     public PlayerMotionProfile Profile { get; }
-    public PlayerFoot SupportFoot { get; }
+    public PlayerFoot EntryLastPlantFoot { get; }
     public Vector3 AuthoredPlanarDisplacement { get; }
     public float AuthoredYawDelta { get; }
     public float RemainingAuthoredYaw { get; }
@@ -49,11 +49,11 @@ public struct PlayerMotionSnapshot
     {
     }
 
-    public PlayerMotionSnapshot(PlayerMotionDefinition activeDefinition, PlayerMotionProfile activeProfile, PlayerFoot supportFoot, ulong instanceId, float progress, float handoffProgress, bool handoffActive, bool isActive, bool justCompleted, bool justCancelled, bool isTransitionLocked = false)
+    public PlayerMotionSnapshot(PlayerMotionDefinition activeDefinition, PlayerMotionProfile activeProfile, PlayerFoot entryLastPlantFoot, ulong instanceId, float progress, float handoffProgress, bool handoffActive, bool isActive, bool justCompleted, bool justCancelled, bool isTransitionLocked = false)
     {
         ActiveDefinition = activeDefinition;
         ActiveProfile = activeProfile;
-        SupportFoot = supportFoot;
+        EntryLastPlantFoot = entryLastPlantFoot;
         InstanceId = instanceId;
         Progress = progress;
         HandoffProgress = handoffProgress;
@@ -66,7 +66,7 @@ public struct PlayerMotionSnapshot
 
     public PlayerMotionDefinition ActiveDefinition { get; }
     public PlayerMotionProfile ActiveProfile { get; }
-    public PlayerFoot SupportFoot { get; }
+    public PlayerFoot EntryLastPlantFoot { get; }
     public ulong InstanceId { get; }
     public float Progress { get; }
     public float HandoffProgress { get; }
@@ -80,7 +80,7 @@ public class PlayerMotionRuntime
 {
     private PlayerMotionDefinition definition;
     private PlayerMotionProfile profile;
-    private PlayerFoot supportFoot;
+    private PlayerFoot entryLastPlantFoot;
     //消除角色动画影响转向世界位置
     private Quaternion basis = Quaternion.identity;
     //玩家移动数据
@@ -105,7 +105,7 @@ public class PlayerMotionRuntime
         {
             definition = null;
             profile = null;
-            supportFoot = PlayerFoot.Unknown;
+            entryLastPlantFoot = PlayerFoot.Unknown;
             duration = 0f;
         }
         justCompleted = false;
@@ -119,13 +119,13 @@ public class PlayerMotionRuntime
         return Begin(nextDefinition, nextDefinition == null ? null : nextDefinition.Profile, PlayerFoot.Unknown, basisDirection, initialTravelDirection, startProgress);
     }
 
-    public ulong Begin(PlayerMotionDefinition nextDefinition, PlayerMotionProfile selectedProfile, PlayerFoot selectedSupportFoot, Vector3 basisDirection, Vector3 initialTravelDirection, float startProgress = 0f)
+    public ulong Begin(PlayerMotionDefinition nextDefinition, PlayerMotionProfile selectedProfile, PlayerFoot selectedEntryLastPlantFoot, Vector3 basisDirection, Vector3 initialTravelDirection, float startProgress = 0f)
     {
         bool replaced = isActive;
         //切换动画数据
         definition = nextDefinition;
-        profile = selectedProfile ?? (definition == null ? null : definition.ResolveProfile(selectedSupportFoot));
-        supportFoot = selectedSupportFoot;
+        profile = selectedProfile ?? (definition == null ? null : definition.ResolveProfile(selectedEntryLastPlantFoot));
+        entryLastPlantFoot = selectedEntryLastPlantFoot;
         duration = definition == null ? 0f : definition.GetDuration(profile);
         instanceId = ++sequence;
         //当前开始动画执行时间
@@ -174,7 +174,7 @@ public class PlayerMotionRuntime
         //拿到动画控制权重
         float translationWeight = definition.EvaluateTranslationAuthority(currentProgress);
         //产生这一帧等待消费的移动数据
-        PlayerMotionFrame frame = new PlayerMotionFrame(definition, activeProfile, supportFoot, authoredTranslation, authoredYaw, remainingAuthoredYaw, previousProgress, currentProgress, translationWeight);
+        PlayerMotionFrame frame = new PlayerMotionFrame(definition, activeProfile, entryLastPlantFoot, authoredTranslation, authoredYaw, remainingAuthoredYaw, previousProgress, currentProgress, translationWeight);
         if (currentProgress >= 1f)
         {
             isActive = false;
@@ -209,7 +209,7 @@ public class PlayerMotionRuntime
         bool handoffActive = definition != null && currentProgress >= definition.HandoffStartProgress;
         //这里处理动画锁
         bool isTransitionLocked = definition != null && isActive && currentProgress < definition.TransitionLockEndProgress;
-        return new PlayerMotionSnapshot(definition, profile, supportFoot, instanceId, currentProgress, handoff, handoffActive, isActive, justCompleted, justCancelled, isTransitionLocked);
+        return new PlayerMotionSnapshot(definition, profile, entryLastPlantFoot, instanceId, currentProgress, handoff, handoffActive, isActive, justCompleted, justCancelled, isTransitionLocked);
     }
     /// <summary>
     /// 去除y分量并将其向量化

@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.Playables;
 
 /// <summary>
-/// 只把 Gameplay/Motion/Motor 事实表现为 Pose；不拥有 Gameplay 时间或运动权限
+/// 只把 Gameplay/Motion/Motor 事实表现为 Pose，并发布循环相位事实；不拥有 Gameplay 时间或运动权限
 /// </summary>
 public sealed class PlayerAnimationController : MonoBehaviour
 {
@@ -33,10 +33,11 @@ public sealed class PlayerAnimationController : MonoBehaviour
     private ulong presentedMotionInstanceId;
     private ulong presentationSequence;
     private Type gameplayStateType;
-    private PlayerFoot currentSupportFoot;
+    private PlayerFoot currentLastPlantFoot;
+    private PlayerLocomotionPhaseSnapshot phaseSnapshot;
 
     public float DebugBoundaryPhase { get; private set; }
-    public PlayerFoot CurrentSupportFoot => currentSupportFoot;
+    public PlayerLocomotionPhaseSnapshot PhaseSnapshot => phaseSnapshot;
 
     private void Awake()
     {
@@ -51,8 +52,8 @@ public sealed class PlayerAnimationController : MonoBehaviour
     public void Present(Type currentGameplayStateType, PlayerStateTransition? transition, PlayerMotionSnapshot motion, float stateProgress)
     {
         gameplayStateType = currentGameplayStateType;
-        if (motion.SupportFoot != PlayerFoot.Unknown) currentSupportFoot = motion.SupportFoot;
-        UpdateMotionSupportFoot(motion);
+        if (motion.EntryLastPlantFoot != PlayerFoot.Unknown) currentLastPlantFoot = motion.EntryLastPlantFoot;
+        UpdateMotionLastPlantFoot(motion);
         bool newMotion = motion.ActiveDefinition != null && motion.InstanceId != presentedMotionInstanceId;
         bool motionCancelled = motion.JustCancelled && motion.InstanceId == presentedMotionInstanceId;
         if (newMotion) PlayMotion(motion);
@@ -65,13 +66,12 @@ public sealed class PlayerAnimationController : MonoBehaviour
             hardLandingState.Speed = 0f;
             hardLandingState.NormalizedTime = stateProgress;
         }
-        UpdateLoopSupportFoot();
     }
 
     public void EvaluateGraph(float deltaTime)
     {
         animancer.Evaluate(Mathf.Max(0f, deltaTime));
-        UpdateLoopSupportFoot();
+        RefreshPhaseSnapshot();
     }
     /// <summary>
     /// 处理烘焙动画播放
@@ -139,7 +139,6 @@ public sealed class PlayerAnimationController : MonoBehaviour
         handoffLoopState = animancer.Play(selection.Transition);
         stableLoopState = handoffLoopState;
         stableLoopProfile = selection.Profile;
-        UpdateLoopSupportFoot();
         boundaryState.Weight = 1f;
         handoffLoopState.Weight = 0f;
     }
@@ -196,7 +195,6 @@ public sealed class PlayerAnimationController : MonoBehaviour
         if (!selection.IsValid) return;
         stableLoopState = animancer.Play(selection.Transition);
         stableLoopProfile = selection.Profile;
-        UpdateLoopSupportFoot();
     }
 
     private void PlayStableLoopWithFade(Type stateType)
@@ -205,13 +203,12 @@ public sealed class PlayerAnimationController : MonoBehaviour
         if (!selection.IsValid) return;
         stableLoopState = animancer.Play(selection.Transition, selection.Transition.FadeDuration, FadeMode.FixedDuration);
         stableLoopProfile = selection.Profile;
-        UpdateLoopSupportFoot();
     }
 
     private PlayerAnimationSelection ResolveLoop(Type stateType)
     {
         PlayerLocomotionMode locomotionMode = stateType == typeof(PlayerWalkState) ? PlayerLocomotionMode.Walk : stateType == typeof(PlayerRunState) ? PlayerLocomotionMode.Run : stateType == typeof(PlayerFastRunState) ? PlayerLocomotionMode.FastRun : PlayerLocomotionMode.Idle;
-        if (animationSet != null && animationSet.TryResolveLoop(locomotionMode, CurrentSupportFoot, out PlayerAnimationSelection selection))
+        if (animationSet != null && animationSet.TryResolveLoop(locomotionMode, currentLastPlantFoot, out PlayerAnimationSelection selection))
         {
             return selection;
         }
@@ -223,17 +220,31 @@ public sealed class PlayerAnimationController : MonoBehaviour
         return default;
     }
     /// <summary>处理motion驱动动画脚步选择</summary>
-    private void UpdateMotionSupportFoot(PlayerMotionSnapshot motion)
+    private void UpdateMotionLastPlantFoot(PlayerMotionSnapshot motion)
     {
         if (motion.ActiveProfile == null) return;
-        PlayerFoot fallback = motion.SupportFoot == PlayerFoot.Unknown ? currentSupportFoot : motion.SupportFoot;
-        currentSupportFoot = motion.ActiveProfile.ResolveSupportFoot(motion.Progress, fallback);
+        PlayerFoot fallback = motion.EntryLastPlantFoot == PlayerFoot.Unknown ? currentLastPlantFoot : motion.EntryLastPlantFoot;
+        currentLastPlantFoot = motion.ActiveProfile.ResolveLastPlantFoot(motion.Progress, fallback);
     }
-    /// <summary>处理循环脚步选择</summary>
-    private void UpdateLoopSupportFoot()
+    /// <summary>
+    /// 拿到脚步相位数据
+    /// </summary>
+    private void RefreshPhaseSnapshot()
     {
-        if (stableLoopState == null || stableLoopProfile == null || !stableLoopProfile.HasPlantMarkers) return;
-        currentSupportFoot = stableLoopProfile.ResolveLoopSupportFoot(stableLoopState.NormalizedTime, currentSupportFoot);
+        if (stableLoopState == null)
+        {
+            phaseSnapshot = new PlayerLocomotionPhaseSnapshot(false, false, null, 0f, 0f, currentLastPlantFoot, PlayerFoot.Unknown, 0f, 0f);
+            return;
+        }
+        float normalizedTime = Mathf.Repeat(stableLoopState.NormalizedTime, 1f);
+        float effectiveSpeed = stableLoopState.EffectiveSpeed;
+        if (stableLoopProfile != null && stableLoopProfile.TryEvaluateLoopPhase(normalizedTime, effectiveSpeed, out PlayerLocomotionPhaseSnapshot evaluatedSnapshot))
+        {
+            currentLastPlantFoot = evaluatedSnapshot.LastPlantFoot;
+            phaseSnapshot = evaluatedSnapshot;
+            return;
+        }
+        phaseSnapshot = new PlayerLocomotionPhaseSnapshot(true, false, stableLoopProfile, normalizedTime, effectiveSpeed, currentLastPlantFoot, PlayerFoot.Unknown, 0f, 0f);
     }
 
     private void ClearBoundary(bool clearLoop = true)

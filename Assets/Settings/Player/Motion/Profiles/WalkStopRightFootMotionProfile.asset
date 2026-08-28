@@ -1115,16 +1115,14 @@ MonoBehaviour:
     - 0.06383119
     - 0.06346685
   plantMarkers:
-  - foot: 2
-    normalizedTime: 0.0185
   - foot: 1
-    normalizedTime: 0.294
+    normalizedTime: 0.354
   editorMetadata:
     bakeVersion: 3
     sampleRate: 60
-    sourceClipGuid: a122daf565300034b808a304deb671b8
+    sourceClipGuid: 3299c8fc6f9861a4eadc99f2de26204f
     sourceClipLocalId: 1827226128182048838
     modelGuid: 9e9dd8d32cf76fa43941fa1ff36e6b86
-    sourceDependencyHash: f6a4d928d97bc664cb68528d8e9ceb47
+    sourceDependencyHash: b6b4a91df2db11d5441e2e48588d24e3
     footCalibrationGuid: cc92b83732174694caf42bea35eba681
     footCalibrationHash: 6654720bd9dcb8024a7edb7329c53ec2

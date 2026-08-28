@@ -657,15 +657,15 @@ MonoBehaviour:
     - 0.22550502
   plantMarkers:
   - foot: 1
-    normalizedTime: 0.67058814
+    normalizedTime: 0.6494117
   - foot: 2
-    normalizedTime: 0.9997058
+    normalizedTime: 0.94588226
   editorMetadata:
     bakeVersion: 3
     sampleRate: 60
-    sourceClipGuid: 10b30ca96a6512d4d8b8fb18ea838b3c
+    sourceClipGuid: 689a3d6dafa61b04e9506c92552fb522
     sourceClipLocalId: 8034530165171743655
     modelGuid: 9e9dd8d32cf76fa43941fa1ff36e6b86
-    sourceDependencyHash: 7769caca7ba80f705625cd47442324f8
+    sourceDependencyHash: b0f9a3b04288566daceef1dbd08d960a
     footCalibrationGuid: cc92b83732174694caf42bea35eba681
     footCalibrationHash: 6654720bd9dcb8024a7edb7329c53ec2

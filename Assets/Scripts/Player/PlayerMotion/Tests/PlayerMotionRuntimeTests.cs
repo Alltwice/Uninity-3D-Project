@@ -485,38 +485,118 @@ public sealed class PlayerMotionRuntimeTests
         PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
         SetPlantMarkers(profile, new PlantMarkerValue(PlayerFoot.Left, 0.2f), new PlantMarkerValue(PlayerFoot.Right, 0.6f), new PlantMarkerValue(PlayerFoot.Left, 0.85f));
         Assert.That(profile.HasPlantMarkers, Is.True);
-        Assert.That(profile.ResolveSupportFoot(0.1f, PlayerFoot.Unknown), Is.EqualTo(PlayerFoot.Unknown));
-        Assert.That(profile.ResolveSupportFoot(0.2f, PlayerFoot.Unknown), Is.EqualTo(PlayerFoot.Left));
-        Assert.That(profile.ResolveSupportFoot(0.59f, PlayerFoot.Right), Is.EqualTo(PlayerFoot.Left));
-        Assert.That(profile.ResolveSupportFoot(0.6f, PlayerFoot.Left), Is.EqualTo(PlayerFoot.Right));
-        Assert.That(profile.ResolveSupportFoot(1f, PlayerFoot.Right), Is.EqualTo(PlayerFoot.Left));
+        Assert.That(profile.ResolveLastPlantFoot(0.1f, PlayerFoot.Unknown), Is.EqualTo(PlayerFoot.Unknown));
+        Assert.That(profile.ResolveLastPlantFoot(0.2f, PlayerFoot.Unknown), Is.EqualTo(PlayerFoot.Left));
+        Assert.That(profile.ResolveLastPlantFoot(0.59f, PlayerFoot.Right), Is.EqualTo(PlayerFoot.Left));
+        Assert.That(profile.ResolveLastPlantFoot(0.6f, PlayerFoot.Left), Is.EqualTo(PlayerFoot.Right));
+        Assert.That(profile.ResolveLastPlantFoot(1f, PlayerFoot.Right), Is.EqualTo(PlayerFoot.Left));
         Object.DestroyImmediate(definition);
         Object.DestroyImmediate(profile);
     }
 
     [Test]
-    public void Profile_ResolvesLastPlantBeforeFirstMarkerAcrossLoopBoundary()
+    public void Profile_EvaluatesLoopPhaseAtStepMidpoint()
     {
         PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
         SetPlantMarkers(profile, new PlantMarkerValue(PlayerFoot.Left, 0.25f), new PlantMarkerValue(PlayerFoot.Right, 0.75f));
-        Assert.That(profile.ResolveLoopSupportFoot(0f, PlayerFoot.Unknown), Is.EqualTo(PlayerFoot.Right));
-        Assert.That(profile.ResolveLoopSupportFoot(0.24f, PlayerFoot.Left), Is.EqualTo(PlayerFoot.Right));
-        Assert.That(profile.ResolveLoopSupportFoot(0.25f, PlayerFoot.Right), Is.EqualTo(PlayerFoot.Left));
-        Assert.That(profile.ResolveLoopSupportFoot(0.8f, PlayerFoot.Left), Is.EqualTo(PlayerFoot.Right));
-        Assert.That(profile.ResolveLoopSupportFoot(1f, PlayerFoot.Unknown), Is.EqualTo(PlayerFoot.Right));
-        Assert.That(profile.ResolveLoopSupportFoot(1.25f, PlayerFoot.Right), Is.EqualTo(PlayerFoot.Left));
+        Assert.That(profile.TryEvaluateLoopPhase(0.5f, 2f, out PlayerLocomotionPhaseSnapshot snapshot), Is.True);
+        Assert.That(snapshot.HasLoop, Is.True);
+        Assert.That(snapshot.HasPhase, Is.True);
+        Assert.That(snapshot.Profile, Is.SameAs(profile));
+        Assert.That(snapshot.NormalizedTime, Is.EqualTo(0.5f).Within(0.0001f));
+        Assert.That(snapshot.EffectiveSpeed, Is.EqualTo(2f).Within(0.0001f));
+        Assert.That(snapshot.LastPlantFoot, Is.EqualTo(PlayerFoot.Left));
+        Assert.That(snapshot.NextPlantFoot, Is.EqualTo(PlayerFoot.Right));
+        Assert.That(snapshot.StepProgress, Is.EqualTo(0.5f).Within(0.0001f));
+        Assert.That(snapshot.TimeToNextPlant, Is.EqualTo(0.125f).Within(0.0001f));
         Object.DestroyImmediate(definition);
         Object.DestroyImmediate(profile);
     }
 
     [Test]
-    public void Profile_EmptyPlantMarkersPreserveFallback()
+    public void Profile_EvaluatesExactMarkerAndLoopSeam()
     {
         PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
-        Assert.That(profile.HasPlantMarkers, Is.False);
-        Assert.That(profile.PlantMarkers, Is.Empty);
-        Assert.That(profile.ResolveSupportFoot(0.5f, PlayerFoot.Unknown), Is.EqualTo(PlayerFoot.Unknown));
-        Assert.That(profile.ResolveLoopSupportFoot(0.5f, PlayerFoot.Left), Is.EqualTo(PlayerFoot.Left));
+        SetPlantMarkers(profile, new PlantMarkerValue(PlayerFoot.Left, 0.25f), new PlantMarkerValue(PlayerFoot.Right, 0.75f));
+        Assert.That(profile.TryEvaluateLoopPhase(0.25f, 1f, out PlayerLocomotionPhaseSnapshot markerSnapshot), Is.True);
+        Assert.That(markerSnapshot.NormalizedTime, Is.EqualTo(0.25f).Within(0.0001f));
+        Assert.That(markerSnapshot.LastPlantFoot, Is.EqualTo(PlayerFoot.Left));
+        Assert.That(markerSnapshot.NextPlantFoot, Is.EqualTo(PlayerFoot.Right));
+        Assert.That(markerSnapshot.StepProgress, Is.EqualTo(0f).Within(0.0001f));
+        Assert.That(profile.TryEvaluateLoopPhase(1.25f, 1f, out markerSnapshot), Is.True);
+        Assert.That(markerSnapshot.LastPlantFoot, Is.EqualTo(PlayerFoot.Left));
+        Assert.That(markerSnapshot.StepProgress, Is.EqualTo(0f).Within(0.0001f));
+        Assert.That(profile.TryEvaluateLoopPhase(0f, 1f, out PlayerLocomotionPhaseSnapshot seamSnapshot), Is.True);
+        Assert.That(seamSnapshot.LastPlantFoot, Is.EqualTo(PlayerFoot.Right));
+        Assert.That(seamSnapshot.NextPlantFoot, Is.EqualTo(PlayerFoot.Left));
+        Assert.That(seamSnapshot.StepProgress, Is.EqualTo(0.5f).Within(0.0001f));
+        Assert.That(profile.TryEvaluateLoopPhase(1f, 1f, out seamSnapshot), Is.True);
+        Assert.That(seamSnapshot.LastPlantFoot, Is.EqualTo(PlayerFoot.Right));
+        Assert.That(seamSnapshot.NextPlantFoot, Is.EqualTo(PlayerFoot.Left));
+        Assert.That(seamSnapshot.StepProgress, Is.EqualTo(0.5f).Within(0.0001f));
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void Profile_TimeToNextPlantScalesWithEffectiveSpeed()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        SetPlantMarkers(profile, new PlantMarkerValue(PlayerFoot.Left, 0.2f), new PlantMarkerValue(PlayerFoot.Right, 0.8f));
+        Assert.That(profile.TryEvaluateLoopPhase(0.5f, 1f, out PlayerLocomotionPhaseSnapshot slowSnapshot), Is.True);
+        Assert.That(profile.TryEvaluateLoopPhase(0.5f, 2f, out PlayerLocomotionPhaseSnapshot fastSnapshot), Is.True);
+        Assert.That(fastSnapshot.StepProgress, Is.EqualTo(slowSnapshot.StepProgress).Within(0.0001f));
+        Assert.That(fastSnapshot.TimeToNextPlant, Is.EqualTo(slowSnapshot.TimeToNextPlant * 0.5f).Within(0.0001f));
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void Profile_RejectsInvalidLoopPhaseInputs()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        SetPlantMarkers(profile, new PlantMarkerValue(PlayerFoot.Left, 0.25f), new PlantMarkerValue(PlayerFoot.Right, 0.75f));
+        Assert.That(profile.TryEvaluateLoopPhase(0.5f, 0f, out PlayerLocomotionPhaseSnapshot snapshot), Is.False);
+        Assert.That(profile.TryEvaluateLoopPhase(0.5f, -1f, out snapshot), Is.False);
+        Assert.That(profile.TryEvaluateLoopPhase(0.5f, float.NaN, out snapshot), Is.False);
+        Assert.That(profile.TryEvaluateLoopPhase(0.5f, float.PositiveInfinity, out snapshot), Is.False);
+        Assert.That(profile.TryEvaluateLoopPhase(float.NaN, 1f, out snapshot), Is.False);
+        Assert.That(profile.TryEvaluateLoopPhase(float.PositiveInfinity, 1f, out snapshot), Is.False);
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void Profile_RejectsInvalidLoopMarkerConfigurations()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        List<string> errors = new List<string>();
+        Assert.That(profile.TryEvaluateLoopPhase(0.5f, 1f, out PlayerLocomotionPhaseSnapshot snapshot), Is.False);
+        SetPlantMarkers(profile, new PlantMarkerValue(PlayerFoot.Left, 0.25f));
+        Assert.That(profile.TryEvaluateLoopPhase(0.5f, 1f, out snapshot), Is.False);
+        SetPlantMarkers(profile, new PlantMarkerValue(PlayerFoot.Left, 0f), new PlantMarkerValue(PlayerFoot.Right, 0.75f));
+        Assert.That(profile.TryEvaluateLoopPhase(0.5f, 1f, out snapshot), Is.False);
+        SetPlantMarkers(profile, new PlantMarkerValue(PlayerFoot.Right, 0.75f), new PlantMarkerValue(PlayerFoot.Left, 0.25f));
+        Assert.That(profile.TryEvaluateLoopPhase(0.5f, 1f, out snapshot), Is.False);
+        SetPlantMarkers(profile, new PlantMarkerValue(PlayerFoot.Left, 0.25f), new PlantMarkerValue(PlayerFoot.Left, 0.75f));
+        Assert.That(profile.TryEvaluateLoopPhase(0.5f, 1f, out snapshot), Is.False);
+        SetPlantMarkers(profile, new PlantMarkerValue(PlayerFoot.Left, 0.2f), new PlantMarkerValue(PlayerFoot.Right, 0.5f), new PlantMarkerValue(PlayerFoot.Left, 0.8f));
+        Assert.That(profile.TryEvaluateLoopPhase(0.5f, 1f, out snapshot), Is.False);
+        SetPlantMarkers(profile, new PlantMarkerValue(PlayerFoot.Left, 0.2f), new PlantMarkerValue(PlayerFoot.Right, 0.25f));
+        Assert.That(profile.TryEvaluateLoopPhase(0.5f, 1f, out snapshot), Is.True);
+        Assert.That(profile.ValidateLoopPhase(errors), Is.False);
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void Profile_RejectsNonPositiveLoopDuration()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        SetPlantMarkers(profile, new PlantMarkerValue(PlayerFoot.Left, 0.25f), new PlantMarkerValue(PlayerFoot.Right, 0.75f));
+        FieldInfo durationField = typeof(PlayerMotionProfile).GetField("duration", BindingFlags.Instance | BindingFlags.NonPublic);
+        durationField.SetValue(profile, 0f);
+        Assert.That(profile.TryEvaluateLoopPhase(0.5f, 1f, out PlayerLocomotionPhaseSnapshot snapshot), Is.False);
         Object.DestroyImmediate(definition);
         Object.DestroyImmediate(profile);
     }
@@ -528,7 +608,7 @@ public sealed class PlayerMotionRuntimeTests
         PlayerMotionRuntime runtime = new PlayerMotionRuntime();
         runtime.Begin(definition, Vector3.forward, Vector3.forward);
         Assert.That(runtime.Snapshot.ActiveProfile, Is.SameAs(profile));
-        Assert.That(runtime.Snapshot.SupportFoot, Is.EqualTo(PlayerFoot.Unknown));
+        Assert.That(runtime.Snapshot.EntryLastPlantFoot, Is.EqualTo(PlayerFoot.Unknown));
         Object.DestroyImmediate(definition);
         Object.DestroyImmediate(profile);
     }

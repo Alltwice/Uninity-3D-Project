@@ -1223,12 +1223,10 @@ MonoBehaviour:
     - 0.040614445
     - 0.043712046
   plantMarkers:
-  - foot: 1
-    normalizedTime: 0
   - foot: 2
-    normalizedTime: 0.173768
+    normalizedTime: 0.16909091
   - foot: 1
-    normalizedTime: 0.3386867
+    normalizedTime: 0.37272727
   editorMetadata:
     bakeVersion: 3
     sampleRate: 60

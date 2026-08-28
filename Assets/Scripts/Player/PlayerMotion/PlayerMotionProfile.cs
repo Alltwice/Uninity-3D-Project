@@ -87,7 +87,7 @@ public class PlayerMotionProfile : ScriptableObject
     /// <summary>
     /// 按非循环动画时间解析截至当前时刻最近的人工 Plant
     /// </summary>
-    public PlayerFoot ResolveSupportFoot(float time, PlayerFoot fallback)
+    public PlayerFoot ResolveLastPlantFoot(float time, PlayerFoot fallback)
     {
         if (!HasPlantMarkers || !IsFinite(time)) return fallback;
         float normalizedTime = Mathf.Clamp01(time);
@@ -104,34 +104,45 @@ public class PlayerMotionProfile : ScriptableObject
     }
 
     /// <summary>
-    /// 按循环动画时间解析 Plant；首个 Marker 之前使用上一周期最后一个 Marker
+    /// 按循环动画时间和实际播放速度计算当前两次 Plant 之间的相位
     /// </summary>
-    public PlayerFoot ResolveLoopSupportFoot(float time, PlayerFoot fallback)
+    public bool TryEvaluateLoopPhase(float normalizedTime, float effectiveSpeed, out PlayerLocomotionPhaseSnapshot snapshot)
     {
-        if (!HasPlantMarkers || !IsFinite(time)) return fallback;
-        float normalizedTime = Mathf.Repeat(time, 1f);
-        PlayerFoot resolved = fallback;
-        PlayerFoot lastMarkerFoot = fallback;
-        float latestTime = float.NegativeInfinity;
-        float latestResolvedTime = float.NegativeInfinity;
-        for (int index = 0; index < plantMarkers.Count; index++)
+        snapshot = default;
+        if (!IsFinite(normalizedTime) || !IsFinite(effectiveSpeed) || effectiveSpeed <= Mathf.Epsilon || !TryValidateLoopPhaseConfiguration(out int markerCount)) return false;
+        float currentTime = Mathf.Repeat(normalizedTime, 1f);
+        int previousIndex;
+        int nextIndex;
+        float previousTime;
+        float nextTime;
+        //当前时间在第一个标记点之前
+        if (currentTime < plantMarkers[0].NormalizedTime)
         {
-            PlayerFootPlantMarker marker = plantMarkers[index];
-            if (!IsValidPlantMarker(marker)) continue;
-            //最晚的脚步落点
-            if (marker.NormalizedTime > latestTime)
-            {
-                latestTime = marker.NormalizedTime;
-                lastMarkerFoot = marker.Foot;
-            }
-            //找到最近的脚步落点
-            if (marker.NormalizedTime <= normalizedTime && marker.NormalizedTime >= latestResolvedTime)
-            {
-                latestResolvedTime = marker.NormalizedTime;
-                resolved = marker.Foot;
-            }
+            //拿到最后一个标记点
+            previousIndex = markerCount - 1;
+            nextIndex = 0;
+            previousTime = plantMarkers[previousIndex].NormalizedTime - 1f;
+            nextTime = plantMarkers[nextIndex].NormalizedTime;
         }
-        return latestResolvedTime == float.NegativeInfinity ? lastMarkerFoot : resolved;
+        //否则循环寻找最后一个不晚于当前时间的标记
+        else
+        {
+            previousIndex = 0;
+            while (previousIndex + 1 < markerCount && plantMarkers[previousIndex + 1].NormalizedTime <= currentTime) previousIndex++;
+            nextIndex = previousIndex + 1 < markerCount ? previousIndex + 1 : 0;
+            previousTime = plantMarkers[previousIndex].NormalizedTime;
+            nextTime = nextIndex == 0 ? plantMarkers[0].NormalizedTime + 1f : plantMarkers[nextIndex].NormalizedTime;
+        }
+        //整段时间
+        float segmentLength = nextTime - previousTime;
+        if (!(segmentLength > 0f)) return false;
+        //步长时间
+        float stepProgress = (currentTime - previousTime) / segmentLength;
+        //到下一次的实际时间
+        float timeToNextPlant = (nextTime - currentTime) * duration / effectiveSpeed;
+        if (!IsFinite(stepProgress) || stepProgress < 0f || stepProgress >= 1f || !IsFinite(timeToNextPlant)) return false;
+        snapshot = new PlayerLocomotionPhaseSnapshot(true, true, this, currentTime, effectiveSpeed, plantMarkers[previousIndex].Foot, plantMarkers[nextIndex].Foot, stepProgress, timeToNextPlant);
+        return true;
     }
 
     public bool Validate(ICollection<string> errors)
@@ -157,6 +168,40 @@ public class PlayerMotionProfile : ScriptableObject
             previousDistance = distance;
         }
         valid &= ValidatePlantMarkers(errors);
+        return valid;
+    }
+
+    /// <summary>
+    /// 校验循环相位查询所需的人工 Plant Marker 配置和采样间隔约束
+    /// </summary>
+    public bool ValidateLoopPhase(ICollection<string> errors)
+    {
+        bool valid = true;
+        if (!IsFinite(duration) || duration <= 0f) { errors?.Add(name + ": Loop Phase 的 Duration 必须是大于 0 的有限值。"); valid = false; }
+        if (SampleCount < 2) { errors?.Add(name + ": Loop Phase 至少需要两个采样点。"); valid = false; }
+        if (plantMarkers == null || plantMarkers.Count < 2) { errors?.Add(name + ": Loop Phase 至少需要两个 Plant Marker。"); valid = false; }
+        if (plantMarkers == null || plantMarkers.Count == 0) return valid;
+        float sampleInterval = SampleCount > 1 ? 1f / (SampleCount - 1) : 0f;
+        for (int index = 0; index < plantMarkers.Count; index++)
+        {
+            PlayerFootPlantMarker marker = plantMarkers[index];
+            if (!IsValidLoopPlantMarker(marker)) { errors?.Add(name + ": Loop Plant Marker 必须使用 Left/Right，且时间位于 (0, 1) 的有限值。"); valid = false; }
+            if (index == 0 || !IsValidLoopPlantMarker(plantMarkers[index - 1]) || !IsValidLoopPlantMarker(marker)) continue;
+            PlayerFootPlantMarker previous = plantMarkers[index - 1];
+            float segmentLength = marker.NormalizedTime - previous.NormalizedTime;
+            if (!(segmentLength > 0f)) { errors?.Add(name + ": Loop Plant Marker 时间必须严格递增。"); valid = false; }
+            if (previous.Foot == marker.Foot) { errors?.Add(name + ": 相邻 Loop Plant Marker 必须左右脚交替。"); valid = false; }
+            if (sampleInterval > 0f && segmentLength < sampleInterval) { errors?.Add(name + ": Loop Plant Marker 之间至少需要跨越一个采样区间。"); valid = false; }
+        }
+        PlayerFootPlantMarker first = plantMarkers[0];
+        PlayerFootPlantMarker last = plantMarkers[plantMarkers.Count - 1];
+        if (IsValidLoopPlantMarker(first) && IsValidLoopPlantMarker(last))
+        {
+            float seamLength = 1f - last.NormalizedTime + first.NormalizedTime;
+            if (!(seamLength > 0f)) { errors?.Add(name + ": Loop Plant Marker 的跨接缝步段长度必须大于 0。"); valid = false; }
+            if (last.Foot == first.Foot) { errors?.Add(name + ": 跨接缝 Loop Plant Marker 必须左右脚交替。"); valid = false; }
+            if (sampleInterval > 0f && seamLength < sampleInterval) { errors?.Add(name + ": 跨接缝 Loop Plant Marker 至少需要跨越一个采样区间。"); valid = false; }
+        }
         return valid;
     }
 
@@ -244,6 +289,30 @@ public class PlayerMotionProfile : ScriptableObject
     private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
 
     private static bool IsValidPlantFoot(PlayerFoot foot) => foot == PlayerFoot.Left || foot == PlayerFoot.Right;
+
+    private bool TryValidateLoopPhaseConfiguration(out int markerCount)
+    {
+        markerCount = plantMarkers == null ? 0 : plantMarkers.Count;
+        if (markerCount < 2 || !IsFinite(duration) || duration <= 0f) return false;
+        for (int index = 0; index < markerCount; index++)
+        {
+            PlayerFootPlantMarker marker = plantMarkers[index];
+            if (!IsValidLoopPlantMarker(marker)) return false;
+            if (index > 0)
+            {
+                PlayerFootPlantMarker previous = plantMarkers[index - 1];
+                if (!(marker.NormalizedTime > previous.NormalizedTime) || marker.Foot == previous.Foot) return false;
+            }
+        }
+        PlayerFootPlantMarker first = plantMarkers[0];
+        PlayerFootPlantMarker last = plantMarkers[markerCount - 1];
+        return last.Foot != first.Foot && 1f - last.NormalizedTime + first.NormalizedTime > 0f;
+    }
+
+    private static bool IsValidLoopPlantMarker(PlayerFootPlantMarker marker)
+    {
+        return IsValidPlantFoot(marker.Foot) && IsFinite(marker.NormalizedTime) && marker.NormalizedTime > 0f && marker.NormalizedTime < 1f;
+    }
 
     private static bool IsValidPlantMarker(PlayerFootPlantMarker marker)
     {
