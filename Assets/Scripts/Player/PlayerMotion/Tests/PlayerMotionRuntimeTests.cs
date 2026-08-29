@@ -106,6 +106,121 @@ public sealed class PlayerMotionRuntimeTests
         Object.DestroyImmediate(profile);
     }
 
+    [TestCase(0.25f, PlayerFoot.Left)]
+    [TestCase(0.499f, PlayerFoot.Left)]
+    [TestCase(0.5f, PlayerFoot.Right)]
+    [TestCase(0.75f, PlayerFoot.Right)]
+    public void MotionDefinition_ResolvesEntryFootByPhaseThreshold(float stepProgress, PlayerFoot expectedFoot)
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        ConfigurePhaseFootSelection(definition, true, 0.5f);
+        PlayerLocomotionPhaseSnapshot phase = new PlayerLocomotionPhaseSnapshot(true, true, profile, 0.25f, 1f, PlayerFoot.Left, PlayerFoot.Right, stepProgress, 0.1f);
+        Assert.That(definition.ResolveEntryFoot(phase), Is.EqualTo(expectedFoot));
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void MotionDefinition_PhaseSelectionFallsBackToLastFootWhenUnavailableOrDisabled()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        ConfigurePhaseFootSelection(definition, true, 0.5f);
+        PlayerLocomotionPhaseSnapshot noPhase = new PlayerLocomotionPhaseSnapshot(true, false, profile, 0.75f, 8f, PlayerFoot.Left, PlayerFoot.Right, 0.9f, 0.001f);
+        Assert.That(definition.ResolveEntryFoot(noPhase), Is.EqualTo(PlayerFoot.Left));
+        ConfigurePhaseFootSelection(definition, false, 0.5f);
+        PlayerLocomotionPhaseSnapshot phase = new PlayerLocomotionPhaseSnapshot(true, true, profile, 0.75f, 0.25f, PlayerFoot.Left, PlayerFoot.Right, 0.9f, 99f);
+        Assert.That(definition.ResolveEntryFoot(phase), Is.EqualTo(PlayerFoot.Left));
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void MotionDefinition_PhaseSelectionIgnoresEffectiveSpeedAndTimeToNextPlant()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        ConfigurePhaseFootSelection(definition, true, 0.5f);
+        PlayerLocomotionPhaseSnapshot slowPhase = new PlayerLocomotionPhaseSnapshot(true, true, profile, 0.75f, 0.25f, PlayerFoot.Left, PlayerFoot.Right, 0.75f, 100f);
+        PlayerLocomotionPhaseSnapshot fastPhase = new PlayerLocomotionPhaseSnapshot(true, true, profile, 0.75f, 10f, PlayerFoot.Left, PlayerFoot.Right, 0.75f, 0.001f);
+        Assert.That(definition.ResolveEntryFoot(slowPhase), Is.EqualTo(PlayerFoot.Right));
+        Assert.That(definition.ResolveEntryFoot(fastPhase), Is.EqualTo(PlayerFoot.Right));
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void MotionDefinition_ValidatesPhaseSelectionContract()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        PlayerMotionProfile leftProfile = CreateTestProfile(2f);
+        PlayerMotionProfile rightProfile = CreateTestProfile(3f);
+        SetPlantMarkers(leftProfile, new PlantMarkerValue(PlayerFoot.Right, 0.2f));
+        SetPlantMarkers(rightProfile, new PlantMarkerValue(PlayerFoot.Left, 0.2f));
+        definition.ConfigureFootProfiles(leftProfile, rightProfile, true);
+        ConfigurePhaseFootSelection(definition, true, 0.5f);
+        List<string> errors = new List<string>();
+        Assert.That(definition.Validate(errors), Is.True, string.Join("\n", errors));
+
+        definition.ConfigureFootProfiles(leftProfile, rightProfile, false);
+        errors.Clear();
+        Assert.That(definition.Validate(errors), Is.False);
+        Assert.That(errors.Exists(error => error.Contains("RequiresFootProfiles")), Is.True);
+        definition.ConfigureFootProfiles(leftProfile, rightProfile, true);
+
+        SetPlantMarkers(leftProfile, new PlantMarkerValue(PlayerFoot.Left, 0.2f));
+        errors.Clear();
+        Assert.That(definition.Validate(errors), Is.False);
+        Assert.That(errors.Exists(error => error.Contains("Left Foot Profile 的首个真实 Plant")), Is.True);
+
+        ConfigurePhaseFootSelection(definition, true, -0.1f);
+        errors.Clear();
+        Assert.That(definition.Validate(errors), Is.False);
+        Assert.That(errors.Exists(error => error.Contains("NextPlantFootThreshold")), Is.True);
+
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+        Object.DestroyImmediate(leftProfile);
+        Object.DestroyImmediate(rightProfile);
+    }
+
+    [TestCase("Assets/Settings/Player/Motion/Definitions/WalkToIdleDefinition.asset", PlayerFoot.Right, PlayerFoot.Left)]
+    [TestCase("Assets/Settings/Player/Motion/Definitions/RunToIdleDefinition.asset", PlayerFoot.Right, PlayerFoot.Left)]
+    [TestCase("Assets/Settings/Player/Motion/Definitions/FastRunToIdleDefinition.asset", PlayerFoot.Right, PlayerFoot.Left)]
+    public void StopDefinitions_EnablePhaseFootSelectionWithOppositeEntryPlant(string assetPath, PlayerFoot leftExpectedPlant, PlayerFoot rightExpectedPlant)
+    {
+        PlayerMotionDefinition definition = UnityEditor.AssetDatabase.LoadAssetAtPath<PlayerMotionDefinition>(assetPath);
+        Assert.That(definition, Is.Not.Null, assetPath);
+        Assert.That(definition.UsePhaseFootSelection, Is.True, assetPath);
+        Assert.That(definition.NextPlantFootThreshold, Is.EqualTo(0.5f).Within(0.0001f), assetPath);
+        Assert.That(definition.RequiresFootProfiles, Is.True, assetPath);
+        Assert.That(definition.LeftFootProfile, Is.Not.Null, assetPath);
+        Assert.That(definition.RightFootProfile, Is.Not.Null, assetPath);
+        Assert.That(definition.LeftFootProfile.PlantMarkers[0].Foot, Is.EqualTo(leftExpectedPlant), assetPath);
+        Assert.That(definition.RightFootProfile.PlantMarkers[0].Foot, Is.EqualTo(rightExpectedPlant), assetPath);
+    }
+
+    [Test]
+    public void Runtime_UsesResolvedProfileAndStartsAtZeroProgress()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        PlayerMotionProfile leftProfile = CreateTestProfile(2f);
+        PlayerMotionProfile rightProfile = CreateTestProfile(3f);
+        definition.ConfigureFootProfiles(leftProfile, rightProfile, true);
+        ConfigurePhaseFootSelection(definition, true, 0.5f);
+        PlayerLocomotionPhaseSnapshot phase = new PlayerLocomotionPhaseSnapshot(true, true, profile, 0.75f, 4f, PlayerFoot.Left, PlayerFoot.Right, 0.75f, 0.001f);
+        PlayerFoot entryFoot = definition.ResolveEntryFoot(phase);
+        PlayerMotionProfile selectedProfile = definition.ResolveProfile(entryFoot);
+        PlayerMotionRuntime runtime = new PlayerMotionRuntime();
+        runtime.Begin(definition, selectedProfile, entryFoot, Vector3.forward, Vector3.forward);
+        Assert.That(runtime.Snapshot.ActiveProfile, Is.SameAs(rightProfile));
+        Assert.That(runtime.Snapshot.EntryLastPlantFoot, Is.EqualTo(PlayerFoot.Right));
+        Assert.That(runtime.Snapshot.Progress, Is.EqualTo(0f));
+        Assert.That(runtime.Advance(0f, default).CurrentProgress, Is.EqualTo(0f));
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+        Object.DestroyImmediate(leftProfile);
+        Object.DestroyImmediate(rightProfile);
+    }
+
     [Test]
     public void FastRunTurnDefinitions_UseDirectPresentationAfterSixtyPercent()
     {
@@ -649,6 +764,22 @@ public sealed class PlayerMotionRuntimeTests
             marker.FindPropertyRelative("normalizedTime").floatValue = values[index].NormalizedTime;
         }
         serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void ConfigurePhaseFootSelection(PlayerMotionDefinition definition, bool enabled, float threshold)
+    {
+        UnityEditor.SerializedObject serialized = new UnityEditor.SerializedObject(definition);
+        serialized.Update();
+        serialized.FindProperty("usePhaseFootSelection").boolValue = enabled;
+        serialized.FindProperty("nextPlantFootThreshold").floatValue = threshold;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static PlayerMotionProfile CreateTestProfile(float travelDistance)
+    {
+        PlayerMotionProfile profile = ScriptableObject.CreateInstance<PlayerMotionProfile>();
+        profile.SetBakedData(1f, 2, new[] { Vector2.zero, new Vector2(0f, travelDistance * 0.5f), new Vector2(0f, travelDistance) }, new[] { 0f, travelDistance * 0.5f, travelDistance }, new[] { 0f, 0f, 0f }, string.Empty, 0, string.Empty, string.Empty);
+        return profile;
     }
 
     private struct PlantMarkerValue

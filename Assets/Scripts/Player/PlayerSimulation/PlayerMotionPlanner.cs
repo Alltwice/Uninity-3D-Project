@@ -118,8 +118,9 @@ public class PlayerMotionPlanner : MonoBehaviour
         Vector3 desired = intent.DesiredMoveDirection.sqrMagnitude > 0.0001f ? intent.DesiredMoveDirection : transform.forward;
         Vector3 entryVelocity = motorResult.HorizontalVelocity.sqrMagnitude > 0.0001f ? motorResult.HorizontalVelocity : transform.forward;
         Vector3 basis = definition.BasisPolicy == PlayerMotionBasisPolicy.DesiredDirection ? desired : definition.BasisPolicy == PlayerMotionBasisPolicy.EntryVelocityDirection ? entryVelocity : transform.forward;
-        PlayerFoot entryLastPlantFoot = phaseSnapshot.LastPlantFoot;
-        runtime.Begin(definition, definition.ResolveProfile(entryLastPlantFoot), entryLastPlantFoot, basis, desired);
+        PlayerFoot entryFoot = definition.ResolveEntryFoot(phaseSnapshot);
+        PlayerMotionProfile selectedProfile = definition.ResolveProfile(entryFoot);
+        runtime.Begin(definition, selectedProfile, entryFoot, basis, desired);
     }
     /// <summary>
     /// 角度计算

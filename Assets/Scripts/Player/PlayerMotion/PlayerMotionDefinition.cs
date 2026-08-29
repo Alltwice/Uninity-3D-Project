@@ -58,6 +58,8 @@ public class PlayerMotionDefinition : ScriptableObject
     [SerializeField] private PlayerMotionProfile leftFootProfile;
     [SerializeField] private PlayerMotionProfile rightFootProfile;
     [SerializeField] private bool requiresFootProfiles;
+    [SerializeField] private bool usePhaseFootSelection;
+    [SerializeField, Range(0f, 1f)] private float nextPlantFootThreshold = 0.5f;
     [SerializeField] private PlayerMotionTranslationPolicy translationPolicy;
     [SerializeField] private PlayerMotionRotationPolicy rotationPolicy;
     [SerializeField] private PlayerMotionBasisPolicy basisPolicy;
@@ -79,6 +81,8 @@ public class PlayerMotionDefinition : ScriptableObject
     public PlayerMotionProfile LeftFootProfile => leftFootProfile;
     public PlayerMotionProfile RightFootProfile => rightFootProfile;
     public bool RequiresFootProfiles => requiresFootProfiles;
+    public bool UsePhaseFootSelection => usePhaseFootSelection;
+    public float NextPlantFootThreshold => nextPlantFootThreshold;
     public PlayerMotionTranslationPolicy TranslationPolicy => translationPolicy;
     public PlayerMotionRotationPolicy RotationPolicy => rotationPolicy;
     public PlayerMotionBasisPolicy BasisPolicy => basisPolicy;
@@ -96,6 +100,14 @@ public class PlayerMotionDefinition : ScriptableObject
         if (foot == PlayerFoot.Left && leftFootProfile != null) return leftFootProfile;
         if (foot == PlayerFoot.Right && rightFootProfile != null) return rightFootProfile;
         return profile;
+    }
+    /// <summary>
+    /// 处理通过步幅选取动画的逻辑
+    /// </summary>
+    public PlayerFoot ResolveEntryFoot(PlayerLocomotionPhaseSnapshot phaseSnapshot)
+    {
+        if (!usePhaseFootSelection || !phaseSnapshot.HasPhase) return phaseSnapshot.LastPlantFoot;
+        return phaseSnapshot.StepProgress < nextPlantFootThreshold ? phaseSnapshot.LastPlantFoot : phaseSnapshot.NextPlantFoot;
     }
 
     public float GetDuration(PlayerFoot foot) => durationOverride > 0f ? durationOverride : ResolveProfile(foot)?.Duration ?? 0f;
@@ -121,8 +133,9 @@ public class PlayerMotionDefinition : ScriptableObject
         valid &= profile.Validate(errors);
         if (leftFootProfile != null) valid &= leftFootProfile.Validate(errors);
         if (rightFootProfile != null) valid &= rightFootProfile.Validate(errors);
-        if (requiresFootProfiles && leftFootProfile == null) { errors?.Add(name + ": 缺少 Left Foot MotionProfile。"); valid = false; }
-        if (requiresFootProfiles && rightFootProfile == null) { errors?.Add(name + ": 缺少 Right Foot MotionProfile。"); valid = false; }
+        if ((requiresFootProfiles || usePhaseFootSelection) && leftFootProfile == null) { errors?.Add(name + ": 缺少 Left Foot MotionProfile。"); valid = false; }
+        if ((requiresFootProfiles || usePhaseFootSelection) && rightFootProfile == null) { errors?.Add(name + ": 缺少 Right Foot MotionProfile。"); valid = false; }
+        if (usePhaseFootSelection) valid &= ValidatePhaseFootSelection(errors);
         if (float.IsNaN(Duration) || float.IsInfinity(Duration) || Duration <= 0f) { errors?.Add(name + ": Runtime Duration 必须是大于 0 的有限值。"); valid = false; }
         if (float.IsNaN(translationScale) || float.IsInfinity(translationScale)) { errors?.Add(name + ": TranslationScale 必须是有限值。"); valid = false; }
         if (handoffEndProgress < handoffStartProgress) { errors?.Add(name + ": HandoffEndProgress 不能早于 Start。"); valid = false; }
@@ -131,6 +144,37 @@ public class PlayerMotionDefinition : ScriptableObject
         if (translationPolicy == PlayerMotionTranslationPolicy.LocalTrajectory && !profile.HasPlanarPosition) { errors?.Add(name + ": LocalTrajectory 需要有效 XZ channel。"); valid = false; }
         if ((translationPolicy == PlayerMotionTranslationPolicy.TravelAlongCapturedDirection || translationPolicy == PlayerMotionTranslationPolicy.TravelAlongDesiredDirection) && !profile.HasTravelDistance) { errors?.Add(name + ": TravelAlong 需要有效 Travel channel。"); valid = false; }
         return valid;
+    }
+
+    private bool ValidatePhaseFootSelection(ICollection<string> errors)
+    {
+        bool valid = true;
+        if (!requiresFootProfiles) { errors?.Add(name + ": 启用 Phase Foot Selection 时必须启用 RequiresFootProfiles。"); valid = false; }
+        if (float.IsNaN(nextPlantFootThreshold) || float.IsInfinity(nextPlantFootThreshold) || nextPlantFootThreshold < 0f || nextPlantFootThreshold > 1f)
+        {
+            errors?.Add(name + ": NextPlantFootThreshold 必须是 0 到 1 的有限值。");
+            valid = false;
+        }
+        if (leftFootProfile != null) valid &= ValidateFirstPlantFoot(leftFootProfile, PlayerFoot.Right, "Left", errors);
+        if (rightFootProfile != null) valid &= ValidateFirstPlantFoot(rightFootProfile, PlayerFoot.Left, "Right", errors);
+        return valid;
+    }
+
+    private bool ValidateFirstPlantFoot(PlayerMotionProfile motionProfile, PlayerFoot expectedFoot, string label, ICollection<string> errors)
+    {
+        PlayerFoot firstFoot = PlayerFoot.Unknown;
+        float firstTime = float.PositiveInfinity;
+        for (int index = 0; index < motionProfile.PlantMarkers.Count; index++)
+        {
+            PlayerFootPlantMarker marker = motionProfile.PlantMarkers[index];
+            if ((marker.Foot != PlayerFoot.Left && marker.Foot != PlayerFoot.Right) || float.IsNaN(marker.NormalizedTime) || float.IsInfinity(marker.NormalizedTime) || marker.NormalizedTime < 0f || marker.NormalizedTime > 1f || marker.NormalizedTime >= firstTime) continue;
+            firstFoot = marker.Foot;
+            firstTime = marker.NormalizedTime;
+        }
+        if (firstFoot == expectedFoot) return true;
+        if (firstFoot == PlayerFoot.Unknown) errors?.Add(name + ": " + label + " Foot Profile 缺少有效的首个 Plant。");
+        else errors?.Add(name + ": " + label + " Foot Profile 的首个真实 Plant 必须是 " + expectedFoot + "。");
+        return false;
     }
 
 #if UNITY_EDITOR

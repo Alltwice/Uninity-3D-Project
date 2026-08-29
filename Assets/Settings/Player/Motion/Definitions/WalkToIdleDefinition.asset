@@ -16,6 +16,8 @@ MonoBehaviour:
   leftFootProfile: {fileID: 11400000, guid: a3fea9aa15ec0914ba92f400ffd8ffc2, type: 2}
   rightFootProfile: {fileID: 11400000, guid: 0969f1a36aa05e640a854ae18a34d1db, type: 2}
   requiresFootProfiles: 1
+  usePhaseFootSelection: 1
+  nextPlantFootThreshold: 0.5
   translationPolicy: 3
   rotationPolicy: 0
   basisPolicy: 1
