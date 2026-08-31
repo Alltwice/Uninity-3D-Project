@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// 重落地期间保持 HardLanding 模式，锁定旋转并按状态自身的 Gameplay Progress 恢复。
+/// 重落地期间保持 HardLanding 模式，锁定旋转并按状态自身的 Gameplay Progress 恢复
 /// </summary>
 public sealed class PlayerHardLandingState : PlayerStateBase
 {

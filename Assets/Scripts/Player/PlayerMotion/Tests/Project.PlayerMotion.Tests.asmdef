@@ -1,7 +1,7 @@
 {
   "name": "Project.PlayerMotion.Tests",
   "rootNamespace": "",
-  "references": ["Project.PlayerMotion.Runtime"],
+  "references": ["Project.PlayerMotion.Runtime", "Kybernetik.Animancer"],
   "includePlatforms": ["Editor"],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

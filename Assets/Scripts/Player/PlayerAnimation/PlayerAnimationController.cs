@@ -12,18 +12,6 @@ public sealed class PlayerAnimationController : MonoBehaviour
     [SerializeField] private AnimancerComponent animancer;
     [SerializeField] private PlayerAnimationSet animationSet;
 
-    [Header("稳定循环")]
-    [SerializeField] private ClipTransition idleLoopTransition = new ClipTransition();
-    [SerializeField] private ClipTransition walkLoopTransition = new ClipTransition();
-    [SerializeField] private ClipTransition runLoopTransition = new ClipTransition();
-    [SerializeField] private ClipTransition fastRunLoopTransition = new ClipTransition();
-    [SerializeField] private ClipTransition airLoopTransition = new ClipTransition();
-
-    [Header("非 Motion 表现")]
-    [SerializeField] private ClipTransition jumpStartTransition = new ClipTransition();
-    [SerializeField] private ClipTransition landingTransition = new ClipTransition();
-    [SerializeField] private ClipTransition hardLandingTransition = new ClipTransition();
-
     private AnimancerState boundaryState;
     private AnimancerState handoffLoopState;
     private AnimancerState stableLoopState;
@@ -86,7 +74,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
         stableLoopProfile = null;
         activeBinding = null;
         //没拿到烘焙动画数据就播放普通循环
-        if (!animationSet.TryGetBinding(motion.ActiveDefinition, motion.ActiveProfile, out activeBinding, out ClipTransition transition))
+        if (animationSet == null || !animationSet.TryGetBinding(motion.ActiveDefinition, motion.ActiveProfile, out activeBinding, out ClipTransition transition))
         {
             PlayStableLoop(gameplayStateType);
             return;
@@ -149,6 +137,12 @@ public sealed class PlayerAnimationController : MonoBehaviour
         ClearBoundary();
         if (transition.CurrentStateType == typeof(PlayerHardLandingState))
         {
+            hardLandingState = null;
+            if (animationSet == null || !animationSet.TryResolveCue(PlayerAnimationCue.HardLanding, out ClipTransition hardLandingTransition))
+            {
+                PlayStableLoop(typeof(PlayerHardLandingState));
+                return;
+            }
             hardLandingState = animancer.Play(hardLandingTransition);
             hardLandingState.Speed = 0f;
             hardLandingState.NormalizedTime = 0f;
@@ -161,13 +155,14 @@ public sealed class PlayerAnimationController : MonoBehaviour
         }
         if (transition.CurrentStateType == typeof(PlayerAirState))
         {
-            if (transition.Reason == PlayerStateTransitionReason.Jumped) PlayPresentationEdge(jumpStartTransition, typeof(PlayerAirState), presentationSequence);
+            if (transition.Reason == PlayerStateTransitionReason.Jumped && animationSet != null && animationSet.TryResolveCue(PlayerAnimationCue.JumpStart, out ClipTransition jumpStart)) PlayPresentationEdge(jumpStart, typeof(PlayerAirState), presentationSequence);
             else PlayStableLoop(typeof(PlayerAirState));
             return;
         }
         if (transition.PreviousStateType == typeof(PlayerAirState) && transition.CurrentStateType == typeof(PlayerIdleState))
         {
-            PlayPresentationEdge(landingTransition, typeof(PlayerIdleState), presentationSequence);
+            if (animationSet != null && animationSet.TryResolveCue(PlayerAnimationCue.Landing, out ClipTransition landing)) PlayPresentationEdge(landing, typeof(PlayerIdleState), presentationSequence);
+            else PlayStableLoop(typeof(PlayerIdleState));
             return;
         }
         PlayStableLoop(transition.CurrentStateType);
@@ -182,11 +177,11 @@ public sealed class PlayerAnimationController : MonoBehaviour
             PlayStableLoop(targetLoopStateType);
             return;
         }
-        edge.Events.OnEnd = () =>
+        AnimancerState state = animancer.Play(edge);
+        state.Events(this).OnEnd = () =>
         {
             if (sequence == presentationSequence) PlayStableLoop(targetLoopStateType);
         };
-        animancer.Play(edge);
     }
 
     private void PlayStableLoop(Type stateType)
@@ -207,16 +202,8 @@ public sealed class PlayerAnimationController : MonoBehaviour
 
     private PlayerAnimationSelection ResolveLoop(Type stateType)
     {
-        PlayerLocomotionMode locomotionMode = stateType == typeof(PlayerWalkState) ? PlayerLocomotionMode.Walk : stateType == typeof(PlayerRunState) ? PlayerLocomotionMode.Run : stateType == typeof(PlayerFastRunState) ? PlayerLocomotionMode.FastRun : PlayerLocomotionMode.Idle;
-        if (animationSet != null && animationSet.TryResolveLoop(locomotionMode, currentLastPlantFoot, out PlayerAnimationSelection selection))
-        {
-            return selection;
-        }
-        if (stateType == typeof(PlayerIdleState) || stateType == typeof(PlayerHardLandingState)) return new PlayerAnimationSelection(idleLoopTransition, null);
-        if (stateType == typeof(PlayerWalkState)) return new PlayerAnimationSelection(walkLoopTransition, null);
-        if (stateType == typeof(PlayerRunState)) return new PlayerAnimationSelection(runLoopTransition, null);
-        if (stateType == typeof(PlayerFastRunState)) return new PlayerAnimationSelection(fastRunLoopTransition, null);
-        if (stateType == typeof(PlayerAirState)) return new PlayerAnimationSelection(airLoopTransition, null);
+        PlayerLocomotionMode locomotionMode = stateType == typeof(PlayerWalkState) ? PlayerLocomotionMode.Walk : stateType == typeof(PlayerRunState) ? PlayerLocomotionMode.Run : stateType == typeof(PlayerFastRunState) ? PlayerLocomotionMode.FastRun : stateType == typeof(PlayerAirState) ? PlayerLocomotionMode.Air : stateType == typeof(PlayerHardLandingState) ? PlayerLocomotionMode.HardLanding : PlayerLocomotionMode.Idle;
+        if (animationSet != null && animationSet.TryResolveLoop(locomotionMode, currentLastPlantFoot, out PlayerAnimationSelection selection)) return selection;
         return default;
     }
     /// <summary>处理motion驱动动画脚步选择</summary>

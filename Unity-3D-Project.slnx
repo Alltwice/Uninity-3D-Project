@@ -1,0 +1,11 @@
+﻿<Solution>
+  <Project Path="Kybernetik.Animancer.csproj" />
+  <Project Path="Kybernetik.Animancer.Editor.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="Project.AnimationPreview.Editor.csproj" />
+  <Project Path="Project.PlayerMotion.Runtime.csproj" />
+  <Project Path="Kybernetik.Animancer.FSM.csproj" />
+  <Project Path="Project.AnimationPreview.Editor.Tests.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="Project.PlayerMotion.Tests.csproj" />
+</Solution>

@@ -1,10 +1,11 @@
 using System.Collections.Generic;
+using Animancer;
 using ProjectTools.AnimationPreview;
 using UnityEditor;
 using UnityEngine;
 
 [CustomEditor(typeof(PlayerAnimationSet))]
-public sealed class PlayerAnimationSetEditor : Editor
+public class PlayerAnimationSetEditor : Editor
 {
     public override void OnInspectorGUI()
     {
@@ -14,9 +15,8 @@ public sealed class PlayerAnimationSetEditor : Editor
         List<string> errors = new List<string>();
         bool valid = animationSet.Validate(errors);
         HashSet<PlayerMotionProfile> validatedProfiles = new HashSet<PlayerMotionProfile>();
-        for (int i = 0; i < animationSet.MotionBindings.Count; i++)
+        foreach (PlayerMotionAnimationBinding binding in animationSet.MotionBindings)
         {
-            PlayerMotionAnimationBinding binding = animationSet.MotionBindings[i];
             if (binding?.Definition == null) continue;
             valid &= ValidateProfile(binding.Definition.Profile, binding.Definition.name + ".Default", errors, validatedProfiles);
             if (binding.Definition.RequiresFootProfiles)
@@ -25,21 +25,40 @@ public sealed class PlayerAnimationSetEditor : Editor
                 valid &= ValidateProfile(binding.Definition.RightFootProfile, binding.Definition.name + ".Right", errors, validatedProfiles);
             }
         }
-        valid &= ValidateLoop(animationSet.WalkLoop, "WalkLoop", errors, validatedProfiles);
-        valid &= ValidateLoop(animationSet.RunLoop, "RunLoop", errors, validatedProfiles);
-        valid &= ValidateLoop(animationSet.FastRunLoop, "SprintLoop", errors, validatedProfiles);
+        valid &= ValidateLoop(animationSet, PlayerLocomotionMode.Walk, "Walk", errors, validatedProfiles);
+        valid &= ValidateLoop(animationSet, PlayerLocomotionMode.Run, "Run", errors, validatedProfiles);
+        valid &= ValidateLoop(animationSet, PlayerLocomotionMode.FastRun, "Sprint", errors, validatedProfiles);
+        valid &= ValidateLoop(animationSet, PlayerLocomotionMode.Idle, "Idle", errors, validatedProfiles);
+        valid &= ValidateLoop(animationSet, PlayerLocomotionMode.Air, "Air", errors, validatedProfiles);
+        valid &= ValidateCue(animationSet, PlayerAnimationCue.JumpStart, "Jump.JumpStart", errors);
+        valid &= ValidateCue(animationSet, PlayerAnimationCue.Landing, "Jump.Landing", errors);
+        valid &= ValidateCue(animationSet, PlayerAnimationCue.HardLanding, "Jump.HardLanding", errors);
         if (valid) Debug.Log(animationSet.name + ": Motion bindings and baked sources valid.", animationSet);
         else Debug.LogError(string.Join("\n", errors), animationSet);
     }
 
-    private static bool ValidateLoop(PlayerLoopAnimationPair pair, string label, ICollection<string> errors, ISet<PlayerMotionProfile> validatedProfiles)
+    private static bool ValidateLoop(PlayerAnimationSet animationSet, PlayerLocomotionMode mode, string label, ICollection<string> errors, ISet<PlayerMotionProfile> validatedProfiles)
     {
-        if (pair == null) return false;
         bool valid = true;
-        valid &= ValidateProfile(pair.DefaultProfile, label + ".Default", errors, validatedProfiles);
-        valid &= ValidateProfile(pair.LeftProfile, label + ".Left", errors, validatedProfiles);
-        valid &= ValidateProfile(pair.RightProfile, label + ".Right", errors, validatedProfiles);
+        PlayerFoot[] feet = { PlayerFoot.Unknown, PlayerFoot.Left, PlayerFoot.Right };
+        for (int i = 0; i < feet.Length; i++)
+        {
+            if (!animationSet.TryResolveLoop(mode, feet[i], out PlayerAnimationSelection selection))
+            {
+                errors.Add(label + ": 语义 Loop 查询失败。");
+                valid = false;
+                continue;
+            }
+            if (selection.Profile != null) valid &= ValidateProfile(selection.Profile, label + "." + feet[i], errors, validatedProfiles);
+        }
         return valid;
+    }
+
+    private static bool ValidateCue(PlayerAnimationSet animationSet, PlayerAnimationCue cue, string label, ICollection<string> errors)
+    {
+        if (animationSet.TryResolveCue(cue, out ClipTransition transition) && transition != null && transition.Clip != null) return true;
+        errors.Add(label + ": 语义 Cue 查询失败。");
+        return false;
     }
 
     private static bool ValidateProfile(PlayerMotionProfile profile, string label, ICollection<string> errors, ISet<PlayerMotionProfile> validatedProfiles)

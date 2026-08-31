@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Reflection;
+using Animancer;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -463,21 +464,117 @@ public sealed class PlayerMotionRuntimeTests
     }
 
     [Test]
-    public void PlayerPrefab_UsesIndependentWalkAndRunClipTransitions()
+    public void PlayerAnimationController_HasNoSerializedClipTransitions()
     {
         GameObject prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab");
         Component controller = prefab.GetComponent("PlayerAnimationController");
+        FieldInfo[] fields = controller.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        foreach (FieldInfo field in fields) Assert.That(field.FieldType.Name, Is.Not.EqualTo("ClipTransition"), field.Name);
         UnityEditor.SerializedObject serialized = new UnityEditor.SerializedObject(controller);
-        UnityEditor.SerializedProperty walk = serialized.FindProperty("walkLoopTransition");
-        UnityEditor.SerializedProperty run = serialized.FindProperty("runLoopTransition");
-        Assert.That(walk, Is.Not.Null);
-        Assert.That(run, Is.Not.Null);
-        Assert.That(serialized.FindProperty("groundLocomotionTransition"), Is.Null);
-        Assert.That(walk.FindPropertyRelative("_Clip").objectReferenceValue, Is.Not.Null);
-        Assert.That(run.FindPropertyRelative("_Clip").objectReferenceValue, Is.Not.Null);
-        Assert.That(walk.FindPropertyRelative("_Clip").objectReferenceValue, Is.Not.SameAs(run.FindPropertyRelative("_Clip").objectReferenceValue));
-        Assert.That(walk.FindPropertyRelative("_FadeDuration").floatValue, Is.EqualTo(0.4f).Within(0.0001f));
-        Assert.That(run.FindPropertyRelative("_FadeDuration").floatValue, Is.EqualTo(0.4f).Within(0.0001f));
+        Assert.That(serialized.FindProperty("animancer"), Is.Not.Null);
+        Assert.That(serialized.FindProperty("animationSet").objectReferenceValue, Is.Not.Null);
+        Assert.That(UnityEditor.AssetDatabase.GetAssetPath(serialized.FindProperty("animationSet").objectReferenceValue), Is.EqualTo("Assets/Settings/Player/Motion/DefaultPlayerAnimationSet.asset"));
+    }
+
+    [Test]
+    public void DefaultAnimationSet_ResolvesAllStableLoopsAndCues()
+    {
+        ScriptableObject animationSet = LoadDefaultAnimationSet();
+        string[] loopModes = { "Idle", "Walk", "Run", "FastRun", "Air" };
+        for (int i = 0; i < loopModes.Length; i++)
+        {
+            Assert.That(ResolveLoop(animationSet, loopModes[i], "Unknown", out object selection), Is.True, loopModes[i]);
+            Assert.That(GetPropertyValue(selection, "IsValid"), Is.True, loopModes[i]);
+            if (loopModes[i] == "Idle" || loopModes[i] == "Air") Assert.That(GetPropertyValue(selection, "Profile"), Is.Null, loopModes[i]);
+        }
+        Assert.That(ResolveLoop(animationSet, "HardLanding", "Unknown", out object hardLandingSelection), Is.True);
+        Assert.That(GetPropertyValue(hardLandingSelection, "Profile"), Is.Null);
+        Assert.That(ResolveLoop(animationSet, "Walk", "Left", out object walkLeft), Is.True);
+        Assert.That(ResolveLoop(animationSet, "Walk", "Right", out object walkRight), Is.True);
+        Assert.That(ResolveLoop(animationSet, "Run", "Left", out object runLeft), Is.True);
+        Assert.That(GetClip(GetPropertyValue(walkLeft, "Transition")), Is.Not.SameAs(GetClip(GetPropertyValue(runLeft, "Transition"))));
+        Assert.That(GetPropertyValue(walkLeft, "Profile"), Is.Not.Null);
+        Assert.That(GetPropertyValue(walkRight, "Profile"), Is.Not.Null);
+        Assert.That(GetPropertyValue(runLeft, "Profile"), Is.Not.Null);
+        Assert.That(ResolveCue(animationSet, "JumpStart", out object jumpStart), Is.True);
+        Assert.That(ResolveCue(animationSet, "Landing", out object landing), Is.True);
+        Assert.That(ResolveCue(animationSet, "HardLanding", out object hardLanding), Is.True);
+        Assert.That(GetClip(jumpStart), Is.Not.Null);
+        Assert.That(GetClip(landing), Is.Not.Null);
+        Assert.That(GetClip(hardLanding), Is.Not.Null);
+    }
+
+    [Test]
+    public void DefaultAnimationSet_ContainsExactlyTheSixteenCatalogBindings()
+    {
+        ScriptableObject animationSet = LoadDefaultAnimationSet();
+        HashSet<UnityEngine.Object> definitions = new HashSet<UnityEngine.Object>();
+        int count = 0;
+        foreach (object binding in (System.Collections.IEnumerable)GetPropertyValue(animationSet, "MotionBindings"))
+        {
+            Assert.That(binding, Is.Not.Null);
+            UnityEngine.Object definition = (UnityEngine.Object)GetPropertyValue(binding, "Definition");
+            Assert.That(definition, Is.Not.Null);
+            Assert.That(definitions.Add(definition), Is.True, definition.name);
+            count++;
+        }
+        Assert.That(count, Is.EqualTo(16));
+        Assert.That(definitions.Count, Is.EqualTo(16));
+        UnityEditor.SerializedObject serialized = new UnityEditor.SerializedObject(animationSet);
+        Assert.That(serialized.FindProperty("motionBindings"), Is.Null);
+        Assert.That(serialized.FindProperty("walk").FindPropertyRelative("motionBindings").arraySize, Is.EqualTo(6));
+        Assert.That(serialized.FindProperty("run").FindPropertyRelative("motionBindings").arraySize, Is.EqualTo(6));
+        Assert.That(serialized.FindProperty("sprint").FindPropertyRelative("motionBindings").arraySize, Is.EqualTo(3));
+        Assert.That(serialized.FindProperty("other").FindPropertyRelative("motionBindings").arraySize, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void DefaultAnimationSet_ValidatesCatalogAndBakedSources()
+    {
+        ScriptableObject animationSet = LoadDefaultAnimationSet();
+        List<string> errors = new List<string>();
+        Assert.That(Validate(animationSet, errors), Is.True, string.Join("\n", errors));
+    }
+
+    [Test]
+    public void AnimationSet_ValidationReportsMissingAndDuplicateBindings()
+    {
+        ScriptableObject animationSet = Object.Instantiate(LoadDefaultAnimationSet());
+        UnityEditor.SerializedObject serialized = new UnityEditor.SerializedObject(animationSet);
+        UnityEditor.SerializedProperty jumpClip = serialized.FindProperty("jump").FindPropertyRelative("jumpStart").FindPropertyRelative("_Clip");
+        jumpClip.objectReferenceValue = null;
+        UnityEditor.SerializedProperty walkBindings = serialized.FindProperty("walk").FindPropertyRelative("motionBindings");
+        UnityEditor.SerializedProperty runBindings = serialized.FindProperty("run").FindPropertyRelative("motionBindings");
+        int originalRunSize = runBindings.arraySize;
+        runBindings.arraySize = originalRunSize + 1;
+        runBindings.GetArrayElementAtIndex(originalRunSize).FindPropertyRelative("definition").objectReferenceValue = walkBindings.GetArrayElementAtIndex(0).FindPropertyRelative("definition").objectReferenceValue;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        List<string> errors = new List<string>();
+        Assert.That(Validate(animationSet, errors), Is.False);
+        Assert.That(errors.Exists(error => error.Contains("Jump.JumpStart")), Is.True, string.Join("\n", errors));
+        Assert.That(errors.Exists(error => error.Contains("分类之间重复")), Is.True, string.Join("\n", errors));
+        Object.DestroyImmediate(animationSet);
+    }
+
+    [Test]
+    public void PlayingPresentationEdge_DoesNotModifySharedTransitionEvents()
+    {
+        ScriptableObject animationSet = LoadDefaultAnimationSet();
+        Assert.That(ResolveCue(animationSet, "JumpStart", out object jumpStart), Is.True);
+        Assert.That(GetEventCallback(jumpStart), Is.Null);
+        GameObject instance = Object.Instantiate(UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab"));
+        try
+        {
+            Component controller = instance.GetComponent("PlayerAnimationController");
+            MethodInfo playEdge = controller.GetType().GetMethod("PlayPresentationEdge", BindingFlags.Instance | BindingFlags.NonPublic);
+            System.Type airStateType = controller.GetType().Assembly.GetType("PlayerAirState");
+            playEdge.Invoke(controller, new object[] { jumpStart, airStateType, (ulong)1 });
+            Assert.That(GetEventCallback(jumpStart), Is.Null);
+        }
+        finally
+        {
+            Object.DestroyImmediate(instance);
+        }
     }
 
     [Test]
@@ -801,6 +898,65 @@ public sealed class PlayerMotionRuntimeTests
         PlayerMotionDefinition definition = ScriptableObject.CreateInstance<PlayerMotionDefinition>();
         definition.Configure(profile, PlayerMotionTranslationPolicy.TravelAlongDesiredDirection, PlayerMotionRotationPolicy.ProfileYaw, PlayerMotionBasisPolicy.EntryFacing, 0f, 1f, 0.8f, 1f);
         return definition;
+    }
+
+    private static ScriptableObject LoadDefaultAnimationSet()
+    {
+        return UnityEditor.AssetDatabase.LoadAssetAtPath<ScriptableObject>("Assets/Settings/Player/Motion/DefaultPlayerAnimationSet.asset");
+    }
+
+    private static bool ResolveLoop(ScriptableObject animationSet, string modeName, string footName, out object selection)
+    {
+        System.Type setType = animationSet.GetType();
+        System.Type modeType = FindLoadedType("PlayerLocomotionMode");
+        System.Type footType = FindLoadedType("PlayerFoot");
+        MethodInfo method = setType.GetMethod("TryResolveLoop");
+        object[] arguments = { System.Enum.Parse(modeType, modeName), System.Enum.Parse(footType, footName), null };
+        bool result = (bool)method.Invoke(animationSet, arguments);
+        selection = arguments[2];
+        return result;
+    }
+
+    private static bool ResolveCue(ScriptableObject animationSet, string cueName, out object transition)
+    {
+        System.Type setType = animationSet.GetType();
+        System.Type cueType = FindLoadedType("PlayerAnimationCue");
+        MethodInfo method = setType.GetMethod("TryResolveCue");
+        object[] arguments = { System.Enum.Parse(cueType, cueName), null };
+        bool result = (bool)method.Invoke(animationSet, arguments);
+        transition = arguments[1];
+        return result;
+    }
+
+    private static bool Validate(ScriptableObject animationSet, ICollection<string> errors)
+    {
+        MethodInfo method = animationSet.GetType().GetMethod("Validate");
+        return (bool)method.Invoke(animationSet, new object[] { errors });
+    }
+
+    private static object GetPropertyValue(object target, string propertyName)
+    {
+        return target.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public).GetValue(target);
+    }
+
+    private static UnityEngine.Object GetClip(object transition)
+    {
+        return (UnityEngine.Object)GetPropertyValue(transition, "Clip");
+    }
+
+    private static object GetEventCallback(object transition)
+    {
+        return ((ClipTransition)transition).Events.OnEnd;
+    }
+
+    private static System.Type FindLoadedType(string typeName)
+    {
+        foreach (Assembly assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+        {
+            System.Type type = assembly.GetType(typeName);
+            if (type != null) return type;
+        }
+        return null;
     }
 
 }
