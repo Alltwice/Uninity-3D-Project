@@ -17,6 +17,7 @@ public class PlayerStateController : MonoBehaviour
 
     public PlayerStateBase CurrentState => currentState;
     public PlayerLocomotionMode CurrentLocomotionMode => currentState?.LocomotionMode ?? PlayerLocomotionMode.Idle;
+    public PlayerLocomotionMode TargetGroundMode => context?.TargetGroundMode ?? PlayerLocomotionMode.Idle;
     public float CurrentPresentationProgress => currentState?.PresentationProgress ?? 0f;
 
     private void Awake()
@@ -37,9 +38,9 @@ public class PlayerStateController : MonoBehaviour
     /// <summary>
     /// 设置移动数据和事实
     /// </summary>
-    public void SetSimulationFacts(PlayerMotorResult motorResult, PlayerMotionSnapshot motionSnapshot)
+    public void SetSimulationFacts(PlayerMotorResult motorResult, PlayerMotionSnapshot motionSnapshot, PlayerLandingSnapshot landingSnapshot)
     {
-        context.SetSimulationFacts(motorResult, motionSnapshot);
+        context.SetSimulationFacts(motorResult, motionSnapshot, landingSnapshot);
     }
 
     public void UpdateLocomotionIntent(float deltaTime)

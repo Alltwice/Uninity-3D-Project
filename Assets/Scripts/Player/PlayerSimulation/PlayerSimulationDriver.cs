@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 /// <summary>
@@ -13,9 +14,12 @@ public class PlayerSimulationDriver : MonoBehaviour
     private PlayerMotor motor;
     private PlayerAnimationController animationController;
     private PlayerDodge dodge;
+    private PlayerLandingTracker landingTracker;
     private IPlayerInputSource inputSource;
     private IPlayerActionBuffer actionBuffer;
     private PlayerStateTransition? pendingTransition;
+
+    public PlayerLandingSnapshot LandingSnapshot { get; private set; }
 
     private void Awake()
     {
@@ -24,6 +28,7 @@ public class PlayerSimulationDriver : MonoBehaviour
         motor = GetComponent<PlayerMotor>();
         animationController = GetComponent<PlayerAnimationController>();
         dodge = GetComponent<PlayerDodge>();
+        landingTracker = new PlayerLandingTracker(motor.Config.Landing);
         if (movementReference == null) movementReference = Camera.main.transform;
     }
 
@@ -37,6 +42,7 @@ public class PlayerSimulationDriver : MonoBehaviour
     {
         motor.EnsureInitialized();
         pendingTransition = stateController.Initialize(inputSource, actionBuffer);
+        landingTracker.Reset(stateController.TargetGroundMode);
         animationController.InitializeManualEvaluation();
     }
     
@@ -51,7 +57,7 @@ public class PlayerSimulationDriver : MonoBehaviour
         Vector3 desiredMoveDirection = ResolveWorldMoveDirection(inputSource.MoveInput);
         //零输入延迟检测
         stateController.UpdateLocomotionIntent(deltaTime);
-        stateController.SetSimulationFacts(motor.CurrentResult, motionPlanner.Snapshot);
+        stateController.SetSimulationFacts(motor.CurrentResult, motionPlanner.Snapshot, default);
         PlayerStateTransition? transition = stateController.ProcessPreTickTransition();
         //建立输入意图
         PlayerGameplayIntent intent = PlayerGameplayIntent.Create(desiredMoveDirection, transform.forward);
@@ -67,9 +73,11 @@ public class PlayerSimulationDriver : MonoBehaviour
         //拿到动画数据驱动时的命令
         PlayerMotorCommand command = PlayerMotionComposer.Compose(intent, motionFrame, motor.CurrentResult, motor.Config, deltaTime, transform.forward);
         //执行动画移动
+        PlayerLocomotionMode landingSampleMode = stateController.CurrentLocomotionMode;
         PlayerMotorResult motorResult = motor.Simulate(command, deltaTime);
+        LandingSnapshot = landingTracker.Advance(motorResult, transform.position.y, landingSampleMode, stateController.TargetGroundMode, intent.DesiredMoveDirection.sqrMagnitude > 0.0001f);
         //设置移动事实
-        stateController.SetSimulationFacts(motorResult, motionPlanner.Snapshot);
+        stateController.SetSimulationFacts(motorResult, motionPlanner.Snapshot, LandingSnapshot);
         //在动画执行完毕后开始帧后状态切换
         PlayerStateTransition? resultTransition = stateController.ProcessPostTickTransition();
         //如果存在帧后切换的数据就执行一遍相同逻辑
@@ -80,11 +88,27 @@ public class PlayerSimulationDriver : MonoBehaviour
             motionPlanner.HandleStateTransition(resultTransition.Value, postTransitionIntent, motorResult, phaseSnapshot);
         }
         PlayerStateTransition? presentationTransition = resultTransition ?? transition ?? pendingTransition;
+        PlayerAnimationCue? landingCue = ResolveLandingCue(resultTransition, LandingSnapshot);
         pendingTransition = null;
         //播放动画表现
-        animationController.Present(stateController.CurrentState.GetType(), presentationTransition, motionPlanner.Snapshot, stateController.CurrentPresentationProgress);
+        animationController.Present(stateController.CurrentState.GetType(), presentationTransition, motionPlanner.Snapshot, stateController.CurrentPresentationProgress, landingCue);
         //animancer设定为手动后需要手动更新
         animationController.EvaluateGraph(deltaTime);
+    }
+
+    private static PlayerAnimationCue? ResolveLandingCue(PlayerStateTransition? transition, PlayerLandingSnapshot snapshot)
+    {
+        if (!snapshot.IsLandingEvent || !transition.HasValue) return null;
+        PlayerStateTransition resolvedTransition = transition.Value;
+        if (resolvedTransition.CurrentStateType == typeof(PlayerHardLandingState)) return PlayerAnimationCue.HardLanding;
+        if (resolvedTransition.CurrentStateType == typeof(PlayerAirState) && resolvedTransition.Reason == PlayerStateTransitionReason.Jumped) return null;
+        if (!IsGroundState(resolvedTransition.CurrentStateType)) return null;
+        return PlayerLandingPresentationResolver.TryResolveLand(snapshot, out PlayerAnimationCue cue) ? cue : (PlayerAnimationCue?)null;
+    }
+
+    private static bool IsGroundState(Type stateType)
+    {
+        return stateType == typeof(PlayerIdleState) || stateType == typeof(PlayerWalkState) || stateType == typeof(PlayerRunState) || stateType == typeof(PlayerFastRunState);
     }
 
     private Vector3 ResolveWorldMoveDirection(Vector2 moveInput)

@@ -1,5 +1,4 @@
 using System;
-using UnityEngine;
 
 /// <summary>
 /// 玩家状态基类。转换评估只读取事实，副作用由 Enter、Tick、Exit 执行
@@ -40,14 +39,12 @@ public abstract class PlayerStateBase
 
     protected Type ResolveGroundStateType()
     {
-        if (Context.InputSource.MoveInput == Vector2.zero)
+        switch (Context.TargetGroundMode)
         {
-            return typeof(PlayerIdleState);
+            case PlayerLocomotionMode.Walk: return typeof(PlayerWalkState);
+            case PlayerLocomotionMode.Run: return typeof(PlayerRunState);
+            case PlayerLocomotionMode.FastRun: return typeof(PlayerFastRunState);
+            default: return typeof(PlayerIdleState);
         }
-        if (Context.IsFastRunLatched)
-        {
-            return typeof(PlayerFastRunState);
-        }
-        return Context.IsWalkMode ? typeof(PlayerWalkState) : typeof(PlayerRunState);
     }
 }

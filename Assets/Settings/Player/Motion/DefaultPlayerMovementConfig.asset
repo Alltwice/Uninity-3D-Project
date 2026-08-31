@@ -37,7 +37,12 @@ MonoBehaviour:
     minAnticipationDistance: 0.15
     maxAnticipationDistance: 0.8
   landing:
-    hardLandingMinImpactSpeed: 10
+    lv2MinFallDistance: 1
+    lv3MinFallDistance: 2
+    lv4MinFallDistance: 3
+    lv2MinImpactSpeed: 6
+    lv3MinImpactSpeed: 8
+    lv4MinImpactSpeed: 10
     hardLandingDuration: 1.8667
     hardLandingInterruptProgress: 0.6
   jumpHeight: 1.5

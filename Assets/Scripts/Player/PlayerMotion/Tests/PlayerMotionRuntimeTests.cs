@@ -477,7 +477,7 @@ public sealed class PlayerMotionRuntimeTests
     }
 
     [Test]
-    public void DefaultAnimationSet_ResolvesAllStableLoopsAndCues()
+    public void DefaultAnimationSet_ResolvesAllStableLoopsAndKeepsNewLandingCuesUnbound()
     {
         ScriptableObject animationSet = LoadDefaultAnimationSet();
         string[] loopModes = { "Idle", "Walk", "Run", "FastRun", "Air" };
@@ -497,11 +497,28 @@ public sealed class PlayerMotionRuntimeTests
         Assert.That(GetPropertyValue(walkRight, "Profile"), Is.Not.Null);
         Assert.That(GetPropertyValue(runLeft, "Profile"), Is.Not.Null);
         Assert.That(ResolveCue(animationSet, "JumpStart", out object jumpStart), Is.True);
-        Assert.That(ResolveCue(animationSet, "Landing", out object landing), Is.True);
-        Assert.That(ResolveCue(animationSet, "HardLanding", out object hardLanding), Is.True);
+        Assert.That(ResolveCue(animationSet, "LandingLv1", out object landingLv1), Is.False);
+        Assert.That(ResolveCue(animationSet, "LandWalk", out object landWalk), Is.False);
+        Assert.That(ResolveCue(animationSet, "HardLanding", out object hardLanding), Is.False);
         Assert.That(GetClip(jumpStart), Is.Not.Null);
-        Assert.That(GetClip(landing), Is.Not.Null);
-        Assert.That(GetClip(hardLanding), Is.Not.Null);
+        Assert.That(landingLv1, Is.Null);
+        Assert.That(landWalk, Is.Null);
+        Assert.That(hardLanding, Is.Null);
+    }
+
+    [Test]
+    public void AnimationSet_ExposesUnboundLandingCueSlots()
+    {
+        ScriptableObject animationSet = LoadDefaultAnimationSet();
+        UnityEditor.SerializedObject serialized = new UnityEditor.SerializedObject(animationSet);
+        UnityEditor.SerializedProperty jump = serialized.FindProperty("jump");
+        string[] landingFields = { "land1", "land2", "land3", "land4", "landWalk", "landRun", "landRoll" };
+        for (int i = 0; i < landingFields.Length; i++)
+        {
+            UnityEditor.SerializedProperty field = jump.FindPropertyRelative(landingFields[i]);
+            Assert.That(field, Is.Not.Null, landingFields[i]);
+            Assert.That(field.FindPropertyRelative("_Clip").objectReferenceValue, Is.Null, landingFields[i]);
+        }
     }
 
     [Test]
@@ -575,6 +592,80 @@ public sealed class PlayerMotionRuntimeTests
         {
             Object.DestroyImmediate(instance);
         }
+    }
+
+    [TestCase(PlayerLandingSeverity.Lv4, PlayerLocomotionMode.Walk)]
+    [TestCase(PlayerLandingSeverity.Lv4, PlayerLocomotionMode.Run)]
+    [TestCase(PlayerLandingSeverity.Lv4, PlayerLocomotionMode.FastRun)]
+    public void LandingPresentationResolver_Lv4AlwaysUsesHardLanding(PlayerLandingSeverity severity, PlayerLocomotionMode targetGroundMode)
+    {
+        PlayerLandingSnapshot snapshot = new PlayerLandingSnapshot(1, severity, 0f, 0f, PlayerLocomotionMode.Run, true, targetGroundMode);
+        Assert.That(ResolveLandingCue(snapshot, out string cueName), Is.True);
+        Assert.That(cueName, Is.EqualTo("HardLanding"));
+    }
+
+    [TestCase(PlayerLandingSeverity.Lv1, PlayerLocomotionMode.Walk)]
+    [TestCase(PlayerLandingSeverity.Lv2, PlayerLocomotionMode.Run)]
+    [TestCase(PlayerLandingSeverity.Lv3, PlayerLocomotionMode.FastRun)]
+    public void LandingPresentationResolver_MoveIntentUsesTargetGroundMode(PlayerLandingSeverity severity, PlayerLocomotionMode targetGroundMode)
+    {
+        PlayerLandingSnapshot snapshot = new PlayerLandingSnapshot(1, severity, 0f, 0f, PlayerLocomotionMode.Idle, true, targetGroundMode);
+        Assert.That(ResolveLandingCue(snapshot, out string cueName), Is.True);
+        Assert.That(cueName, Is.EqualTo(targetGroundMode == PlayerLocomotionMode.Walk ? "LandWalk" : targetGroundMode == PlayerLocomotionMode.Run ? "LandRun" : "LandRoll"));
+    }
+
+    [TestCase(PlayerLandingSeverity.Lv1, "LandingLv1")]
+    [TestCase(PlayerLandingSeverity.Lv2, "LandingLv2")]
+    [TestCase(PlayerLandingSeverity.Lv3, "LandingLv3")]
+    public void LandingPresentationResolver_NoMoveIntentUsesSeverity(PlayerLandingSeverity severity, string expectedCue)
+    {
+        PlayerLandingSnapshot snapshot = new PlayerLandingSnapshot(1, severity, 0f, 0f, PlayerLocomotionMode.FastRun, false, PlayerLocomotionMode.Run);
+        Assert.That(ResolveLandingCue(snapshot, out string cueName), Is.True);
+        Assert.That(cueName, Is.EqualTo(expectedCue));
+    }
+
+    [Test]
+    public void LandingPresentationResolver_InvalidTargetGroundModeFallsBackToSeverity()
+    {
+        PlayerLandingSnapshot snapshot = new PlayerLandingSnapshot(1, PlayerLandingSeverity.Lv2, 0f, 0f, PlayerLocomotionMode.FastRun, true, PlayerLocomotionMode.Idle);
+        Assert.That(ResolveLandingCue(snapshot, out string cueName), Is.True);
+        Assert.That(cueName, Is.EqualTo("LandingLv2"));
+    }
+
+    [Test]
+    public void LandingPresentationResolver_NonLandingSnapshotReturnsFalse()
+    {
+        Assert.That(ResolveLandingCue(default, out string cueName), Is.False);
+        Assert.That(cueName, Is.Null);
+    }
+
+    [Test]
+    public void SimulationDriver_BufferedJumpSuppressesLandingCue()
+    {
+        PlayerLandingSnapshot snapshot = new PlayerLandingSnapshot(1, PlayerLandingSeverity.Lv2, 0f, 0f, PlayerLocomotionMode.Walk, true, PlayerLocomotionMode.Walk);
+        object transition = CreateStateTransition("PlayerAirState", "PlayerAirState", "Jumped");
+        Assert.That(ResolveDriverLandingCue(snapshot, transition), Is.Null);
+    }
+
+    [Test]
+    public void SimulationDriver_HardLandingStateAlwaysPassesHardLandingCue()
+    {
+        PlayerLandingSnapshot snapshot = new PlayerLandingSnapshot(1, PlayerLandingSeverity.Lv4, 0f, 0f, PlayerLocomotionMode.Run, true, PlayerLocomotionMode.Run);
+        object transition = CreateStateTransition("PlayerAirState", "PlayerHardLandingState", "HardLanded");
+        Assert.That(ResolveDriverLandingCue(snapshot, transition), Is.EqualTo("HardLanding"));
+    }
+
+    [TestCase("PlayerIdleState", "LandingLv1")]
+    [TestCase("PlayerWalkState", "LandWalk")]
+    [TestCase("PlayerRunState", "LandRun")]
+    [TestCase("PlayerFastRunState", "LandRoll")]
+    public void SimulationDriver_GroundStateUsesResolvedLandingCue(string currentStateName, string expectedCue)
+    {
+        PlayerLocomotionMode targetGroundMode = currentStateName == "PlayerWalkState" ? PlayerLocomotionMode.Walk : currentStateName == "PlayerRunState" ? PlayerLocomotionMode.Run : currentStateName == "PlayerFastRunState" ? PlayerLocomotionMode.FastRun : PlayerLocomotionMode.Idle;
+        bool hasMoveIntent = targetGroundMode != PlayerLocomotionMode.Idle;
+        PlayerLandingSnapshot snapshot = new PlayerLandingSnapshot(1, PlayerLandingSeverity.Lv1, 0f, 0f, PlayerLocomotionMode.Air, hasMoveIntent, targetGroundMode);
+        object transition = CreateStateTransition("PlayerAirState", currentStateName, "Landed");
+        Assert.That(ResolveDriverLandingCue(snapshot, transition), Is.EqualTo(expectedCue));
     }
 
     [Test]
@@ -926,6 +1017,35 @@ public sealed class PlayerMotionRuntimeTests
         bool result = (bool)method.Invoke(animationSet, arguments);
         transition = arguments[1];
         return result;
+    }
+
+    private static bool ResolveLandingCue(PlayerLandingSnapshot snapshot, out string cueName)
+    {
+        System.Type resolverType = FindLoadedType("PlayerLandingPresentationResolver");
+        System.Type cueType = FindLoadedType("PlayerAnimationCue");
+        MethodInfo method = resolverType.GetMethod("TryResolve", BindingFlags.Static | BindingFlags.Public);
+        object[] arguments = { snapshot, null };
+        bool result = (bool)method.Invoke(null, arguments);
+        cueName = result && arguments[1] != null ? System.Enum.GetName(cueType, arguments[1]) : null;
+        return result;
+    }
+
+    private static string ResolveDriverLandingCue(PlayerLandingSnapshot snapshot, object transition)
+    {
+        System.Type driverType = FindLoadedType("PlayerSimulationDriver");
+        System.Type transitionType = FindLoadedType("PlayerStateTransition");
+        System.Type nullableTransitionType = typeof(System.Nullable<>).MakeGenericType(transitionType);
+        object nullableTransition = System.Activator.CreateInstance(nullableTransitionType, transition);
+        MethodInfo method = driverType.GetMethod("ResolveLandingCue", BindingFlags.Static | BindingFlags.NonPublic);
+        object result = method.Invoke(null, new[] { nullableTransition, (object)snapshot });
+        return result == null ? null : System.Enum.GetName(FindLoadedType("PlayerAnimationCue"), result);
+    }
+
+    private static object CreateStateTransition(string previousStateName, string currentStateName, string reasonName)
+    {
+        System.Type transitionType = FindLoadedType("PlayerStateTransition");
+        System.Type reasonType = FindLoadedType("PlayerStateTransitionReason");
+        return System.Activator.CreateInstance(transitionType, FindLoadedType(previousStateName), FindLoadedType(currentStateName), System.Enum.Parse(reasonType, reasonName));
     }
 
     private static bool Validate(ScriptableObject animationSet, ICollection<string> errors)

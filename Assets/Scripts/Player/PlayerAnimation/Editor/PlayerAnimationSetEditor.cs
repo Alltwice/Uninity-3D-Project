@@ -31,8 +31,13 @@ public class PlayerAnimationSetEditor : Editor
         valid &= ValidateLoop(animationSet, PlayerLocomotionMode.Idle, "Idle", errors, validatedProfiles);
         valid &= ValidateLoop(animationSet, PlayerLocomotionMode.Air, "Air", errors, validatedProfiles);
         valid &= ValidateCue(animationSet, PlayerAnimationCue.JumpStart, "Jump.JumpStart", errors);
-        valid &= ValidateCue(animationSet, PlayerAnimationCue.Landing, "Jump.Landing", errors);
-        valid &= ValidateCue(animationSet, PlayerAnimationCue.HardLanding, "Jump.HardLanding", errors);
+        WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandingLv1, "Jump.Land1");
+        WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandingLv2, "Jump.Land2");
+        WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandingLv3, "Jump.Land3");
+        WarnIfCueUnbound(animationSet, PlayerAnimationCue.HardLanding, "Jump.Land4");
+        WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandWalk, "Jump.LandWalk");
+        WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandRun, "Jump.LandRun");
+        WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandRoll, "Jump.LandRoll");
         if (valid) Debug.Log(animationSet.name + ": Motion bindings and baked sources valid.", animationSet);
         else Debug.LogError(string.Join("\n", errors), animationSet);
     }
@@ -59,6 +64,12 @@ public class PlayerAnimationSetEditor : Editor
         if (animationSet.TryResolveCue(cue, out ClipTransition transition) && transition != null && transition.Clip != null) return true;
         errors.Add(label + ": 语义 Cue 查询失败。");
         return false;
+    }
+
+    private static void WarnIfCueUnbound(PlayerAnimationSet animationSet, PlayerAnimationCue cue, string label)
+    {
+        if (animationSet.TryResolveCue(cue, out ClipTransition transition) && transition != null && transition.Clip != null) return;
+        Debug.LogWarning(animationSet.name + ": " + label + " 未绑定，落地时将跳过该表现过渡。", animationSet);
     }
 
     private static bool ValidateProfile(PlayerMotionProfile profile, string label, ICollection<string> errors, ISet<PlayerMotionProfile> validatedProfiles)

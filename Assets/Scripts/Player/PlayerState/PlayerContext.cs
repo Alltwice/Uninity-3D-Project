@@ -12,11 +12,14 @@ public sealed class PlayerContext
     public PlayerMovementConfig MovementConfig { get; }
     public PlayerMotorResult MotorResult { get; private set; }
     public PlayerMotionSnapshot MotionSnapshot { get; private set; }
+    public PlayerLandingSnapshot LandingSnapshot { get; private set; }
     public bool IsGrounded => MotorResult.IsGrounded;
-    public bool IsHardLandingImpact => MotorResult.JustLanded && MotorResult.LandingImpactSpeed >= MovementConfig.Landing.HardLandingMinImpactSpeed;
+    //供Air状态使用是否进入hadrLanding
+    public bool IsHardLandingImpact => LandingSnapshot.IsLandingEvent && LandingSnapshot.Severity == PlayerLandingSeverity.Lv4;
     public bool IsWalkMode => isWalkMode;
     public bool HasGroundMoveContinuationIntent => hasGroundMoveContinuationIntent;
     public bool IsFastRunLatched => isFastRunLatched;
+    public PlayerLocomotionMode TargetGroundMode => InputSource.MoveInput == Vector2.zero ? PlayerLocomotionMode.Idle : isFastRunLatched ? PlayerLocomotionMode.FastRun : isWalkMode ? PlayerLocomotionMode.Walk : PlayerLocomotionMode.Run;
 
     private float pendingVerticalImpulse;
     private bool hasPendingVerticalImpulse;
@@ -36,11 +39,14 @@ public sealed class PlayerContext
         MovementConfig = movementConfig;
         walkToggleSignal = inputSource.IsWalkMode;
     }
-
-    public void SetSimulationFacts(PlayerMotorResult motorResult, PlayerMotionSnapshot motionSnapshot)
+    /// <summary>
+    /// 更新事实数据
+    /// </summary>
+    public void SetSimulationFacts(PlayerMotorResult motorResult, PlayerMotionSnapshot motionSnapshot, PlayerLandingSnapshot landingSnapshot)
     {
         MotorResult = motorResult;
         MotionSnapshot = motionSnapshot;
+        LandingSnapshot = landingSnapshot;
     }
 
     /// <summary>

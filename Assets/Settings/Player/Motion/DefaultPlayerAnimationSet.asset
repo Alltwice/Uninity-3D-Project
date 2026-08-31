@@ -15,7 +15,7 @@ MonoBehaviour:
   motionCatalog: {fileID: 11400000, guid: 7e7b584da779b5e42aac77d4ec67ea6d, type: 2}
   idle:
     loop:
-      _FadeDuration: 1
+      _FadeDuration: 0.5
       _Speed: 1
       _Events:
         _NormalizedTimes: []
@@ -910,7 +910,7 @@ MonoBehaviour:
         _NormalizedTimes: []
         _Callbacks: []
         _Names: []
-      _Clip: {fileID: -5475316151806207314, guid: b3462e35ae6790846a4e4609db48d800, type: 3}
+      _Clip: {fileID: -670359973010454369, guid: 407db4521984b8848b4380b82ae437a1, type: 3}
       _NormalizedStartTime: 0
     airLoop:
       _FadeDuration: 0.5
@@ -919,26 +919,71 @@ MonoBehaviour:
         _NormalizedTimes: []
         _Callbacks: []
         _Names: []
-      _Clip: {fileID: 6624780820005253362, guid: 3143222e94d549e449a7527fef636283, type: 3}
+      _Clip: {fileID: -2244535368116879837, guid: c2a9f1310cf941c48b029929997de42e, type: 3}
       _NormalizedStartTime: 0
-    landing:
-      _FadeDuration: 0.08
+    land1:
+      _FadeDuration: 0.12
       _Speed: 1
       _Events:
         _NormalizedTimes: []
         _Callbacks: []
         _Names: []
-      _Clip: {fileID: -8279524762354361089, guid: c2db81f0323333a46b5cfa2e4c123f39, type: 3}
-      _NormalizedStartTime: 0
-    hardLanding:
-      _FadeDuration: 0.08
+      _Clip: {fileID: -6497942813740932517, guid: 0c6fbb9a756146845855b0e7c4e4dda6, type: 3}
+      _NormalizedStartTime: NaN
+    land2:
+      _FadeDuration: 0.15
       _Speed: 1
       _Events:
         _NormalizedTimes: []
         _Callbacks: []
         _Names: []
-      _Clip: {fileID: 3986369646147372437, guid: 0f6c69507708e8a40a96f9a2e0517531, type: 3}
-      _NormalizedStartTime: 0
+      _Clip: {fileID: 962398061609597802, guid: 679319a79fad5d74c9555c1faacdad26, type: 3}
+      _NormalizedStartTime: NaN
+    land3:
+      _FadeDuration: 0.12
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: -6603950736313917538, guid: d9551179ff6f397419c480f5cae1ac16, type: 3}
+      _NormalizedStartTime: NaN
+    land4:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: -1335869700265283491, guid: 204738cb83f4e6144b548212fa10e4d4, type: 3}
+      _NormalizedStartTime: NaN
+    landWalk:
+      _FadeDuration: 0
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: -7380433385476788225, guid: 7cb142ecb7c5c174a986bb0e0f21cc95, type: 3}
+      _NormalizedStartTime: NaN
+    landRun:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 4480277035682638159, guid: 0a629831c0bf2b44fb0922bcb3841077, type: 3}
+      _NormalizedStartTime: NaN
+    landRoll:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: -9045715732119088931, guid: fd95762f23e1ffb408994bde0e1ddbd2, type: 3}
+      _NormalizedStartTime: NaN
   other:
     motionBindings:
     - definition: {fileID: 11400000, guid: e05c0ed7f402437499a78d5207b93b8e, type: 2}

@@ -115,20 +115,30 @@ public class PlayerLocomotionAnimationGroup
 }
 
 /// <summary>
-/// 跳跃、空中和落地表现资源
+/// 跳跃、空中和分级落地表现资源
 /// </summary>
 [Serializable]
 public class PlayerJumpAnimationGroup
 {
     [SerializeField] private ClipTransition jumpStart = new ClipTransition();
     [SerializeField] private ClipTransition airLoop = new ClipTransition();
-    [SerializeField] private ClipTransition landing = new ClipTransition();
-    [SerializeField] private ClipTransition hardLanding = new ClipTransition();
+    [SerializeField] private ClipTransition land1 = new ClipTransition();
+    [SerializeField] private ClipTransition land2 = new ClipTransition();
+    [SerializeField] private ClipTransition land3 = new ClipTransition();
+    [SerializeField] private ClipTransition land4 = new ClipTransition();
+    [SerializeField] private ClipTransition landWalk = new ClipTransition();
+    [SerializeField] private ClipTransition landRun = new ClipTransition();
+    [SerializeField] private ClipTransition landRoll = new ClipTransition();
 
     public ClipTransition JumpStart => jumpStart;
     public ClipTransition AirLoop => airLoop;
-    public ClipTransition Landing => landing;
-    public ClipTransition HardLanding => hardLanding;
+    public ClipTransition Land1 => land1;
+    public ClipTransition Land2 => land2;
+    public ClipTransition Land3 => land3;
+    public ClipTransition Land4 => land4;
+    public ClipTransition LandWalk => landWalk;
+    public ClipTransition LandRun => landRun;
+    public ClipTransition LandRoll => landRoll;
 }
 
 /// <summary>
@@ -265,8 +275,64 @@ public struct PlayerAnimationSelection
 public enum PlayerAnimationCue
 {
     JumpStart,
-    Landing,
-    HardLanding
+    LandingLv1,
+    LandingLv2,
+    LandingLv3,
+    HardLanding,
+    LandWalk,
+    LandRun,
+    LandRoll
+}
+
+/// <summary>
+/// 将一次性落地事实解析为表现 Cue，不参与状态转换
+/// </summary>
+public static class PlayerLandingPresentationResolver
+{
+    /// <summary>
+    /// 落地动画选用
+    /// </summary>
+    public static bool TryResolveLand(PlayerLandingSnapshot snapshot, out PlayerAnimationCue cue)
+    {
+        cue = default;
+        if (!snapshot.IsLandingEvent) return false;
+        //优先四级重落地
+        if (snapshot.Severity == PlayerLandingSeverity.Lv4)
+        {
+            cue = PlayerAnimationCue.HardLanding;
+            return true;
+        }
+        //移动状态落地
+        if (snapshot.HasMoveIntentAtImpact)
+        {
+            switch (snapshot.TargetGroundMode)
+            {
+                case PlayerLocomotionMode.Walk:
+                    cue = PlayerAnimationCue.LandWalk;
+                    return true;
+                case PlayerLocomotionMode.Run:
+                    cue = PlayerAnimationCue.LandRun;
+                    return true;
+                case PlayerLocomotionMode.FastRun:
+                    cue = PlayerAnimationCue.LandRoll;
+                    return true;
+            }
+        }
+        //最后处理常规落地状态
+        cue = ResolveSeverityCue(snapshot.Severity);
+        return true;
+    }
+
+    private static PlayerAnimationCue ResolveSeverityCue(PlayerLandingSeverity severity)
+    {
+        switch (severity)
+        {
+            case PlayerLandingSeverity.Lv1: return PlayerAnimationCue.LandingLv1;
+            case PlayerLandingSeverity.Lv2: return PlayerAnimationCue.LandingLv2;
+            case PlayerLandingSeverity.Lv3: return PlayerAnimationCue.LandingLv3;
+            default: return PlayerAnimationCue.HardLanding;
+        }
+    }
 }
 
 [CreateAssetMenu(fileName = "PlayerAnimationSet", menuName = "Player/Animation Set")]
@@ -329,16 +395,16 @@ public class PlayerAnimationSet : ScriptableObject
         transition = cue switch
         {
             PlayerAnimationCue.JumpStart => jump?.JumpStart,
-            PlayerAnimationCue.Landing => jump?.Landing,
-            PlayerAnimationCue.HardLanding => jump?.HardLanding,
+            PlayerAnimationCue.LandingLv1 => jump?.Land1,
+            PlayerAnimationCue.LandingLv2 => jump?.Land2,
+            PlayerAnimationCue.LandingLv3 => jump?.Land3,
+            PlayerAnimationCue.HardLanding => jump?.Land4,
+            PlayerAnimationCue.LandWalk => jump?.LandWalk,
+            PlayerAnimationCue.LandRun => jump?.LandRun,
+            PlayerAnimationCue.LandRoll => jump?.LandRoll,
             _ => null
         };
         if (transition != null && transition.Clip != null) return true;
-        if (cue == PlayerAnimationCue.HardLanding && idle?.Loop != null && idle.Loop.Clip != null)
-        {
-            transition = idle.Loop;
-            return true;
-        }
         transition = null;
         return false;
     }
@@ -390,8 +456,7 @@ public class PlayerAnimationSet : ScriptableObject
         else valid &= ValidateLoop(sprint.Loop, "Sprint.Loop", errors);
         valid &= ValidateTransition(jump?.JumpStart, "Jump.JumpStart", errors);
         valid &= ValidateTransition(jump?.AirLoop, "Jump.AirLoop", errors);
-        valid &= ValidateTransition(jump?.Landing, "Jump.Landing", errors);
-        valid &= ValidateTransition(jump?.HardLanding, "Jump.HardLanding", errors);
+        // 落地 Cue 是可选表现槽位，未绑定时由运行时直接进入目标地面循环。
         if (jump == null) { errors?.Add(name + ": Jump 分类缺失。"); valid = false; }
         if (other == null) { errors?.Add(name + ": Other 分类缺失。"); valid = false; }
         return valid;

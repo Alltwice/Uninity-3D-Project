@@ -1,0 +1,14 @@
+{
+  "name": "Project.PlayerLanding.Runtime",
+  "rootNamespace": "",
+  "references": ["Project.PlayerMotion.Runtime"],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
