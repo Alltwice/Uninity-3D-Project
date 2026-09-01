@@ -60,6 +60,8 @@ public class PlayerMotionProfile : ScriptableObject
     [SerializeField] private List<PlayerFootPlantMarker> plantMarkers = new List<PlayerFootPlantMarker>();
     [SerializeField] private PlayerFootPlantDetectionMode footPlantDetectionMode;
     [SerializeField] private PlayerPlantMarkerMode plantMarkerMode;
+    //区分旧资产的默认枚举值，批量迁移只对未持久化的旧资产执行一次名称推断
+    [SerializeField] private bool detectionModePersisted;
     [SerializeField] private int footPlantDetectionVersion;
     //保存元数据
     [SerializeField] private PlayerMotionProfileMetadata editorMetadata = new PlayerMotionProfileMetadata();
@@ -76,6 +78,7 @@ public class PlayerMotionProfile : ScriptableObject
     public IReadOnlyList<PlayerFootPlantMarker> PlantMarkers => plantMarkers == null ? (IReadOnlyList<PlayerFootPlantMarker>)Array.Empty<PlayerFootPlantMarker>() : plantMarkers;
     public bool HasPlantMarkers => plantMarkers != null && plantMarkers.Count > 0;
     public PlayerFootPlantDetectionMode FootPlantDetectionMode => footPlantDetectionMode;
+    public bool HasPersistedDetectionMode => detectionModePersisted;
     public PlayerPlantMarkerMode PlantMarkerMode => plantMarkerMode;
     public int FootPlantDetectionVersion => footPlantDetectionVersion;
     public PlayerMotionProfileMetadata EditorMetadata => editorMetadata;
@@ -269,6 +272,7 @@ public class PlayerMotionProfile : ScriptableObject
     {
         footPlantDetectionMode = detectionMode;
         plantMarkerMode = markerMode;
+        detectionModePersisted = true;
     }
 
     public void ReplacePlantMarkers(IEnumerable<PlayerFootPlantMarker> markers, int detectionVersion)

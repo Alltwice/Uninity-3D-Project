@@ -359,12 +359,18 @@ MonoBehaviour:
     - 6.0158124
     - 6.574502
   plantMarkers:
-  - foot: 2
-    normalizedTime: 0.43866667
   - foot: 1
-    normalizedTime: 0.96449995
+    normalizedTime: 0.052607432
+    confidence: 0.8152295
+  - foot: 2
+    normalizedTime: 0.4612218
+    confidence: 0.8505464
+  footPlantDetectionMode: 0
+  plantMarkerMode: 1
+  detectionModePersisted: 1
+  footPlantDetectionVersion: 1
   editorMetadata:
-    bakeVersion: 3
+    bakeVersion: 4
     sampleRate: 60
     sourceClipGuid: 22915549b80c9d84ab57c8150bb9e980
     sourceClipLocalId: 1827226128182048838

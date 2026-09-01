@@ -1476,19 +1476,30 @@ MonoBehaviour:
     - 0.05326594
   plantMarkers:
   - foot: 1
-    normalizedTime: 0.11625
+    normalizedTime: 0.10210942
+    confidence: 0.824899
   - foot: 2
-    normalizedTime: 0.213375
+    normalizedTime: 0.21452102
+    confidence: 0.81904465
   - foot: 1
-    normalizedTime: 0.360375
+    normalizedTime: 0.34826797
+    confidence: 0.85681266
   - foot: 2
-    normalizedTime: 0.54525
+    normalizedTime: 0.5304367
+    confidence: 0.9527211
+  - foot: 1
+    normalizedTime: 0.73944044
+    confidence: 0.94641995
+  footPlantDetectionMode: 2
+  plantMarkerMode: 1
+  detectionModePersisted: 1
+  footPlantDetectionVersion: 1
   editorMetadata:
-    bakeVersion: 3
+    bakeVersion: 4
     sampleRate: 60
     sourceClipGuid: 23bdeea9c8345b24faad4a23a1ef0204
     sourceClipLocalId: 3193550521350188915
     modelGuid: 9e9dd8d32cf76fa43941fa1ff36e6b86
-    sourceDependencyHash: e6a7481181ae3883cae76690e37ac083
+    sourceDependencyHash: 9ed0743902ad2ce259ddad7b60789823
     footCalibrationGuid: cc92b83732174694caf42bea35eba681
     footCalibrationHash: 6654720bd9dcb8024a7edb7329c53ec2

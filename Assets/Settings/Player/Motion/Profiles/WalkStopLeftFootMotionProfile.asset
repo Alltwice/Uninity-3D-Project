@@ -1584,13 +1584,21 @@ MonoBehaviour:
     - 0.027754415
   plantMarkers:
   - foot: 2
-    normalizedTime: 0.20965116
+    normalizedTime: 0.21684185
+    confidence: 0.9613587
+  - foot: 1
+    normalizedTime: 0.4393943
+    confidence: 0.9466723
+  footPlantDetectionMode: 2
+  plantMarkerMode: 1
+  detectionModePersisted: 1
+  footPlantDetectionVersion: 1
   editorMetadata:
-    bakeVersion: 3
+    bakeVersion: 4
     sampleRate: 60
     sourceClipGuid: dc0caeee7c8153f43994b05dec0642fa
     sourceClipLocalId: 1827226128182048838
     modelGuid: 9e9dd8d32cf76fa43941fa1ff36e6b86
-    sourceDependencyHash: 55ea53fb3fe9c2cd6ee91214017b924f
+    sourceDependencyHash: 8c8872d92a88e8afbe79a34bbba37702
     footCalibrationGuid: cc92b83732174694caf42bea35eba681
     footCalibrationHash: 6654720bd9dcb8024a7edb7329c53ec2

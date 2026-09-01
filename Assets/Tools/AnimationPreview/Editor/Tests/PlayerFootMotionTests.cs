@@ -58,6 +58,37 @@ public class PlayerFootMotionTests
         {
             PlayerMotionProfile profile = ScriptableObject.CreateInstance<PlayerMotionProfile>();
             Assert.That(profile.PlantMarkerMode, Is.EqualTo(PlayerPlantMarkerMode.ManualOverride));
+            Assert.That(profile.HasPersistedDetectionMode, Is.False);
+            UnityEngine.Object.DestroyImmediate(profile);
+        }
+
+        [Test]
+        public void MotionProfileDirectoryContainsExpectedInitialDetectionModeMapping()
+        {
+            List<string> profilePaths = PlayerMotionProfileBatchBaker.FindProfilePaths();
+            Assert.That(profilePaths.Count, Is.EqualTo(36));
+            Dictionary<PlayerFootPlantDetectionMode, int> counts = new Dictionary<PlayerFootPlantDetectionMode, int>();
+            foreach (string path in profilePaths)
+            {
+                PlayerMotionProfile profile = AssetDatabase.LoadAssetAtPath<PlayerMotionProfile>(path);
+                Assert.That(PlayerMotionProfileBatchBaker.TryInferInitialDetectionMode(profile.name, out PlayerFootPlantDetectionMode mode), Is.True, path);
+                counts[mode] = counts.TryGetValue(mode, out int count) ? count + 1 : 1;
+            }
+            Assert.That(counts[PlayerFootPlantDetectionMode.Loop], Is.EqualTo(6));
+            Assert.That(counts[PlayerFootPlantDetectionMode.Start], Is.EqualTo(12));
+            Assert.That(counts[PlayerFootPlantDetectionMode.Stop], Is.EqualTo(6));
+            Assert.That(counts[PlayerFootPlantDetectionMode.Turn], Is.EqualTo(12));
+        }
+
+        [Test]
+        public void PersistedDetectionModeTakesPrecedenceOverInitialNameMapping()
+        {
+            PlayerMotionProfile profile = CreateProfile(1f);
+            profile.name = "WalkLoopLeftFootMotionProfile";
+            profile.SetPlantAuthoringSettings(PlayerFootPlantDetectionMode.Stop, PlayerPlantMarkerMode.ManualOverride);
+            Assert.That(profile.HasPersistedDetectionMode, Is.True);
+            Assert.That(PlayerMotionProfileBatchBaker.TryResolveDetectionMode(profile, out PlayerFootPlantDetectionMode mode), Is.True);
+            Assert.That(mode, Is.EqualTo(PlayerFootPlantDetectionMode.Stop));
             UnityEngine.Object.DestroyImmediate(profile);
         }
 
@@ -70,6 +101,24 @@ public class PlayerFootMotionTests
             Assert.That(profile.PlantMarkers.Count, Is.EqualTo(1));
             Assert.That(profile.PlantMarkers[0].Confidence, Is.EqualTo(0.75f).Within(0.0001f));
             Assert.That(profile.FootPlantDetectionVersion, Is.EqualTo(PlayerMotionProfile.CurrentFootPlantDetectionVersion));
+            UnityEngine.Object.DestroyImmediate(profile);
+        }
+
+        [Test]
+        public void AutoApplyReplacesExistingMarkersAndPreservesPayloadSampleRate()
+        {
+            PlayerMotionProfile profile = CreateProfile(1f, 3);
+            profile.ReplacePlantMarkers(new[] { new PlayerFootPlantMarker(PlayerFoot.Right, 0.8f, 1f) }, 0);
+            PlayerMotionBakePayload payload = new PlayerMotionBakePayload(1f, 30, CreatePositions(3), CreateFloats(3), CreateFloats(3), CreateFootData(3), CreateFootData(3), "clip", 1L, "model", "dependency", "calibration", "settings", PlayerFootPlantDetectionMode.Turn, new List<PlayerFootPlantMarker> { new PlayerFootPlantMarker(PlayerFoot.Left, 0.25f, 0.6f) });
+            PlayerMotionBaker.Apply(profile, payload, PlayerPlantMarkerMode.Auto);
+            Assert.That(profile.SampleRate, Is.EqualTo(30));
+            Assert.That(profile.PlantMarkerMode, Is.EqualTo(PlayerPlantMarkerMode.Auto));
+            Assert.That(profile.FootPlantDetectionMode, Is.EqualTo(PlayerFootPlantDetectionMode.Turn));
+            Assert.That(profile.FootPlantDetectionVersion, Is.EqualTo(PlayerMotionProfile.CurrentFootPlantDetectionVersion));
+            Assert.That(profile.PlantMarkers.Count, Is.EqualTo(1));
+            Assert.That(profile.PlantMarkers[0].Foot, Is.EqualTo(PlayerFoot.Left));
+            Assert.That(profile.PlantMarkers[0].NormalizedTime, Is.EqualTo(0.25f).Within(0.0001f));
+            Assert.That(profile.PlantMarkers[0].Confidence, Is.EqualTo(0.6f).Within(0.0001f));
             UnityEngine.Object.DestroyImmediate(profile);
         }
 
@@ -95,6 +144,22 @@ public class PlayerFootMotionTests
             List<string> warnings = new List<string>();
             PlayerMotionBaker.Validate(profile, new List<string>(), warnings);
             Assert.That(warnings, Is.Empty);
+            UnityEngine.Object.DestroyImmediate(profile);
+        }
+
+        [Test]
+        public void EmptyNonLoopAutoResultIsWarningOnly()
+        {
+            PlayerMotionProfile source = AssetDatabase.LoadAssetAtPath<PlayerMotionProfile>("Assets/Settings/Player/Motion/Profiles/DodgeMotionProfile.asset");
+            Assert.That(source, Is.Not.Null);
+            PlayerMotionProfile profile = ScriptableObject.CreateInstance<PlayerMotionProfile>();
+            EditorJsonUtility.FromJsonOverwrite(EditorJsonUtility.ToJson(source), profile);
+            profile.SetPlantAuthoringSettings(PlayerFootPlantDetectionMode.Start, PlayerPlantMarkerMode.Auto);
+            profile.ReplacePlantMarkers(Array.Empty<PlayerFootPlantMarker>(), PlayerMotionProfile.CurrentFootPlantDetectionVersion);
+            List<string> errors = new List<string>();
+            List<string> warnings = new List<string>();
+            Assert.That(PlayerMotionBaker.Validate(profile, errors, warnings), Is.True, string.Join("\n", errors));
+            Assert.That(warnings.Any(message => message.Contains("未检测到 Plant Marker")), Is.True);
             UnityEngine.Object.DestroyImmediate(profile);
         }
 
@@ -296,62 +361,104 @@ public class PlayerFootMotionTests
             UnityEngine.Object.DestroyImmediate(calibration);
         }
 
-        [Test, Ignore("现有人工 Marker 含 Stop 尾部裁剪和 Turn 入脚语义；补充 Root 停止时刻与 EntryFoot 输入后重新启用。")]
-        public void ExistingLabeledProfilesReachAutoDetectionAcceptance()
+        [Test]
+        public void StoredAutoMarkersMatchCurrentDetectorOutput()
         {
-            int truePositive = 0;
-            int falsePositive = 0;
-            int falseNegative = 0;
-            int highConfidenceFalsePositive = 0;
-            List<float> normalizedErrors = new List<float>();
-            List<string> profileDiagnostics = new List<string>();
-            string[] profileGuids = AssetDatabase.FindAssets("t:PlayerMotionProfile", new[] { "Assets/Settings/Player/Motion/Profiles" });
-            foreach (string profileGuid in profileGuids)
+            List<string> profilePaths = PlayerMotionProfileBatchBaker.FindProfilePaths();
+            Assert.That(profilePaths.Count, Is.EqualTo(36));
+            foreach (string profilePath in profilePaths)
             {
-                PlayerMotionProfile profile = AssetDatabase.LoadAssetAtPath<PlayerMotionProfile>(AssetDatabase.GUIDToAssetPath(profileGuid));
-                if (profile == null || !profile.HasFootData || !profile.HasPlantMarkers || !TryResolveDetectionMode(profile.name, out PlayerFootPlantDetectionMode mode)) continue;
+                PlayerMotionProfile profile = AssetDatabase.LoadAssetAtPath<PlayerMotionProfile>(profilePath);
+                Assert.That(profile, Is.Not.Null, profilePath);
+                Assert.That(profile.PlantMarkerMode, Is.EqualTo(PlayerPlantMarkerMode.Auto), profilePath);
+                Assert.That(profile.HasPersistedDetectionMode, Is.True, profilePath);
+                Assert.That(profile.EditorMetadata.BakeVersion, Is.EqualTo(PlayerMotionProfile.CurrentBakeVersion), profilePath);
+                Assert.That(profile.EditorMetadata.SampleRate, Is.EqualTo(profile.SampleRate), profilePath);
+                Assert.That(profile.FootPlantDetectionVersion, Is.EqualTo(PlayerMotionProfile.CurrentFootPlantDetectionVersion), profilePath);
                 PlayerFootMotionBakeData left = CopyFootData(profile.LeftFoot);
                 PlayerFootMotionBakeData right = CopyFootData(profile.RightFoot);
-                List<PlayerFootPlantDetection> detected = PlayerFootPlantDetector.Detect(left, right, profile.Duration, profile.SampleCount, mode);
-                profileDiagnostics.Add(profile.name + " Manual=[" + string.Join(", ", profile.PlantMarkers.Select(marker => $"{marker.Foot}:{marker.NormalizedTime:F3}")) + "] Auto=[" + string.Join(", ", detected.Select(marker => $"{marker.Foot}:{marker.NormalizedTime:F3}/{marker.Confidence:F2}")) + "]");
-                bool[] matched = new bool[detected.Count];
-                float sampleInterval = 1f / (profile.SampleCount - 1);
-                for (int markerIndex = 0; markerIndex < profile.PlantMarkers.Count; markerIndex++)
+                List<PlayerFootPlantDetection> detected = PlayerFootPlantDetector.Detect(left, right, profile.Duration, profile.SampleCount, profile.FootPlantDetectionMode);
+                Assert.That(profile.PlantMarkers.Count, Is.EqualTo(detected.Count), profilePath);
+                for (int markerIndex = 0; markerIndex < detected.Count; markerIndex++)
                 {
-                    PlayerFootPlantMarker marker = profile.PlantMarkers[markerIndex];
-                    int nearestIndex = -1;
-                    float nearestDistance = float.PositiveInfinity;
-                    for (int detectedIndex = 0; detectedIndex < detected.Count; detectedIndex++)
-                    {
-                        float distance = Mathf.Abs(marker.NormalizedTime - detected[detectedIndex].NormalizedTime);
-                        if (mode == PlayerFootPlantDetectionMode.Loop) distance = Mathf.Min(distance, 1f - distance);
-                        if (matched[detectedIndex] || marker.Foot != detected[detectedIndex].Foot || distance > sampleInterval * 2f || distance >= nearestDistance) continue;
-                        nearestIndex = detectedIndex;
-                        nearestDistance = distance;
-                    }
-                    if (nearestIndex < 0) { falseNegative++; continue; }
-                    matched[nearestIndex] = true;
-                    truePositive++;
-                    normalizedErrors.Add(nearestDistance / sampleInterval);
-                }
-                for (int detectedIndex = 0; detectedIndex < detected.Count; detectedIndex++)
-                {
-                    if (matched[detectedIndex]) continue;
-                    falsePositive++;
-                    if (detected[detectedIndex].Confidence >= PlayerFootPlantDetector.LowConfidenceThreshold) highConfidenceFalsePositive++;
+                    Assert.That(profile.PlantMarkers[markerIndex].Foot, Is.EqualTo(detected[markerIndex].Foot), profilePath);
+                    Assert.That(profile.PlantMarkers[markerIndex].NormalizedTime, Is.EqualTo(detected[markerIndex].NormalizedTime).Within(0.0001f), profilePath);
+                    Assert.That(profile.PlantMarkers[markerIndex].Confidence, Is.EqualTo(detected[markerIndex].Confidence).Within(0.0001f), profilePath);
                 }
             }
-            float precision = truePositive / (float)Mathf.Max(1, truePositive + falsePositive);
-            float recall = truePositive / (float)Mathf.Max(1, truePositive + falseNegative);
-            float f1 = 2f * precision * recall / Mathf.Max(0.0001f, precision + recall);
-            normalizedErrors.Sort();
-            float medianError = normalizedErrors.Count == 0 ? float.PositiveInfinity : normalizedErrors[normalizedErrors.Count / 2];
-            string metrics = $"TP={truePositive} FP={falsePositive} FN={falseNegative} Precision={precision:F3} Recall={recall:F3} F1={f1:F3} MedianSamples={medianError:F3} HighConfidenceFP={highConfidenceFalsePositive}\n" + string.Join("\n", profileDiagnostics);
-            Assert.That(precision, Is.GreaterThanOrEqualTo(0.85f), metrics);
-            Assert.That(recall, Is.GreaterThanOrEqualTo(0.85f), metrics);
-            Assert.That(f1, Is.GreaterThanOrEqualTo(0.85f), metrics);
-            Assert.That(medianError, Is.LessThanOrEqualTo(1f), metrics);
-            Assert.That(highConfidenceFalsePositive, Is.Zero, metrics);
+        }
+
+        [Test]
+        public void BatchSourceResolutionFailureDoesNotCommitProfiles()
+        {
+            PlayerMotionProfile target = AssetDatabase.LoadAssetAtPath<PlayerMotionProfile>("Assets/Settings/Player/Motion/Profiles/DodgeMotionProfile.asset");
+            PlayerMotionProfile unaffected = AssetDatabase.LoadAssetAtPath<PlayerMotionProfile>("Assets/Settings/Player/Motion/Profiles/LandWalkMotionProfile.asset");
+            Assert.That(target, Is.Not.Null);
+            Assert.That(unaffected, Is.Not.Null);
+            string targetBefore = EditorJsonUtility.ToJson(target);
+            string unaffectedBefore = EditorJsonUtility.ToJson(unaffected);
+            SerializedObject serialized = new SerializedObject(target);
+            serialized.Update();
+            serialized.FindProperty("editorMetadata").FindPropertyRelative("sourceClipGuid").stringValue = "missing-source-guid";
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            string invalidTarget = EditorJsonUtility.ToJson(target);
+            try
+            {
+                PlayerMotionProfileBatchBakeReport report = PlayerMotionProfileBatchBaker.RebakeAll();
+                Assert.That(report.Committed, Is.False);
+                Assert.That(report.Errors.Any(error => error.Contains("Source Clip")), Is.True);
+                Assert.That(EditorJsonUtility.ToJson(target), Is.EqualTo(invalidTarget));
+                Assert.That(EditorJsonUtility.ToJson(unaffected), Is.EqualTo(unaffectedBefore));
+            }
+            finally
+            {
+                EditorJsonUtility.FromJsonOverwrite(targetBefore, target);
+                EditorUtility.ClearDirty(target);
+            }
+        }
+
+        [Test]
+        public void BatchDefinitionValidationFailureDoesNotCommitProfiles()
+        {
+            PlayerMotionDefinition definition = AssetDatabase.LoadAssetAtPath<PlayerMotionDefinition>("Assets/Settings/Player/Motion/Definitions/DodgeDefinition.asset");
+            PlayerMotionProfile unaffected = AssetDatabase.LoadAssetAtPath<PlayerMotionProfile>("Assets/Settings/Player/Motion/Profiles/LandWalkMotionProfile.asset");
+            Assert.That(definition, Is.Not.Null);
+            Assert.That(unaffected, Is.Not.Null);
+            string definitionBefore = EditorJsonUtility.ToJson(definition);
+            string unaffectedBefore = EditorJsonUtility.ToJson(unaffected);
+            SerializedObject serialized = new SerializedObject(definition);
+            serialized.Update();
+            serialized.FindProperty("translationScale").floatValue = float.NaN;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            try
+            {
+                PlayerMotionProfileBatchBakeReport report = PlayerMotionProfileBatchBaker.RebakeAll();
+                Assert.That(report.Committed, Is.False);
+                Assert.That(report.Errors.Any(error => error.Contains("TranslationScale")), Is.True);
+                Assert.That(EditorJsonUtility.ToJson(unaffected), Is.EqualTo(unaffectedBefore));
+            }
+            finally
+            {
+                EditorJsonUtility.FromJsonOverwrite(definitionBefore, definition);
+                EditorUtility.ClearDirty(definition);
+            }
+        }
+
+        [Test]
+        public void RepeatedBatchRebakeIsStableAndWarningsDoNotBlockCommit()
+        {
+            List<string> profilePaths = PlayerMotionProfileBatchBaker.FindProfilePaths();
+            Dictionary<string, string> before = profilePaths.ToDictionary(path => path, path => EditorJsonUtility.ToJson(AssetDatabase.LoadAssetAtPath<PlayerMotionProfile>(path)));
+            PlayerMotionProfileBatchBakeReport report = PlayerMotionProfileBatchBaker.RebakeAll();
+            Assert.That(report.Committed, Is.True);
+            Assert.That(report.DiscoveredCount, Is.EqualTo(36));
+            Assert.That(report.StagedCount, Is.EqualTo(36));
+            Assert.That(report.GetModeCount(PlayerFootPlantDetectionMode.Loop), Is.EqualTo(6));
+            Assert.That(report.GetModeCount(PlayerFootPlantDetectionMode.Start), Is.EqualTo(12));
+            Assert.That(report.GetModeCount(PlayerFootPlantDetectionMode.Stop), Is.EqualTo(6));
+            Assert.That(report.GetModeCount(PlayerFootPlantDetectionMode.Turn), Is.EqualTo(12));
+            Assert.That(report.Warnings.Count, Is.GreaterThanOrEqualTo(1));
+            foreach (string path in profilePaths) Assert.That(EditorJsonUtility.ToJson(AssetDatabase.LoadAssetAtPath<PlayerMotionProfile>(path)), Is.EqualTo(before[path]), path);
         }
 
         private static PlayerFootCalibration CreateCalibration()
@@ -378,13 +485,13 @@ public class PlayerFootMotionTests
             return Enumerable.Range(0, count).Select(index => index / (float)Math.Max(1, count - 1)).ToArray();
         }
 
-        private static PlayerFootMotionBakeData CreateFootData()
+        private static PlayerFootMotionBakeData CreateFootData(int count = 11)
         {
             return new PlayerFootMotionBakeData
             {
-                SoleHeight = CreateFloats(11),
-                VerticalSpeed = CreateFloats(11),
-                HorizontalSpeed = CreateFloats(11)
+                SoleHeight = CreateFloats(count),
+                VerticalSpeed = CreateFloats(count),
+                HorizontalSpeed = CreateFloats(count)
             };
         }
 
@@ -411,16 +518,6 @@ public class PlayerFootMotionTests
                 VerticalSpeed = channel.VerticalSpeed.ToArray(),
                 HorizontalSpeed = channel.HorizontalSpeed.ToArray()
             };
-        }
-
-        private static bool TryResolveDetectionMode(string profileName, out PlayerFootPlantDetectionMode mode)
-        {
-            if (profileName.Contains("Loop")) { mode = PlayerFootPlantDetectionMode.Loop; return true; }
-            if (profileName.Contains("Start")) { mode = PlayerFootPlantDetectionMode.Start; return true; }
-            if (profileName.Contains("Stop")) { mode = PlayerFootPlantDetectionMode.Stop; return true; }
-            if (profileName.Contains("Turn")) { mode = PlayerFootPlantDetectionMode.Turn; return true; }
-            mode = default;
-            return false;
         }
 
         private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);

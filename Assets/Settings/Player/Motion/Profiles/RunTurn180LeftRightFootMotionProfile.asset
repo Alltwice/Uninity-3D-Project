@@ -810,15 +810,20 @@ MonoBehaviour:
     - 0.6398761
   plantMarkers:
   - foot: 1
-    normalizedTime: 0.24627905
+    normalizedTime: 0.1457959
+    confidence: 0.82923824
   - foot: 2
-    normalizedTime: 0.4604651
-  - foot: 1
-    normalizedTime: 0.7304651
+    normalizedTime: 0.31286946
+    confidence: 0.70413274
   - foot: 2
-    normalizedTime: 0.9802325
+    normalizedTime: 0.90695643
+    confidence: 0.8886604
+  footPlantDetectionMode: 3
+  plantMarkerMode: 1
+  detectionModePersisted: 1
+  footPlantDetectionVersion: 1
   editorMetadata:
-    bakeVersion: 3
+    bakeVersion: 4
     sampleRate: 60
     sourceClipGuid: 4425a3223627498409b4a469e48d9e77
     sourceClipLocalId: 934423465960791222

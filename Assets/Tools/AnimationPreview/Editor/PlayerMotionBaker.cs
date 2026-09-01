@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -8,7 +9,7 @@ namespace ProjectTools.AnimationPreview
     public static class PlayerMotionBaker
     {
         /// <summary>
-        /// 预留的快速Bake接口，用于直接获取模型和动画，不直接执行bake
+        /// 使用模型和动画资源完成一次单 Profile Bake。
         /// </summary>
         public static PlayerMotionProfile Bake(GameObject modelAsset, AnimationClip clip, int sampleRate, PlayerMotionProfile target)
         {
@@ -23,38 +24,50 @@ namespace ProjectTools.AnimationPreview
 
         internal static void Bake(AnimationPreviewSession session, int sampleRate, PlayerMotionProfile target)
         {
-            if (target == null) throw new System.ArgumentNullException(nameof(target));
+            if (target == null) throw new ArgumentNullException(nameof(target));
             PlayerFootCalibration calibration = FindCalibration(session.ModelAsset);
-            if (calibration == null) throw new System.InvalidOperationException("当前模型缺少 PlayerFootCalibration，请先创建并配置左右 Foot 校准资源。");
+            if (calibration == null) throw new InvalidOperationException("当前模型缺少 PlayerFootCalibration，请先创建并配置左右 Foot 校准资源。");
+            PlayerMotionBakePayload payload = Build(session, sampleRate, target.FootPlantDetectionMode, calibration);
+            Apply(target, payload, target.PlantMarkerMode);
+            EditorUtility.SetDirty(target);
+            AssetDatabase.SaveAssetIfDirty(target);
+        }
+
+        /// <summary>
+        /// 只采样并生成可暂存的 Bake Payload，不写入任何 Profile 资产。
+        /// </summary>
+        internal static PlayerMotionBakePayload Build(AnimationPreviewSession session, int sampleRate, PlayerFootPlantDetectionMode detectionMode, PlayerFootCalibration calibration)
+        {
+            if (session == null) throw new ArgumentNullException(nameof(session));
+            if (calibration == null) throw new InvalidOperationException("当前模型缺少 PlayerFootCalibration，请先创建并配置左右 Foot 校准资源。");
             session.SetFootCalibration(calibration);
             PlayerMotionBakeResult result = session.SampleMotion(sampleRate, calibration);
             AnimationClip clip = session.Clip;
             string clipPath = AssetDatabase.GetAssetPath(clip);
             string modelPath = AssetDatabase.GetAssetPath(session.ModelAsset);
-            //获取其身份，后者为子asset的id
-            AssetDatabase.TryGetGUIDAndLocalFileIdentifier(clip, out string clipGuid, out long clipLocalId);
-            //获取模型身份
+            if (!AssetDatabase.TryGetGUIDAndLocalFileIdentifier(clip, out string clipGuid, out long clipLocalId)) throw new InvalidOperationException("无法解析源 AnimationClip 的 GUID 或 Local ID。");
             string modelGuid = AssetDatabase.AssetPathToGUID(modelPath);
             string calibrationPath = AssetDatabase.GetAssetPath(calibration);
-            AssetDatabase.TryGetGUIDAndLocalFileIdentifier(calibration, out string calibrationGuid, out _);
+            if (!AssetDatabase.TryGetGUIDAndLocalFileIdentifier(calibration, out string calibrationGuid, out _)) throw new InvalidOperationException("无法解析 PlayerFootCalibration 的 GUID。");
             string calibrationHash = calibration.SettingsHash;
             string dependencyHash = ComputeDependencyHash(clipPath, modelPath, calibrationPath, calibrationHash);
-            //写为永久SO，target已经是so文件
             PlayerFootMotionBakeData leftFoot = SampleFootMotion(result.LeftFootPositions, result.Duration, calibration);
             PlayerFootMotionBakeData rightFoot = SampleFootMotion(result.RightFootPositions, result.Duration, calibration);
-            List<PlayerFootPlantDetection> detections = target.PlantMarkerMode == PlayerPlantMarkerMode.Auto
-                ? PlayerFootPlantDetector.Detect(leftFoot, rightFoot, result.Duration, result.PlanarPosition.Length, target.FootPlantDetectionMode)
-                : null;
-            target.SetBakedData(result.Duration, result.SampleRate, result.PlanarPosition, result.TravelDistance, 
-                result.Yaw, clipGuid, clipLocalId, modelGuid, dependencyHash, leftFoot, rightFoot, calibrationGuid, calibrationHash);
-            if (detections != null)
-            {
-                target.ReplacePlantMarkers(detections.Select(detection => new PlayerFootPlantMarker(detection.Foot, detection.NormalizedTime, detection.Confidence)), PlayerMotionProfile.CurrentFootPlantDetectionVersion);
-            }
-            //数据被更改
-            EditorUtility.SetDirty(target);
-            //修改先前被保存的so文件
-            AssetDatabase.SaveAssetIfDirty(target);
+            List<PlayerFootPlantDetection> detections = PlayerFootPlantDetector.Detect(leftFoot, rightFoot, result.Duration, result.PlanarPosition.Length, detectionMode);
+            List<PlayerFootPlantMarker> markers = detections.Select(detection => new PlayerFootPlantMarker(detection.Foot, detection.NormalizedTime, detection.Confidence)).ToList();
+            return new PlayerMotionBakePayload(result.Duration, result.SampleRate, result.PlanarPosition, result.TravelDistance, result.Yaw, leftFoot, rightFoot, clipGuid, clipLocalId, modelGuid, dependencyHash, calibrationGuid, calibrationHash, detectionMode, markers);
+        }
+
+        /// <summary>
+        /// 将 Payload 应用到 Profile 对象；调用方负责决定何时标脏和保存资产。
+        /// </summary>
+        internal static void Apply(PlayerMotionProfile target, PlayerMotionBakePayload payload, PlayerPlantMarkerMode markerMode)
+        {
+            if (target == null) throw new ArgumentNullException(nameof(target));
+            if (payload == null) throw new ArgumentNullException(nameof(payload));
+            target.SetBakedData(payload.Duration, payload.SampleRate, payload.PlanarPosition, payload.TravelDistance, payload.Yaw, payload.SourceClipGuid, payload.SourceClipLocalId, payload.ModelGuid, payload.SourceDependencyHash, payload.LeftFoot, payload.RightFoot, payload.FootCalibrationGuid, payload.FootCalibrationHash);
+            target.SetPlantAuthoringSettings(payload.DetectionMode, markerMode);
+            if (markerMode == PlayerPlantMarkerMode.Auto) target.ReplacePlantMarkers(payload.AutoPlantMarkers, PlayerMotionProfile.CurrentFootPlantDetectionVersion);
         }
 
         public static bool Validate(PlayerMotionProfile profile, ICollection<string> messages)
@@ -108,12 +121,14 @@ namespace ProjectTools.AnimationPreview
 
         public static AnimationClip ResolveSourceClip(PlayerMotionProfile profile)
         {
-            if (profile == null) return null;
-            string path = AssetDatabase.GUIDToAssetPath(profile.EditorMetadata.SourceClipGuid);
+            PlayerMotionProfileMetadata metadata = profile?.EditorMetadata;
+            if (metadata == null || string.IsNullOrEmpty(metadata.SourceClipGuid)) return null;
+            string path = AssetDatabase.GUIDToAssetPath(metadata.SourceClipGuid);
+            if (string.IsNullOrEmpty(path)) return null;
             return AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>().FirstOrDefault(clip =>
             {
                 AssetDatabase.TryGetGUIDAndLocalFileIdentifier(clip, out _, out long localId);
-                return localId == profile.EditorMetadata.SourceClipLocalId;
+                return localId == metadata.SourceClipLocalId;
             });
         }
 
@@ -182,6 +197,7 @@ namespace ProjectTools.AnimationPreview
         {
             if (profile.PlantMarkerMode != PlayerPlantMarkerMode.Auto) return true;
             bool valid = true;
+            if (!Enum.IsDefined(typeof(PlayerFootPlantDetectionMode), profile.FootPlantDetectionMode)) { errors?.Add(profile.name + ": Foot Plant Detection Mode 无效。"); valid = false; }
             if (!profile.HasFootData) { errors?.Add(profile.name + ": Auto Plant Detection 缺少 Foot Channel，需要 Rebake。"); valid = false; }
             if (profile.FootPlantDetectionVersion != PlayerMotionProfile.CurrentFootPlantDetectionVersion) { errors?.Add(profile.name + ": Foot Plant Detection Version 已过期，需要 Rebake。"); valid = false; }
             if (profile.FootPlantDetectionMode == PlayerFootPlantDetectionMode.Loop) valid &= profile.ValidateLoopPhase(errors);
@@ -194,6 +210,44 @@ namespace ProjectTools.AnimationPreview
             }
             return valid;
         }
+    }
+
+    internal sealed class PlayerMotionBakePayload
+    {
+        public PlayerMotionBakePayload(float duration, int sampleRate, Vector2[] planarPosition, float[] travelDistance, float[] yaw, PlayerFootMotionBakeData leftFoot, PlayerFootMotionBakeData rightFoot, string sourceClipGuid, long sourceClipLocalId, string modelGuid, string sourceDependencyHash, string footCalibrationGuid, string footCalibrationHash, PlayerFootPlantDetectionMode detectionMode, List<PlayerFootPlantMarker> autoPlantMarkers)
+        {
+            Duration = duration;
+            SampleRate = sampleRate;
+            PlanarPosition = planarPosition;
+            TravelDistance = travelDistance;
+            Yaw = yaw;
+            LeftFoot = leftFoot;
+            RightFoot = rightFoot;
+            SourceClipGuid = sourceClipGuid;
+            SourceClipLocalId = sourceClipLocalId;
+            ModelGuid = modelGuid;
+            SourceDependencyHash = sourceDependencyHash;
+            FootCalibrationGuid = footCalibrationGuid;
+            FootCalibrationHash = footCalibrationHash;
+            DetectionMode = detectionMode;
+            AutoPlantMarkers = autoPlantMarkers;
+        }
+
+        public float Duration { get; }
+        public int SampleRate { get; }
+        public Vector2[] PlanarPosition { get; }
+        public float[] TravelDistance { get; }
+        public float[] Yaw { get; }
+        public PlayerFootMotionBakeData LeftFoot { get; }
+        public PlayerFootMotionBakeData RightFoot { get; }
+        public string SourceClipGuid { get; }
+        public long SourceClipLocalId { get; }
+        public string ModelGuid { get; }
+        public string SourceDependencyHash { get; }
+        public string FootCalibrationGuid { get; }
+        public string FootCalibrationHash { get; }
+        public PlayerFootPlantDetectionMode DetectionMode { get; }
+        public IReadOnlyList<PlayerFootPlantMarker> AutoPlantMarkers { get; }
     }
 
     internal class PlayerMotionBakeResult
