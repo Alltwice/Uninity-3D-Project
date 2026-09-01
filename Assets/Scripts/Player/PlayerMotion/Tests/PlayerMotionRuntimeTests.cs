@@ -477,7 +477,7 @@ public sealed class PlayerMotionRuntimeTests
     }
 
     [Test]
-    public void DefaultAnimationSet_ResolvesAllStableLoopsAndKeepsNewLandingCuesUnbound()
+    public void DefaultAnimationSet_ResolvesStableLoopsAndLandingPresentations()
     {
         ScriptableObject animationSet = LoadDefaultAnimationSet();
         string[] loopModes = { "Idle", "Walk", "Run", "FastRun", "Air" };
@@ -497,32 +497,44 @@ public sealed class PlayerMotionRuntimeTests
         Assert.That(GetPropertyValue(walkRight, "Profile"), Is.Not.Null);
         Assert.That(GetPropertyValue(runLeft, "Profile"), Is.Not.Null);
         Assert.That(ResolveCue(animationSet, "JumpStart", out object jumpStart), Is.True);
-        Assert.That(ResolveCue(animationSet, "LandingLv1", out object landingLv1), Is.False);
-        Assert.That(ResolveCue(animationSet, "LandWalk", out object landWalk), Is.False);
-        Assert.That(ResolveCue(animationSet, "HardLanding", out object hardLanding), Is.False);
+        Assert.That(ResolveCue(animationSet, "LandingLv1", out object landingLv1), Is.True);
+        Assert.That(ResolveLandingPresentation(animationSet, "LandWalk", out object landWalk), Is.True);
+        Assert.That(ResolveCue(animationSet, "HardLanding", out object hardLanding), Is.True);
         Assert.That(GetClip(jumpStart), Is.Not.Null);
-        Assert.That(landingLv1, Is.Null);
-        Assert.That(landWalk, Is.Null);
-        Assert.That(hardLanding, Is.Null);
+        Assert.That(GetClip(landingLv1), Is.Not.Null);
+        Assert.That(GetPropertyValue(landWalk, "Definition"), Is.Not.Null);
+        Assert.That(GetClip(GetPropertyValue(landWalk, "Transition")), Is.Not.Null);
+        Assert.That(GetClip(hardLanding), Is.Not.Null);
     }
 
     [Test]
-    public void AnimationSet_ExposesUnboundLandingCueSlots()
+    public void AnimationSet_ExposesLandingPresentationSlots()
     {
         ScriptableObject animationSet = LoadDefaultAnimationSet();
         UnityEditor.SerializedObject serialized = new UnityEditor.SerializedObject(animationSet);
-        UnityEditor.SerializedProperty jump = serialized.FindProperty("jump");
-        string[] landingFields = { "land1", "land2", "land3", "land4", "landWalk", "landRun", "landRoll" };
+        UnityEditor.SerializedProperty landing = serialized.FindProperty("landing");
+        Assert.That(landing, Is.Not.Null);
+        string[] landingFields = { "land1", "land2", "land3", "land4" };
         for (int i = 0; i < landingFields.Length; i++)
         {
-            UnityEditor.SerializedProperty field = jump.FindPropertyRelative(landingFields[i]);
+            UnityEditor.SerializedProperty field = landing.FindPropertyRelative(landingFields[i]);
             Assert.That(field, Is.Not.Null, landingFields[i]);
-            Assert.That(field.FindPropertyRelative("_Clip").objectReferenceValue, Is.Null, landingFields[i]);
+            Assert.That(field.FindPropertyRelative("_Clip").objectReferenceValue, Is.Not.Null, landingFields[i]);
+        }
+        string[] motionFields = { "landWalk", "landRun", "landRoll" };
+        for (int i = 0; i < motionFields.Length; i++)
+        {
+            UnityEditor.SerializedProperty field = landing.FindPropertyRelative(motionFields[i]);
+            Assert.That(field, Is.Not.Null, motionFields[i]);
+            Assert.That(field.FindPropertyRelative("definition").objectReferenceValue, Is.Not.Null, motionFields[i]);
+            Assert.That(field.FindPropertyRelative("defaultTransition").FindPropertyRelative("_Clip").objectReferenceValue, Is.Not.Null, motionFields[i]);
+            Assert.That(field.FindPropertyRelative("leftTransition").FindPropertyRelative("_Clip").objectReferenceValue, Is.Null, motionFields[i]);
+            Assert.That(field.FindPropertyRelative("rightTransition").FindPropertyRelative("_Clip").objectReferenceValue, Is.Null, motionFields[i]);
         }
     }
 
     [Test]
-    public void DefaultAnimationSet_ContainsExactlyTheSixteenCatalogBindings()
+    public void DefaultAnimationSet_ContainsExactlyTheNineteenCatalogBindings()
     {
         ScriptableObject animationSet = LoadDefaultAnimationSet();
         HashSet<UnityEngine.Object> definitions = new HashSet<UnityEngine.Object>();
@@ -535,13 +547,14 @@ public sealed class PlayerMotionRuntimeTests
             Assert.That(definitions.Add(definition), Is.True, definition.name);
             count++;
         }
-        Assert.That(count, Is.EqualTo(16));
-        Assert.That(definitions.Count, Is.EqualTo(16));
+        Assert.That(count, Is.EqualTo(19));
+        Assert.That(definitions.Count, Is.EqualTo(19));
         UnityEditor.SerializedObject serialized = new UnityEditor.SerializedObject(animationSet);
         Assert.That(serialized.FindProperty("motionBindings"), Is.Null);
         Assert.That(serialized.FindProperty("walk").FindPropertyRelative("motionBindings").arraySize, Is.EqualTo(6));
         Assert.That(serialized.FindProperty("run").FindPropertyRelative("motionBindings").arraySize, Is.EqualTo(6));
         Assert.That(serialized.FindProperty("sprint").FindPropertyRelative("motionBindings").arraySize, Is.EqualTo(3));
+        Assert.That(serialized.FindProperty("landing"), Is.Not.Null);
         Assert.That(serialized.FindProperty("other").FindPropertyRelative("motionBindings").arraySize, Is.EqualTo(1));
     }
 
@@ -601,7 +614,7 @@ public sealed class PlayerMotionRuntimeTests
     {
         PlayerLandingSnapshot snapshot = new PlayerLandingSnapshot(1, severity, 0f, 0f, PlayerLocomotionMode.Run, true, targetGroundMode);
         Assert.That(ResolveLandingCue(snapshot, out string cueName), Is.True);
-        Assert.That(cueName, Is.EqualTo("HardLanding"));
+        Assert.That(cueName, Is.EqualTo("HardLand"));
     }
 
     [TestCase(PlayerLandingSeverity.Lv1, PlayerLocomotionMode.Walk)]
@@ -614,9 +627,9 @@ public sealed class PlayerMotionRuntimeTests
         Assert.That(cueName, Is.EqualTo(targetGroundMode == PlayerLocomotionMode.Walk ? "LandWalk" : targetGroundMode == PlayerLocomotionMode.Run ? "LandRun" : "LandRoll"));
     }
 
-    [TestCase(PlayerLandingSeverity.Lv1, "LandingLv1")]
-    [TestCase(PlayerLandingSeverity.Lv2, "LandingLv2")]
-    [TestCase(PlayerLandingSeverity.Lv3, "LandingLv3")]
+    [TestCase(PlayerLandingSeverity.Lv1, "Land1")]
+    [TestCase(PlayerLandingSeverity.Lv2, "Land2")]
+    [TestCase(PlayerLandingSeverity.Lv3, "Land3")]
     public void LandingPresentationResolver_NoMoveIntentUsesSeverity(PlayerLandingSeverity severity, string expectedCue)
     {
         PlayerLandingSnapshot snapshot = new PlayerLandingSnapshot(1, severity, 0f, 0f, PlayerLocomotionMode.FastRun, false, PlayerLocomotionMode.Run);
@@ -629,7 +642,7 @@ public sealed class PlayerMotionRuntimeTests
     {
         PlayerLandingSnapshot snapshot = new PlayerLandingSnapshot(1, PlayerLandingSeverity.Lv2, 0f, 0f, PlayerLocomotionMode.FastRun, true, PlayerLocomotionMode.Idle);
         Assert.That(ResolveLandingCue(snapshot, out string cueName), Is.True);
-        Assert.That(cueName, Is.EqualTo("LandingLv2"));
+        Assert.That(cueName, Is.EqualTo("Land2"));
     }
 
     [Test]
@@ -652,10 +665,10 @@ public sealed class PlayerMotionRuntimeTests
     {
         PlayerLandingSnapshot snapshot = new PlayerLandingSnapshot(1, PlayerLandingSeverity.Lv4, 0f, 0f, PlayerLocomotionMode.Run, true, PlayerLocomotionMode.Run);
         object transition = CreateStateTransition("PlayerAirState", "PlayerHardLandingState", "HardLanded");
-        Assert.That(ResolveDriverLandingCue(snapshot, transition), Is.EqualTo("HardLanding"));
+        Assert.That(ResolveDriverLandingCue(snapshot, transition), Is.EqualTo("HardLand"));
     }
 
-    [TestCase("PlayerIdleState", "LandingLv1")]
+    [TestCase("PlayerIdleState", "Land1")]
     [TestCase("PlayerWalkState", "LandWalk")]
     [TestCase("PlayerRunState", "LandRun")]
     [TestCase("PlayerFastRunState", "LandRoll")]
@@ -1019,14 +1032,21 @@ public sealed class PlayerMotionRuntimeTests
         return result;
     }
 
+    private static bool ResolveLandingPresentation(ScriptableObject animationSet, string presentationName, out object binding)
+    {
+        object landing = GetPropertyValue(animationSet, "Landing");
+        binding = landing.GetType().GetProperty(presentationName, BindingFlags.Instance | BindingFlags.Public).GetValue(landing);
+        return binding != null && GetPropertyValue(binding, "Definition") != null;
+    }
+
     private static bool ResolveLandingCue(PlayerLandingSnapshot snapshot, out string cueName)
     {
         System.Type resolverType = FindLoadedType("PlayerLandingPresentationResolver");
-        System.Type cueType = FindLoadedType("PlayerAnimationCue");
+        System.Type presentationType = FindLoadedType("PlayerLandingPresentationKey");
         MethodInfo method = resolverType.GetMethod("TryResolve", BindingFlags.Static | BindingFlags.Public);
         object[] arguments = { snapshot, null };
         bool result = (bool)method.Invoke(null, arguments);
-        cueName = result && arguments[1] != null ? System.Enum.GetName(cueType, arguments[1]) : null;
+        cueName = result && arguments[1] != null ? System.Enum.GetName(presentationType, arguments[1]) : null;
         return result;
     }
 
@@ -1036,9 +1056,9 @@ public sealed class PlayerMotionRuntimeTests
         System.Type transitionType = FindLoadedType("PlayerStateTransition");
         System.Type nullableTransitionType = typeof(System.Nullable<>).MakeGenericType(transitionType);
         object nullableTransition = System.Activator.CreateInstance(nullableTransitionType, transition);
-        MethodInfo method = driverType.GetMethod("ResolveLandingCue", BindingFlags.Static | BindingFlags.NonPublic);
+        MethodInfo method = driverType.GetMethod("ResolveLandingPresentation", BindingFlags.Static | BindingFlags.NonPublic);
         object result = method.Invoke(null, new[] { nullableTransition, (object)snapshot });
-        return result == null ? null : System.Enum.GetName(FindLoadedType("PlayerAnimationCue"), result);
+        return result == null ? null : System.Enum.GetName(FindLoadedType("PlayerLandingPresentationKey"), result);
     }
 
     private static object CreateStateTransition(string previousStateName, string currentStateName, string reasonName)

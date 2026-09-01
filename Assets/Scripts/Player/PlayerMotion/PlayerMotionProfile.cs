@@ -42,12 +42,13 @@ public class PlayerMotionProfileMetadata
 #endif
 }
 /// <summary>
-/// 烘焙运动数据和人工 Plant 标注文件
+/// 烘焙运动数据和自动或人工 Plant Marker 文件
 /// </summary>
 [CreateAssetMenu(fileName = "PlayerMotionProfile", menuName = "Player/Motion/Profile")]
 public class PlayerMotionProfile : ScriptableObject
 {
-    public const int CurrentBakeVersion = 3;
+    public const int CurrentBakeVersion = 4;
+    public const int CurrentFootPlantDetectionVersion = 1;
     //动画持续时间
     [Min(0f)] [SerializeField] private float duration;
     [Min(1)] [SerializeField] private int sampleRate = 60;
@@ -57,6 +58,9 @@ public class PlayerMotionProfile : ScriptableObject
     [SerializeField] private PlayerFootMotionChannel leftFoot = new PlayerFootMotionChannel();
     [SerializeField] private PlayerFootMotionChannel rightFoot = new PlayerFootMotionChannel();
     [SerializeField] private List<PlayerFootPlantMarker> plantMarkers = new List<PlayerFootPlantMarker>();
+    [SerializeField] private PlayerFootPlantDetectionMode footPlantDetectionMode;
+    [SerializeField] private PlayerPlantMarkerMode plantMarkerMode;
+    [SerializeField] private int footPlantDetectionVersion;
     //保存元数据
     [SerializeField] private PlayerMotionProfileMetadata editorMetadata = new PlayerMotionProfileMetadata();
 
@@ -71,6 +75,9 @@ public class PlayerMotionProfile : ScriptableObject
     public bool HasFootData => leftFoot != null && rightFoot != null && leftFoot.HasData && rightFoot.HasData;
     public IReadOnlyList<PlayerFootPlantMarker> PlantMarkers => plantMarkers == null ? (IReadOnlyList<PlayerFootPlantMarker>)Array.Empty<PlayerFootPlantMarker>() : plantMarkers;
     public bool HasPlantMarkers => plantMarkers != null && plantMarkers.Count > 0;
+    public PlayerFootPlantDetectionMode FootPlantDetectionMode => footPlantDetectionMode;
+    public PlayerPlantMarkerMode PlantMarkerMode => plantMarkerMode;
+    public int FootPlantDetectionVersion => footPlantDetectionVersion;
     public PlayerMotionProfileMetadata EditorMetadata => editorMetadata;
     /// <summary>
     /// 查询此刻的移动数据
@@ -85,7 +92,7 @@ public class PlayerMotionProfile : ScriptableObject
     public float EvaluateYaw(float progress) => Evaluate(cumulativeYaw, progress);
 
     /// <summary>
-    /// 按非循环动画时间解析截至当前时刻最近的人工 Plant
+    /// 按非循环动画时间解析截至当前时刻最近的 Plant Marker
     /// </summary>
     public PlayerFoot ResolveLastPlantFoot(float time, PlayerFoot fallback)
     {
@@ -172,7 +179,7 @@ public class PlayerMotionProfile : ScriptableObject
     }
 
     /// <summary>
-    /// 校验循环相位查询所需的人工 Plant Marker 配置和采样间隔约束
+    /// 校验循环相位查询所需的 Plant Marker 配置和采样间隔约束
     /// </summary>
     public bool ValidateLoopPhase(ICollection<string> errors)
     {
@@ -215,6 +222,7 @@ public class PlayerMotionProfile : ScriptableObject
             PlayerFootPlantMarker marker = plantMarkers[index];
             if (!IsValidPlantFoot(marker.Foot)) { errors?.Add(name + ": Plant Marker 的脚必须是 Left 或 Right。"); valid = false; }
             if (!IsFinite(marker.NormalizedTime) || marker.NormalizedTime < 0f || marker.NormalizedTime > 1f) { errors?.Add(name + ": Plant Marker 时间必须是 0 到 1 的有限值。"); valid = false; }
+            if (!IsFinite(marker.Confidence) || marker.Confidence < 0f || marker.Confidence > 1f) { errors?.Add(name + ": Plant Marker Confidence 必须是 0 到 1 的有限值。"); valid = false; }
             if (index > 0 && IsFinite(plantMarkers[index - 1].NormalizedTime) && IsFinite(marker.NormalizedTime) && marker.NormalizedTime < plantMarkers[index - 1].NormalizedTime)
             {
                 errors?.Add(name + ": Plant Marker 必须按时间排序。");
@@ -255,6 +263,24 @@ public class PlayerMotionProfile : ScriptableObject
         if (rightFootData != null) rightFoot.SetBakedData(rightFootData);
         editorMetadata ??= new PlayerMotionProfileMetadata();
         editorMetadata.Set(CurrentBakeVersion, bakedSampleRate, clipGuid, clipLocalId, modelGuid, dependencyHash, calibrationGuid, calibrationHash);
+    }
+
+    public void SetPlantAuthoringSettings(PlayerFootPlantDetectionMode detectionMode, PlayerPlantMarkerMode markerMode)
+    {
+        footPlantDetectionMode = detectionMode;
+        plantMarkerMode = markerMode;
+    }
+
+    public void ReplacePlantMarkers(IEnumerable<PlayerFootPlantMarker> markers, int detectionVersion)
+    {
+        if (markers == null) throw new ArgumentNullException(nameof(markers));
+        plantMarkers = new List<PlayerFootPlantMarker>(markers);
+        plantMarkers.Sort((left, right) =>
+        {
+            int timeComparison = left.NormalizedTime.CompareTo(right.NormalizedTime);
+            return timeComparison != 0 ? timeComparison : ((int)left.Foot).CompareTo((int)right.Foot);
+        });
+        footPlantDetectionVersion = detectionVersion;
     }
 
 #endif

@@ -33,6 +33,8 @@ namespace ProjectTools.AnimationPreview
         private ObjectField motionProfileField;
         private ObjectField footCalibrationField;
         private IntegerField motionSampleRateField;
+        private EnumField footPlantDetectionModeField;
+        private EnumField plantMarkerModeField;
         private Label motionValidationLabel;
         private Vector3Field leftFootOffsetField;
         private Vector3Field rightFootOffsetField;
@@ -75,6 +77,7 @@ namespace ProjectTools.AnimationPreview
         private bool focusMode;
         private double lastEditorTime;
         private bool applyingFootCalibration;
+        private AnimationClip motionSettingsClip;
 
         [MenuItem("Window/Animation/Model Animation Preview")]
         public static void Open()
@@ -144,6 +147,8 @@ namespace ProjectTools.AnimationPreview
             motionProfileField = rootVisualElement.Q<ObjectField>("motion-profile-field");
             footCalibrationField = rootVisualElement.Q<ObjectField>("foot-calibration-field");
             motionSampleRateField = rootVisualElement.Q<IntegerField>("motion-sample-rate-field");
+            footPlantDetectionModeField = rootVisualElement.Q<EnumField>("foot-plant-detection-mode-field");
+            plantMarkerModeField = rootVisualElement.Q<EnumField>("plant-marker-mode-field");
             motionValidationLabel = rootVisualElement.Q<Label>("motion-validation-label");
             leftFootOffsetField = rootVisualElement.Q<Vector3Field>("left-foot-offset-field");
             rightFootOffsetField = rootVisualElement.Q<Vector3Field>("right-foot-offset-field");
@@ -193,6 +198,8 @@ namespace ProjectTools.AnimationPreview
             motionProfileField.allowSceneObjects = false;
             footCalibrationField.objectType = typeof(PlayerFootCalibration);
             footCalibrationField.allowSceneObjects = false;
+            footPlantDetectionModeField.Init(PlayerFootPlantDetectionMode.Loop);
+            plantMarkerModeField.Init(PlayerPlantMarkerMode.Auto);
             rootMotionField.Init(AnimationPreviewRootMotionMode.Locked);
             modeField = new RadioButtonGroup { label = "Mode" };
             modeField.Add(new RadioButton("Single Clip"));
@@ -241,7 +248,9 @@ namespace ProjectTools.AnimationPreview
             profileField.RegisterValueChangedCallback(evt => LoadProfile(evt.newValue as AnimationPreviewProfile));
             modelField.RegisterValueChangedCallback(evt => SetModel(evt.newValue as GameObject));
             footCalibrationField.RegisterValueChangedCallback(evt => SetFootCalibration(evt.newValue as PlayerFootCalibration));
-            motionProfileField.RegisterValueChangedCallback(_ => UpdateMotionToolsUI());
+            motionProfileField.RegisterValueChangedCallback(_ => { motionSettingsClip = null; UpdateMotionToolsUI(); });
+            footPlantDetectionModeField.RegisterValueChangedCallback(_ => ApplyPlantAuthoringSettings());
+            plantMarkerModeField.RegisterValueChangedCallback(_ => ApplyPlantAuthoringSettings());
             sequenceField.RegisterValueChangedCallback(evt => SelectSequence(evt.newValue as AnimationPreviewSequence));
             modeField.RegisterValueChangedCallback(evt => SelectPreviewMode((PreviewMode)evt.newValue));
             sourceField.RegisterValueChangedCallback(evt =>
@@ -704,7 +713,21 @@ namespace ProjectTools.AnimationPreview
             rootVisualElement.Q<Button>("motion-rebake-button")?.SetEnabled(supportsSingleClip);
             rootVisualElement.Q<Button>("motion-trajectory-button")?.SetEnabled(supportsSingleClip);
             PlayerMotionProfile profile = motionProfileField?.value as PlayerMotionProfile;
-            bool canEditPlantMarkers = supportsSingleClip && PlayerFootPlantMarkerEditor.IsProfileForClip(profile, session.Clip);
+            if (profile != null)
+            {
+                footPlantDetectionModeField?.SetValueWithoutNotify(profile.FootPlantDetectionMode);
+                plantMarkerModeField?.SetValueWithoutNotify(profile.PlantMarkerMode);
+                motionSettingsClip = session?.Clip;
+            }
+            else if (motionSettingsClip != session?.Clip)
+            {
+                footPlantDetectionModeField?.SetValueWithoutNotify(session?.Clip != null && session.Clip.isLooping ? PlayerFootPlantDetectionMode.Loop : PlayerFootPlantDetectionMode.Start);
+                plantMarkerModeField?.SetValueWithoutNotify(PlayerPlantMarkerMode.Auto);
+                motionSettingsClip = session?.Clip;
+            }
+            footPlantDetectionModeField?.SetEnabled(supportsSingleClip);
+            plantMarkerModeField?.SetEnabled(supportsSingleClip);
+            bool canEditPlantMarkers = supportsSingleClip && profile != null && profile.PlantMarkerMode == PlayerPlantMarkerMode.ManualOverride && PlayerFootPlantMarkerEditor.IsProfileForClip(profile, session.Clip);
             markLeftPlantButton?.SetEnabled(canEditPlantMarkers);
             markRightPlantButton?.SetEnabled(canEditPlantMarkers);
             deletePlantButton?.SetEnabled(canEditPlantMarkers);
@@ -725,6 +748,7 @@ namespace ProjectTools.AnimationPreview
             foreach (PlayerFootPlantMarkerEditor.MarkerValue markerValue in PlayerFootPlantMarkerEditor.Read(profile))
             {
                 Label marker = new Label(markerValue.Foot == PlayerFoot.Left ? "L" : markerValue.Foot == PlayerFoot.Right ? "R" : "?");
+                marker.tooltip = $"{markerValue.Foot} Plant {markerValue.NormalizedTime:F3} / Confidence {markerValue.Confidence:F2}";
                 marker.AddToClassList("plant-marker");
                 marker.style.left = new Length(markerValue.NormalizedTime * 100f, LengthUnit.Percent);
                 plantMarkerTrack.Add(marker);
@@ -817,7 +841,7 @@ namespace ProjectTools.AnimationPreview
 
         private bool CanEditPlantMarkers(PlayerMotionProfile profile)
         {
-            return session != null && session.IsReady && !session.IsSequence && PlayerFootPlantMarkerEditor.IsProfileForClip(profile, session.Clip);
+            return session != null && session.IsReady && !session.IsSequence && profile != null && profile.PlantMarkerMode == PlayerPlantMarkerMode.ManualOverride && PlayerFootPlantMarkerEditor.IsProfileForClip(profile, session.Clip);
         }
 
         private void ShowPlantMarkerMessage(string message)
@@ -846,6 +870,7 @@ namespace ProjectTools.AnimationPreview
                 if (string.IsNullOrEmpty(path)) return;
                 //创建SO，在内存上
                 target = CreateInstance<PlayerMotionProfile>();
+                target.SetPlantAuthoringSettings((PlayerFootPlantDetectionMode)footPlantDetectionModeField.value, (PlayerPlantMarkerMode)plantMarkerModeField.value);
                 //真正在磁盘上船舰文件
                 AssetDatabase.CreateAsset(target, path);
                 motionProfileField.SetValueWithoutNotify(target);
@@ -858,17 +883,45 @@ namespace ProjectTools.AnimationPreview
             PlayerMotionBaker.Bake(session, Mathf.Max(1, motionSampleRateField.value), target);
             rootMotionField.SetValueWithoutNotify(AnimationPreviewRootMotionMode.Trajectory);
             ApplySessionSettings();
-            motionValidationLabel.text = $"已 Bake：{target.SampleCount} samples / {target.Duration:F3}s / Travel {target.EvaluateTravelDistance(1f):F3}m / Yaw {target.EvaluateYaw(1f):F1}°";
+            List<string> errors = new List<string>();
+            List<string> warnings = new List<string>();
+            bool valid = PlayerMotionBaker.Validate(target, errors, warnings);
+            string summary = $"已 Bake：{target.SampleCount} samples / {target.Duration:F3}s / Travel {target.EvaluateTravelDistance(1f):F3}m / Yaw {target.EvaluateYaw(1f):F1}° / Plant {target.PlantMarkers.Count}";
+            motionValidationLabel.text = FormatMotionValidation(summary, valid, errors, warnings);
             UpdateMotionToolsUI();
             Selection.activeObject = target;
         }
 
         private void ValidateMotionProfile()
         {
-            List<string> messages = new List<string>();
-            bool valid = PlayerMotionBaker.Validate(motionProfileField.value as PlayerMotionProfile, messages);
-            motionValidationLabel.text = valid ? "Profile 有效且 Source 未过期。" : string.Join("\n", messages);
+            List<string> errors = new List<string>();
+            List<string> warnings = new List<string>();
+            bool valid = PlayerMotionBaker.Validate(motionProfileField.value as PlayerMotionProfile, errors, warnings);
+            motionValidationLabel.text = FormatMotionValidation("Profile 有效且 Source 未过期。", valid, errors, warnings);
             UpdateMotionToolsUI();
+        }
+
+        private void ApplyPlantAuthoringSettings()
+        {
+            PlayerMotionProfile selectedProfile = motionProfileField?.value as PlayerMotionProfile;
+            if (selectedProfile == null || footPlantDetectionModeField?.value == null || plantMarkerModeField?.value == null) return;
+            PlayerFootPlantDetectionMode detectionMode = (PlayerFootPlantDetectionMode)footPlantDetectionModeField.value;
+            PlayerPlantMarkerMode markerMode = (PlayerPlantMarkerMode)plantMarkerModeField.value;
+            if (selectedProfile.FootPlantDetectionMode == detectionMode && selectedProfile.PlantMarkerMode == markerMode) return;
+            Undo.RecordObject(selectedProfile, "Change Plant Authoring Settings");
+            selectedProfile.SetPlantAuthoringSettings(detectionMode, markerMode);
+            EditorUtility.SetDirty(selectedProfile);
+            AssetDatabase.SaveAssetIfDirty(selectedProfile);
+            UpdateMotionToolsUI();
+        }
+
+        private static string FormatMotionValidation(string successMessage, bool valid, ICollection<string> errors, ICollection<string> warnings)
+        {
+            List<string> lines = new List<string>();
+            if (valid) lines.Add(successMessage);
+            else foreach (string error in errors) lines.Add("Error: " + error);
+            foreach (string warning in warnings) lines.Add("Warning: " + warning);
+            return string.Join("\n", lines);
         }
 
         private void ShowMotionTrajectory()

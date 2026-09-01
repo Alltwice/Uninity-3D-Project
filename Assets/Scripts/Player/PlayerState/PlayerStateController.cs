@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 注册并按输入转换、状态 Tick、结果转换三个阶段更新唯一的玩家 Gameplay 状态。
+/// 注册并按输入转换、状态 Tick、结果转换三个阶段更新唯一的玩家 Gameplay 状态
 /// </summary>
 public class PlayerStateController : MonoBehaviour
 {

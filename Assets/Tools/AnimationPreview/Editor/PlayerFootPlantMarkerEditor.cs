@@ -11,14 +11,16 @@ namespace ProjectTools.AnimationPreview
     {
         internal struct MarkerValue
         {
-            public MarkerValue(PlayerFoot foot, float normalizedTime)
+            public MarkerValue(PlayerFoot foot, float normalizedTime, float confidence = 1f)
             {
                 Foot = foot;
                 NormalizedTime = normalizedTime;
+                Confidence = confidence;
             }
 
             public PlayerFoot Foot;
             public float NormalizedTime;
+            public float Confidence;
         }
 
         /// <summary>
@@ -30,11 +32,8 @@ namespace ProjectTools.AnimationPreview
         {
             List<MarkerValue> values = new List<MarkerValue>();
             if (profile == null) return values;
-            SerializedObject serializedProfile = new SerializedObject(profile);
-            serializedProfile.Update();
-            SerializedProperty markerArray = serializedProfile.FindProperty("plantMarkers");
-            if (markerArray == null) return values;
-            values = ReadValues(markerArray);
+            IReadOnlyList<PlayerFootPlantMarker> markers = profile.PlantMarkers;
+            for (int index = 0; index < markers.Count; index++) values.Add(new MarkerValue(markers[index].Foot, NormalizeTime(markers[index].NormalizedTime), markers[index].Confidence));
             Sort(values);
             return values;
         }
@@ -60,19 +59,11 @@ namespace ProjectTools.AnimationPreview
         {
             if (profile == null || (foot != PlayerFoot.Left && foot != PlayerFoot.Right) || !IsFinite(normalizedTime)) return false;
             normalizedTime = Mathf.Clamp01(normalizedTime);
-            //拿到So文件
-            SerializedObject serializedProfile = new SerializedObject(profile);
-            serializedProfile.Update();
-            SerializedProperty markerArray = serializedProfile.FindProperty("plantMarkers");
-            if (markerArray == null) return false;
-            List<MarkerValue> values = ReadValues(markerArray);
+            List<MarkerValue> values = Read(profile);
             values.Add(new MarkerValue(foot, normalizedTime));
             Sort(values);
-            WriteValues(markerArray, values);
-            //应用更改
-            bool changed = serializedProfile.ApplyModifiedProperties();
-            if (changed) Save(profile);
-            return changed;
+            Write(profile, values, "Add Plant Marker");
+            return true;
         }
 
         /// <summary>
@@ -90,11 +81,7 @@ namespace ProjectTools.AnimationPreview
             removedFoot = PlayerFoot.Unknown;
             if (profile == null || !IsFinite(normalizedTime)) return false;
             normalizedTime = Mathf.Clamp01(normalizedTime);
-            SerializedObject serializedProfile = new SerializedObject(profile);
-            serializedProfile.Update();
-            SerializedProperty markerArray = serializedProfile.FindProperty("plantMarkers");
-            if (markerArray == null) return false;
-            List<MarkerValue> values = ReadValues(markerArray);
+            List<MarkerValue> values = Read(profile);
             float interval = GetSampleInterval(profile);
             int nearestIndex = -1;
             float nearestDistance = float.PositiveInfinity;
@@ -111,10 +98,8 @@ namespace ProjectTools.AnimationPreview
             removedFoot = values[nearestIndex].Foot;
             values.RemoveAt(nearestIndex);
             Sort(values);
-            WriteValues(markerArray, values);
-            bool changed = serializedProfile.ApplyModifiedProperties();
-            if (changed) Save(profile);
-            return changed;
+            Write(profile, values, "Remove Plant Marker");
+            return true;
         }
 
         internal static float GetSampleInterval(PlayerMotionProfile profile)
@@ -122,38 +107,13 @@ namespace ProjectTools.AnimationPreview
             return profile != null && profile.SampleCount > 1 ? 1f / (profile.SampleCount - 1) : 0f;
         }
 
-        /// <summary>
-        /// 将被序列化的数据重新转为C#逻辑
-        /// </summary>
-        private static List<MarkerValue> ReadValues(SerializedProperty markerArray)
+        private static void Write(PlayerMotionProfile profile, List<MarkerValue> values, string undoName)
         {
-            List<MarkerValue> values = new List<MarkerValue>(markerArray.arraySize);
-            for (int index = 0; index < markerArray.arraySize; index++)
-            {
-                //SerializedProperty代表序列化内容中的节点而非元素，GetArrayElementAtIndex表示从序列化数组中取元素
-                SerializedProperty marker = markerArray.GetArrayElementAtIndex(index);
-                //FindPropertyRelative寻找字段
-                SerializedProperty foot = marker.FindPropertyRelative("foot");
-                SerializedProperty normalizedTime = marker.FindPropertyRelative("normalizedTime");
-                if (foot == null || normalizedTime == null) continue;
-                values.Add(new MarkerValue((PlayerFoot)foot.enumValueIndex, NormalizeTime(normalizedTime.floatValue)));
-            }
-            return values;
-        }
-
-        /// <summary>
-        /// 将处理好的序列化数据重新写入
-        /// </summary>
-        private static void WriteValues(SerializedProperty markerArray, List<MarkerValue> values)
-        {
-            markerArray.ClearArray();
-            markerArray.arraySize = values.Count;
-            for (int index = 0; index < values.Count; index++)
-            {
-                SerializedProperty marker = markerArray.GetArrayElementAtIndex(index);
-                marker.FindPropertyRelative("foot").enumValueIndex = (int)values[index].Foot;
-                marker.FindPropertyRelative("normalizedTime").floatValue = values[index].NormalizedTime;
-            }
+            List<PlayerFootPlantMarker> markers = new List<PlayerFootPlantMarker>(values.Count);
+            for (int index = 0; index < values.Count; index++) markers.Add(new PlayerFootPlantMarker(values[index].Foot, values[index].NormalizedTime, values[index].Confidence));
+            Undo.RecordObject(profile, undoName);
+            profile.ReplacePlantMarkers(markers, 0);
+            Save(profile);
         }
 
         /// <summary>
@@ -177,6 +137,7 @@ namespace ProjectTools.AnimationPreview
 
         private static void Save(PlayerMotionProfile profile)
         {
+            EditorUtility.SetDirty(profile);
             AssetDatabase.SaveAssetIfDirty(profile);
         }
     }

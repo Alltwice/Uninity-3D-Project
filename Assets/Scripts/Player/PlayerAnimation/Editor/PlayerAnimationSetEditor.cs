@@ -31,13 +31,10 @@ public class PlayerAnimationSetEditor : Editor
         valid &= ValidateLoop(animationSet, PlayerLocomotionMode.Idle, "Idle", errors, validatedProfiles);
         valid &= ValidateLoop(animationSet, PlayerLocomotionMode.Air, "Air", errors, validatedProfiles);
         valid &= ValidateCue(animationSet, PlayerAnimationCue.JumpStart, "Jump.JumpStart", errors);
-        WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandingLv1, "Jump.Land1");
-        WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandingLv2, "Jump.Land2");
-        WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandingLv3, "Jump.Land3");
-        WarnIfCueUnbound(animationSet, PlayerAnimationCue.HardLanding, "Jump.Land4");
-        WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandWalk, "Jump.LandWalk");
-        WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandRun, "Jump.LandRun");
-        WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandRoll, "Jump.LandRoll");
+        WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandingLv1, "Landing.Land1");
+        WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandingLv2, "Landing.Land2");
+        WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandingLv3, "Landing.Land3");
+        WarnIfCueUnbound(animationSet, PlayerAnimationCue.HardLanding, "Landing.Land4");
         if (valid) Debug.Log(animationSet.name + ": Motion bindings and baked sources valid.", animationSet);
         else Debug.LogError(string.Join("\n", errors), animationSet);
     }

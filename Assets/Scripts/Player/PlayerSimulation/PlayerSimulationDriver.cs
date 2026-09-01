@@ -88,22 +88,35 @@ public class PlayerSimulationDriver : MonoBehaviour
             motionPlanner.HandleStateTransition(resultTransition.Value, postTransitionIntent, motorResult, phaseSnapshot);
         }
         PlayerStateTransition? presentationTransition = resultTransition ?? transition ?? pendingTransition;
-        PlayerAnimationCue? landingCue = ResolveLandingCue(resultTransition, LandingSnapshot);
+        PlayerLandingPresentationKey? landingPresentation = ResolveLandingPresentation(resultTransition, LandingSnapshot);
+        if (resultTransition.HasValue && landingPresentation.HasValue && IsLandingMotion(landingPresentation.Value))
+        {
+            PlayerGameplayIntent landingIntent = PlayerGameplayIntent.Create(desiredMoveDirection, transform.forward);
+            landingIntent.LocomotionMode = stateController.CurrentLocomotionMode;
+            motionPlanner.TryBeginLandingMotion(resultTransition.Value, landingPresentation.Value, landingIntent, motorResult, phaseSnapshot);
+        }
         pendingTransition = null;
         //播放动画表现
-        animationController.Present(stateController.CurrentState.GetType(), presentationTransition, motionPlanner.Snapshot, stateController.CurrentPresentationProgress, landingCue);
+        animationController.Present(stateController.CurrentState.GetType(), presentationTransition, motionPlanner.Snapshot, stateController.CurrentPresentationProgress, landingPresentation);
         //animancer设定为手动后需要手动更新
         animationController.EvaluateGraph(deltaTime);
     }
 
-    private static PlayerAnimationCue? ResolveLandingCue(PlayerStateTransition? transition, PlayerLandingSnapshot snapshot)
+    private static PlayerLandingPresentationKey? ResolveLandingPresentation(PlayerStateTransition? transition, PlayerLandingSnapshot snapshot)
     {
         if (!snapshot.IsLandingEvent || !transition.HasValue) return null;
         PlayerStateTransition resolvedTransition = transition.Value;
-        if (resolvedTransition.CurrentStateType == typeof(PlayerHardLandingState)) return PlayerAnimationCue.HardLanding;
+        if (resolvedTransition.CurrentStateType == typeof(PlayerHardLandingState)) return PlayerLandingPresentationKey.HardLand;
         if (resolvedTransition.CurrentStateType == typeof(PlayerAirState) && resolvedTransition.Reason == PlayerStateTransitionReason.Jumped) return null;
         if (!IsGroundState(resolvedTransition.CurrentStateType)) return null;
-        return PlayerLandingPresentationResolver.TryResolveLand(snapshot, out PlayerAnimationCue cue) ? cue : (PlayerAnimationCue?)null;
+        return PlayerLandingPresentationResolver.TryResolve(snapshot, out PlayerLandingPresentationKey presentation) ? presentation : (PlayerLandingPresentationKey?)null;
+    }
+    /// <summary>
+    /// 判断落地动画是否是烘焙动画
+    /// </summary>
+    private static bool IsLandingMotion(PlayerLandingPresentationKey presentation)
+    {
+        return presentation == PlayerLandingPresentationKey.LandWalk || presentation == PlayerLandingPresentationKey.LandRun || presentation == PlayerLandingPresentationKey.LandRoll;
     }
 
     private static bool IsGroundState(Type stateType)

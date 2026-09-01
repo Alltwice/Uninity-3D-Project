@@ -9,14 +9,37 @@ public enum PlayerFoot
     Right
 }
 
+public enum PlayerFootPlantDetectionMode
+{
+    Loop,
+    Start,
+    Stop,
+    Turn
+}
+
+public enum PlayerPlantMarkerMode
+{
+    ManualOverride = 0,
+    Auto = 1
+}
+
 [Serializable]
 public struct PlayerFootPlantMarker
 {
     [SerializeField] private PlayerFoot foot;
     [SerializeField, Range(0f, 1f)] private float normalizedTime;
+    [SerializeField, Range(0f, 1f)] private float confidence;
+
+    public PlayerFootPlantMarker(PlayerFoot foot, float normalizedTime, float confidence)
+    {
+        this.foot = foot;
+        this.normalizedTime = normalizedTime;
+        this.confidence = confidence;
+    }
 
     public PlayerFoot Foot => foot;
     public float NormalizedTime => normalizedTime;
+    public float Confidence => confidence;
 }
 
 [Serializable]

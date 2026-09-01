@@ -37,7 +37,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
         animancer.Graph.UpdateMode = DirectorUpdateMode.Manual;
     }
 
-    public void Present(Type currentGameplayStateType, PlayerStateTransition? transition, PlayerMotionSnapshot motion, float stateProgress, PlayerAnimationCue? landingCue)
+    public void Present(Type currentGameplayStateType, PlayerStateTransition? transition, PlayerMotionSnapshot motion, float stateProgress, PlayerLandingPresentationKey? landingPresentation)
     {
         gameplayStateType = currentGameplayStateType;
         if (motion.EntryLastPlantFoot != PlayerFoot.Unknown) currentLastPlantFoot = motion.EntryLastPlantFoot;
@@ -46,7 +46,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
         bool motionCancelled = motion.JustCancelled && motion.InstanceId == presentedMotionInstanceId;
         if (newMotion) PlayMotion(motion);
         else if (motionCancelled) ClearBoundary();
-        if (transition.HasValue && !newMotion) PlayStateTransition(transition.Value, landingCue);
+        if (transition.HasValue && !newMotion) PlayStateTransition(transition.Value, landingPresentation);
         else if (!newMotion && !motionCancelled && motion.ActiveDefinition != null && motion.InstanceId == presentedMotionInstanceId) UpdateBoundaryMotion(motion);
         else if (!newMotion && !transition.HasValue && motionCancelled) PlayStableLoop(gameplayStateType);
         if (gameplayStateType == typeof(PlayerHardLandingState) && hardLandingState != null)
@@ -131,14 +131,14 @@ public sealed class PlayerAnimationController : MonoBehaviour
         handoffLoopState.Weight = 0f;
     }
     
-    private void PlayStateTransition(PlayerStateTransition transition, PlayerAnimationCue? landingCue)
+    private void PlayStateTransition(PlayerStateTransition transition, PlayerLandingPresentationKey? landingPresentation)
     {
         ++presentationSequence;
         ClearBoundary();
         if (transition.CurrentStateType == typeof(PlayerHardLandingState))
         {
             hardLandingState = null;
-            if (animationSet == null || !animationSet.TryResolveCue(PlayerAnimationCue.HardLanding, out ClipTransition hardLandingTransition))
+            if (animationSet == null || !animationSet.TryResolveLandingPresentation(PlayerLandingPresentationKey.HardLand, out ClipTransition hardLandingTransition))
             {
                 PlayStableLoop(typeof(PlayerHardLandingState));
                 return;
@@ -159,9 +159,19 @@ public sealed class PlayerAnimationController : MonoBehaviour
             else PlayStableLoop(typeof(PlayerAirState));
             return;
         }
-        if (transition.PreviousStateType == typeof(PlayerAirState) && IsGroundState(transition.CurrentStateType) && landingCue.HasValue && animationSet != null && animationSet.TryResolveCue(landingCue.Value, out ClipTransition landing))
+        if (transition.PreviousStateType == typeof(PlayerAirState) && IsGroundState(transition.CurrentStateType) && landingPresentation.HasValue)
         {
-            PlayPresentationEdge(landing, transition.CurrentStateType, presentationSequence);
+            if (IsLandingMotion(landingPresentation.Value))
+            {
+                PlayStableLoop(transition.CurrentStateType);
+                return;
+            }
+            if (animationSet != null && animationSet.TryResolveLandingPresentation(landingPresentation.Value, out ClipTransition landing))
+            {
+                PlayPresentationEdge(landing, transition.CurrentStateType, presentationSequence);
+                return;
+            }
+            PlayStableLoop(transition.CurrentStateType);
             return;
         }
         PlayStableLoop(transition.CurrentStateType);
@@ -209,6 +219,11 @@ public sealed class PlayerAnimationController : MonoBehaviour
     private static bool IsGroundState(Type stateType)
     {
         return stateType == typeof(PlayerIdleState) || stateType == typeof(PlayerWalkState) || stateType == typeof(PlayerRunState) || stateType == typeof(PlayerFastRunState);
+    }
+
+    private static bool IsLandingMotion(PlayerLandingPresentationKey presentation)
+    {
+        return presentation == PlayerLandingPresentationKey.LandWalk || presentation == PlayerLandingPresentationKey.LandRun || presentation == PlayerLandingPresentationKey.LandRoll;
     }
     /// <summary>处理motion驱动动画脚步选择</summary>
     private void UpdateMotionLastPlantFoot(PlayerMotionSnapshot motion)

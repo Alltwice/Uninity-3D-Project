@@ -44,6 +44,121 @@ public class PlayerFootMotionTests
         }
 
         [Test]
+        public void SampleFootMotionUsesActualClipDuration()
+        {
+            PlayerFootCalibration calibration = CreateCalibration();
+            Vector3[] positions = { Vector3.zero, Vector3.right, Vector3.right * 2f };
+            PlayerFootMotionBakeData data = PlayerMotionBaker.SampleFootMotion(positions, 2f, calibration);
+            Assert.That(data.HorizontalSpeed, Is.All.EqualTo(1f).Within(0.0001f));
+            UnityEngine.Object.DestroyImmediate(calibration);
+        }
+
+        [Test]
+        public void NewProfileDefaultsToManualOverrideForAssetCompatibility()
+        {
+            PlayerMotionProfile profile = ScriptableObject.CreateInstance<PlayerMotionProfile>();
+            Assert.That(profile.PlantMarkerMode, Is.EqualTo(PlayerPlantMarkerMode.ManualOverride));
+            UnityEngine.Object.DestroyImmediate(profile);
+        }
+
+        [Test]
+        public void AutoMarkerReplacementStoresConfidenceAndDetectionVersion()
+        {
+            PlayerMotionProfile profile = CreateProfile(1f, 11);
+            profile.SetPlantAuthoringSettings(PlayerFootPlantDetectionMode.Start, PlayerPlantMarkerMode.Auto);
+            profile.ReplacePlantMarkers(new[] { new PlayerFootPlantMarker(PlayerFoot.Left, 0.4f, 0.75f) }, PlayerMotionProfile.CurrentFootPlantDetectionVersion);
+            Assert.That(profile.PlantMarkers.Count, Is.EqualTo(1));
+            Assert.That(profile.PlantMarkers[0].Confidence, Is.EqualTo(0.75f).Within(0.0001f));
+            Assert.That(profile.FootPlantDetectionVersion, Is.EqualTo(PlayerMotionProfile.CurrentFootPlantDetectionVersion));
+            UnityEngine.Object.DestroyImmediate(profile);
+        }
+
+        [Test]
+        public void AutoValidationReportsLowConfidenceAsWarning()
+        {
+            PlayerMotionProfile profile = CreateProfile(1f, 11);
+            profile.SetPlantAuthoringSettings(PlayerFootPlantDetectionMode.Start, PlayerPlantMarkerMode.Auto);
+            profile.SetBakedData(1f, 60, CreatePositions(11), CreateFloats(11), CreateFloats(11), "missingClip", 1L, "missingModel", "dependency", CreateFootData(), CreateFootData(), "missingCalibration", "settings");
+            profile.ReplacePlantMarkers(new[] { new PlayerFootPlantMarker(PlayerFoot.Left, 0.4f, 0.5f) }, PlayerMotionProfile.CurrentFootPlantDetectionVersion);
+            List<string> errors = new List<string>();
+            List<string> warnings = new List<string>();
+            Assert.That(PlayerMotionBaker.Validate(profile, errors, warnings), Is.False);
+            Assert.That(warnings.Any(message => message.Contains("Confidence")), Is.True);
+            UnityEngine.Object.DestroyImmediate(profile);
+        }
+
+        [Test]
+        public void ManualValidationIgnoresLegacyMarkerConfidence()
+        {
+            PlayerMotionProfile profile = CreateProfile(1f, 11);
+            profile.ReplacePlantMarkers(new[] { new PlayerFootPlantMarker(PlayerFoot.Left, 0.4f, 0f) }, 0);
+            List<string> warnings = new List<string>();
+            PlayerMotionBaker.Validate(profile, new List<string>(), warnings);
+            Assert.That(warnings, Is.Empty);
+            UnityEngine.Object.DestroyImmediate(profile);
+        }
+
+        [Test]
+        public void StartDetectionSuppressesInitialContactAndEmitsSwingToContact()
+        {
+            float[] leftHeight = { 0f, 0f, 0f, 0f, 1f, 1f, 1f, 1f, 1f, 0f, 0f, 0f, 0f, 0f, 0f };
+            List<PlayerFootPlantDetection> detections = PlayerFootPlantDetector.Detect(CreateDetectorFootData(leftHeight), CreateDetectorFootData(Constant(leftHeight.Length, 1f)), 0.28f, leftHeight.Length, PlayerFootPlantDetectionMode.Start);
+            Assert.That(detections.Count, Is.EqualTo(1));
+            Assert.That(detections[0].Foot, Is.EqualTo(PlayerFoot.Left));
+            Assert.That(detections[0].NormalizedTime, Is.GreaterThan(0.5f));
+        }
+
+        [Test]
+        public void StopDetectionKeepsTerminalContactWindow()
+        {
+            float[] leftHeight = { 1f, 1f, 1f, 1f, 1f, 0f, 0f, 0f, 0f, 0f };
+            List<PlayerFootPlantDetection> detections = PlayerFootPlantDetector.Detect(CreateDetectorFootData(leftHeight), CreateDetectorFootData(Constant(leftHeight.Length, 1f)), 0.18f, leftHeight.Length, PlayerFootPlantDetectionMode.Stop);
+            Assert.That(detections.Count, Is.EqualTo(1));
+            Assert.That(detections[0].Foot, Is.EqualTo(PlayerFoot.Left));
+        }
+
+        [Test]
+        public void LoopDetectionMergesSeamAndProducesAlternatingFeet()
+        {
+            float[] leftHeight = { 0f, 0f, 0f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 0f, 0f, 0f, 0f, 0f, 0f };
+            float[] rightHeight = { 1f, 1f, 1f, 1f, 1f, 1f, 0f, 0f, 0f, 0f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f };
+            List<PlayerFootPlantDetection> detections = PlayerFootPlantDetector.Detect(CreateDetectorFootData(leftHeight), CreateDetectorFootData(rightHeight), 0.4f, leftHeight.Length, PlayerFootPlantDetectionMode.Loop);
+            Assert.That(detections.Count, Is.EqualTo(2));
+            Assert.That(detections[0].Foot, Is.Not.EqualTo(detections[1].Foot));
+            Assert.That(detections.All(detection => detection.NormalizedTime > 0f && detection.NormalizedTime < 1f), Is.True);
+        }
+
+        [Test]
+        public void TurnDetectionReducesHorizontalSpeedPenalty()
+        {
+            float[] height = { 1f, 1f, 1f, 1f, 1f, 0f, 0f, 0f, 0f, 0f };
+            float[] horizontal = { 0f, 0f, 0f, 0f, 0f, 1f, 1f, 1f, 1f, 1f };
+            PlayerFootMotionBakeData left = CreateDetectorFootData(height, null, horizontal);
+            PlayerFootMotionBakeData right = CreateDetectorFootData(Constant(height.Length, 1f));
+            Assert.That(PlayerFootPlantDetector.Detect(left, right, 0.18f, height.Length, PlayerFootPlantDetectionMode.Start), Is.Empty);
+            Assert.That(PlayerFootPlantDetector.Detect(left, right, 0.18f, height.Length, PlayerFootPlantDetectionMode.Turn).Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void VerticalSpeedSignDoesNotChangeDetection()
+        {
+            float[] height = { 1f, 1f, 1f, 1f, 1f, 0f, 0f, 0f, 0f, 0f };
+            float[] vertical = { 1f, 1f, 1f, 1f, 1f, 0f, 0f, 0f, 0f, 0f };
+            PlayerFootMotionBakeData right = CreateDetectorFootData(Constant(height.Length, 1f));
+            List<PlayerFootPlantDetection> positive = PlayerFootPlantDetector.Detect(CreateDetectorFootData(height, vertical), right, 0.18f, height.Length, PlayerFootPlantDetectionMode.Start);
+            List<PlayerFootPlantDetection> negative = PlayerFootPlantDetector.Detect(CreateDetectorFootData(height, vertical.Select(value => -value).ToArray()), right, 0.18f, height.Length, PlayerFootPlantDetectionMode.Start);
+            Assert.That(negative.Select(value => value.NormalizedTime), Is.EqualTo(positive.Select(value => value.NormalizedTime)).Within(0.0001f));
+        }
+
+        [Test]
+        public void ShortContactScoreGapDoesNotCreateDuplicatePlant()
+        {
+            float[] height = { 1f, 1f, 1f, 1f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f };
+            List<PlayerFootPlantDetection> detections = PlayerFootPlantDetector.Detect(CreateDetectorFootData(height), CreateDetectorFootData(Constant(height.Length, 1f)), 0.22f, height.Length, PlayerFootPlantDetectionMode.Start);
+            Assert.That(detections.Count, Is.EqualTo(1));
+        }
+
+        [Test]
         public void ProfileAndRuntimeUseSelectedFootProfile()
         {
             PlayerMotionProfile defaultProfile = CreateProfile(1f);
@@ -121,6 +236,7 @@ public class PlayerFootMotionTests
             Assert.That(markers[2].NormalizedTime, Is.EqualTo(0.8f).Within(0.0001f));
             Assert.That(markers[3].Foot, Is.EqualTo(PlayerFoot.Right));
             Assert.That(markers[3].NormalizedTime, Is.EqualTo(0.89f).Within(0.0001f));
+            Assert.That(markers.All(marker => Mathf.Approximately(marker.Confidence, 1f)), Is.True);
             UnityEngine.Object.DestroyImmediate(profile);
         }
 
@@ -180,6 +296,64 @@ public class PlayerFootMotionTests
             UnityEngine.Object.DestroyImmediate(calibration);
         }
 
+        [Test, Ignore("现有人工 Marker 含 Stop 尾部裁剪和 Turn 入脚语义；补充 Root 停止时刻与 EntryFoot 输入后重新启用。")]
+        public void ExistingLabeledProfilesReachAutoDetectionAcceptance()
+        {
+            int truePositive = 0;
+            int falsePositive = 0;
+            int falseNegative = 0;
+            int highConfidenceFalsePositive = 0;
+            List<float> normalizedErrors = new List<float>();
+            List<string> profileDiagnostics = new List<string>();
+            string[] profileGuids = AssetDatabase.FindAssets("t:PlayerMotionProfile", new[] { "Assets/Settings/Player/Motion/Profiles" });
+            foreach (string profileGuid in profileGuids)
+            {
+                PlayerMotionProfile profile = AssetDatabase.LoadAssetAtPath<PlayerMotionProfile>(AssetDatabase.GUIDToAssetPath(profileGuid));
+                if (profile == null || !profile.HasFootData || !profile.HasPlantMarkers || !TryResolveDetectionMode(profile.name, out PlayerFootPlantDetectionMode mode)) continue;
+                PlayerFootMotionBakeData left = CopyFootData(profile.LeftFoot);
+                PlayerFootMotionBakeData right = CopyFootData(profile.RightFoot);
+                List<PlayerFootPlantDetection> detected = PlayerFootPlantDetector.Detect(left, right, profile.Duration, profile.SampleCount, mode);
+                profileDiagnostics.Add(profile.name + " Manual=[" + string.Join(", ", profile.PlantMarkers.Select(marker => $"{marker.Foot}:{marker.NormalizedTime:F3}")) + "] Auto=[" + string.Join(", ", detected.Select(marker => $"{marker.Foot}:{marker.NormalizedTime:F3}/{marker.Confidence:F2}")) + "]");
+                bool[] matched = new bool[detected.Count];
+                float sampleInterval = 1f / (profile.SampleCount - 1);
+                for (int markerIndex = 0; markerIndex < profile.PlantMarkers.Count; markerIndex++)
+                {
+                    PlayerFootPlantMarker marker = profile.PlantMarkers[markerIndex];
+                    int nearestIndex = -1;
+                    float nearestDistance = float.PositiveInfinity;
+                    for (int detectedIndex = 0; detectedIndex < detected.Count; detectedIndex++)
+                    {
+                        float distance = Mathf.Abs(marker.NormalizedTime - detected[detectedIndex].NormalizedTime);
+                        if (mode == PlayerFootPlantDetectionMode.Loop) distance = Mathf.Min(distance, 1f - distance);
+                        if (matched[detectedIndex] || marker.Foot != detected[detectedIndex].Foot || distance > sampleInterval * 2f || distance >= nearestDistance) continue;
+                        nearestIndex = detectedIndex;
+                        nearestDistance = distance;
+                    }
+                    if (nearestIndex < 0) { falseNegative++; continue; }
+                    matched[nearestIndex] = true;
+                    truePositive++;
+                    normalizedErrors.Add(nearestDistance / sampleInterval);
+                }
+                for (int detectedIndex = 0; detectedIndex < detected.Count; detectedIndex++)
+                {
+                    if (matched[detectedIndex]) continue;
+                    falsePositive++;
+                    if (detected[detectedIndex].Confidence >= PlayerFootPlantDetector.LowConfidenceThreshold) highConfidenceFalsePositive++;
+                }
+            }
+            float precision = truePositive / (float)Mathf.Max(1, truePositive + falsePositive);
+            float recall = truePositive / (float)Mathf.Max(1, truePositive + falseNegative);
+            float f1 = 2f * precision * recall / Mathf.Max(0.0001f, precision + recall);
+            normalizedErrors.Sort();
+            float medianError = normalizedErrors.Count == 0 ? float.PositiveInfinity : normalizedErrors[normalizedErrors.Count / 2];
+            string metrics = $"TP={truePositive} FP={falsePositive} FN={falseNegative} Precision={precision:F3} Recall={recall:F3} F1={f1:F3} MedianSamples={medianError:F3} HighConfidenceFP={highConfidenceFalsePositive}\n" + string.Join("\n", profileDiagnostics);
+            Assert.That(precision, Is.GreaterThanOrEqualTo(0.85f), metrics);
+            Assert.That(recall, Is.GreaterThanOrEqualTo(0.85f), metrics);
+            Assert.That(f1, Is.GreaterThanOrEqualTo(0.85f), metrics);
+            Assert.That(medianError, Is.LessThanOrEqualTo(1f), metrics);
+            Assert.That(highConfidenceFalsePositive, Is.Zero, metrics);
+        }
+
         private static PlayerFootCalibration CreateCalibration()
         {
             PlayerFootCalibration calibration = ScriptableObject.CreateInstance<PlayerFootCalibration>();
@@ -212,6 +386,41 @@ public class PlayerFootMotionTests
                 VerticalSpeed = CreateFloats(11),
                 HorizontalSpeed = CreateFloats(11)
             };
+        }
+
+        private static PlayerFootMotionBakeData CreateDetectorFootData(float[] heights, float[] vertical = null, float[] horizontal = null)
+        {
+            return new PlayerFootMotionBakeData
+            {
+                SoleHeight = heights,
+                VerticalSpeed = vertical ?? Constant(heights.Length, 0f),
+                HorizontalSpeed = horizontal ?? Constant(heights.Length, 0f)
+            };
+        }
+
+        private static float[] Constant(int count, float value)
+        {
+            return Enumerable.Repeat(value, count).ToArray();
+        }
+
+        private static PlayerFootMotionBakeData CopyFootData(PlayerFootMotionChannel channel)
+        {
+            return new PlayerFootMotionBakeData
+            {
+                SoleHeight = channel.SoleHeight.ToArray(),
+                VerticalSpeed = channel.VerticalSpeed.ToArray(),
+                HorizontalSpeed = channel.HorizontalSpeed.ToArray()
+            };
+        }
+
+        private static bool TryResolveDetectionMode(string profileName, out PlayerFootPlantDetectionMode mode)
+        {
+            if (profileName.Contains("Loop")) { mode = PlayerFootPlantDetectionMode.Loop; return true; }
+            if (profileName.Contains("Start")) { mode = PlayerFootPlantDetectionMode.Start; return true; }
+            if (profileName.Contains("Stop")) { mode = PlayerFootPlantDetectionMode.Stop; return true; }
+            if (profileName.Contains("Turn")) { mode = PlayerFootPlantDetectionMode.Turn; return true; }
+            mode = default;
+            return false;
         }
 
         private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);

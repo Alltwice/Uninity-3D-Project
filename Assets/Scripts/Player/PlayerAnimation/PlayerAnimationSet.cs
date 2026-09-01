@@ -115,30 +115,83 @@ public class PlayerLocomotionAnimationGroup
 }
 
 /// <summary>
-/// 跳跃、空中和分级落地表现资源
+/// 跳跃和空中表现资源
 /// </summary>
 [Serializable]
 public class PlayerJumpAnimationGroup
 {
     [SerializeField] private ClipTransition jumpStart = new ClipTransition();
     [SerializeField] private ClipTransition airLoop = new ClipTransition();
+
+    public ClipTransition JumpStart => jumpStart;
+    public ClipTransition AirLoop => airLoop;
+}
+
+/// <summary>
+/// 普通落地表现资源，以及移动落地 MotionDefinition 的表现绑定。
+/// </summary>
+[Serializable]
+public class PlayerLandingAnimationGroup
+{
     [SerializeField] private ClipTransition land1 = new ClipTransition();
     [SerializeField] private ClipTransition land2 = new ClipTransition();
     [SerializeField] private ClipTransition land3 = new ClipTransition();
     [SerializeField] private ClipTransition land4 = new ClipTransition();
-    [SerializeField] private ClipTransition landWalk = new ClipTransition();
-    [SerializeField] private ClipTransition landRun = new ClipTransition();
-    [SerializeField] private ClipTransition landRoll = new ClipTransition();
+    [SerializeField] private PlayerMotionAnimationBinding landWalk = new PlayerMotionAnimationBinding();
+    [SerializeField] private PlayerMotionAnimationBinding landRun = new PlayerMotionAnimationBinding();
+    [SerializeField] private PlayerMotionAnimationBinding landRoll = new PlayerMotionAnimationBinding();
 
-    public ClipTransition JumpStart => jumpStart;
-    public ClipTransition AirLoop => airLoop;
     public ClipTransition Land1 => land1;
     public ClipTransition Land2 => land2;
     public ClipTransition Land3 => land3;
     public ClipTransition Land4 => land4;
-    public ClipTransition LandWalk => landWalk;
-    public ClipTransition LandRun => landRun;
-    public ClipTransition LandRoll => landRoll;
+    public PlayerMotionAnimationBinding LandWalk => landWalk;
+    public PlayerMotionAnimationBinding LandRun => landRun;
+    public PlayerMotionAnimationBinding LandRoll => landRoll;
+
+    public IEnumerable<PlayerMotionAnimationBinding> MotionBindings
+    {
+        get
+        {
+            yield return landWalk;
+            yield return landRun;
+            yield return landRoll;
+        }
+    }
+
+#if UNITY_EDITOR
+    public void ConfigureStandard(PlayerLandingPresentationKey presentation, AnimationClip clip, float fadeDuration)
+    {
+        ClipTransition transition = presentation switch
+        {
+            PlayerLandingPresentationKey.Land1 => land1,
+            PlayerLandingPresentationKey.Land2 => land2,
+            PlayerLandingPresentationKey.Land3 => land3,
+            PlayerLandingPresentationKey.HardLand => land4,
+            _ => null
+        };
+        if (transition == null) return;
+        transition.Clip = clip;
+        transition.FadeDuration = fadeDuration;
+        transition.Speed = 1f;
+    }
+
+    public void ConfigureMotion(PlayerLandingPresentationKey presentation, PlayerMotionDefinition definition, AnimationClip clip, float fadeDuration)
+    {
+        switch (presentation)
+        {
+            case PlayerLandingPresentationKey.LandWalk:
+                landWalk.Configure(definition, clip, fadeDuration);
+                break;
+            case PlayerLandingPresentationKey.LandRun:
+                landRun.Configure(definition, clip, fadeDuration);
+                break;
+            case PlayerLandingPresentationKey.LandRoll:
+                landRoll.Configure(definition, clip, fadeDuration);
+                break;
+        }
+    }
+#endif
 }
 
 /// <summary>
@@ -278,61 +331,7 @@ public enum PlayerAnimationCue
     LandingLv1,
     LandingLv2,
     LandingLv3,
-    HardLanding,
-    LandWalk,
-    LandRun,
-    LandRoll
-}
-
-/// <summary>
-/// 将一次性落地事实解析为表现 Cue，不参与状态转换
-/// </summary>
-public static class PlayerLandingPresentationResolver
-{
-    /// <summary>
-    /// 落地动画选用
-    /// </summary>
-    public static bool TryResolveLand(PlayerLandingSnapshot snapshot, out PlayerAnimationCue cue)
-    {
-        cue = default;
-        if (!snapshot.IsLandingEvent) return false;
-        //优先四级重落地
-        if (snapshot.Severity == PlayerLandingSeverity.Lv4)
-        {
-            cue = PlayerAnimationCue.HardLanding;
-            return true;
-        }
-        //移动状态落地
-        if (snapshot.HasMoveIntentAtImpact)
-        {
-            switch (snapshot.TargetGroundMode)
-            {
-                case PlayerLocomotionMode.Walk:
-                    cue = PlayerAnimationCue.LandWalk;
-                    return true;
-                case PlayerLocomotionMode.Run:
-                    cue = PlayerAnimationCue.LandRun;
-                    return true;
-                case PlayerLocomotionMode.FastRun:
-                    cue = PlayerAnimationCue.LandRoll;
-                    return true;
-            }
-        }
-        //最后处理常规落地状态
-        cue = ResolveSeverityCue(snapshot.Severity);
-        return true;
-    }
-
-    private static PlayerAnimationCue ResolveSeverityCue(PlayerLandingSeverity severity)
-    {
-        switch (severity)
-        {
-            case PlayerLandingSeverity.Lv1: return PlayerAnimationCue.LandingLv1;
-            case PlayerLandingSeverity.Lv2: return PlayerAnimationCue.LandingLv2;
-            case PlayerLandingSeverity.Lv3: return PlayerAnimationCue.LandingLv3;
-            default: return PlayerAnimationCue.HardLanding;
-        }
-    }
+    HardLanding
 }
 
 [CreateAssetMenu(fileName = "PlayerAnimationSet", menuName = "Player/Animation Set")]
@@ -344,9 +343,12 @@ public class PlayerAnimationSet : ScriptableObject
     [SerializeField] private PlayerLocomotionAnimationGroup run = new PlayerLocomotionAnimationGroup();
     [SerializeField] private PlayerLocomotionAnimationGroup sprint = new PlayerLocomotionAnimationGroup();
     [SerializeField] private PlayerJumpAnimationGroup jump = new PlayerJumpAnimationGroup();
+    [SerializeField] private PlayerLandingAnimationGroup landing = new PlayerLandingAnimationGroup();
     [SerializeField] private PlayerOtherAnimationGroup other = new PlayerOtherAnimationGroup();
 
     public PlayerMotionCatalog MotionCatalog => motionCatalog;
+    public PlayerJumpAnimationGroup Jump => jump;
+    public PlayerLandingAnimationGroup Landing => landing;
 
     public IEnumerable<PlayerMotionAnimationBinding> MotionBindings => EnumerateMotionBindings();
 
@@ -395,13 +397,25 @@ public class PlayerAnimationSet : ScriptableObject
         transition = cue switch
         {
             PlayerAnimationCue.JumpStart => jump?.JumpStart,
-            PlayerAnimationCue.LandingLv1 => jump?.Land1,
-            PlayerAnimationCue.LandingLv2 => jump?.Land2,
-            PlayerAnimationCue.LandingLv3 => jump?.Land3,
-            PlayerAnimationCue.HardLanding => jump?.Land4,
-            PlayerAnimationCue.LandWalk => jump?.LandWalk,
-            PlayerAnimationCue.LandRun => jump?.LandRun,
-            PlayerAnimationCue.LandRoll => jump?.LandRoll,
+            PlayerAnimationCue.LandingLv1 => landing?.Land1,
+            PlayerAnimationCue.LandingLv2 => landing?.Land2,
+            PlayerAnimationCue.LandingLv3 => landing?.Land3,
+            PlayerAnimationCue.HardLanding => landing?.Land4,
+            _ => null
+        };
+        if (transition != null && transition.Clip != null) return true;
+        transition = null;
+        return false;
+    }
+
+    public bool TryResolveLandingPresentation(PlayerLandingPresentationKey presentation, out ClipTransition transition)
+    {
+        transition = presentation switch
+        {
+            PlayerLandingPresentationKey.Land1 => landing?.Land1,
+            PlayerLandingPresentationKey.Land2 => landing?.Land2,
+            PlayerLandingPresentationKey.Land3 => landing?.Land3,
+            PlayerLandingPresentationKey.HardLand => landing?.Land4,
             _ => null
         };
         if (transition != null && transition.Clip != null) return true;
@@ -416,6 +430,7 @@ public class PlayerAnimationSet : ScriptableObject
         valid &= ValidateBindingGroup("Walk", walk?.MotionBindings, seenDefinitions, errors);
         valid &= ValidateBindingGroup("Run", run?.MotionBindings, seenDefinitions, errors);
         valid &= ValidateBindingGroup("Sprint", sprint?.MotionBindings, seenDefinitions, errors);
+        valid &= ValidateBindingGroup("Landing", landing?.MotionBindings, seenDefinitions, errors);
         valid &= ValidateBindingGroup("Other", other?.MotionBindings, seenDefinitions, errors);
 
         if (motionCatalog == null)
@@ -456,7 +471,7 @@ public class PlayerAnimationSet : ScriptableObject
         else valid &= ValidateLoop(sprint.Loop, "Sprint.Loop", errors);
         valid &= ValidateTransition(jump?.JumpStart, "Jump.JumpStart", errors);
         valid &= ValidateTransition(jump?.AirLoop, "Jump.AirLoop", errors);
-        // 落地 Cue 是可选表现槽位，未绑定时由运行时直接进入目标地面循环。
+        // 落地表现槽位允许缺省，未绑定时由运行时直接进入目标地面循环。
         if (jump == null) { errors?.Add(name + ": Jump 分类缺失。"); valid = false; }
         if (other == null) { errors?.Add(name + ": Other 分类缺失。"); valid = false; }
         return valid;
@@ -476,13 +491,17 @@ public class PlayerAnimationSet : ScriptableObject
         {
             foreach (PlayerMotionAnimationBinding binding in sprint.MotionBindings) yield return binding;
         }
+        if (landing?.MotionBindings != null)
+        {
+            foreach (PlayerMotionAnimationBinding binding in landing.MotionBindings) yield return binding;
+        }
         if (other?.MotionBindings != null)
         {
             foreach (PlayerMotionAnimationBinding binding in other.MotionBindings) yield return binding;
         }
     }
 
-    private bool ValidateBindingGroup(string category, List<PlayerMotionAnimationBinding> bindings, HashSet<PlayerMotionDefinition> seenDefinitions, ICollection<string> errors)
+    private bool ValidateBindingGroup(string category, IEnumerable<PlayerMotionAnimationBinding> bindings, HashSet<PlayerMotionDefinition> seenDefinitions, ICollection<string> errors)
     {
         if (bindings == null)
         {
@@ -490,10 +509,11 @@ public class PlayerAnimationSet : ScriptableObject
             return false;
         }
         bool valid = true;
-        for (int i = 0; i < bindings.Count; i++)
+        int index = 0;
+        foreach (PlayerMotionAnimationBinding binding in bindings)
         {
-            PlayerMotionAnimationBinding binding = bindings[i];
-            string label = category + ".MotionBindings[" + i + "]";
+            string label = category + ".MotionBindings[" + index + "]";
+            index++;
             if (binding == null)
             {
                 errors?.Add(name + ": " + label + " 缺少 Binding。");
@@ -578,6 +598,18 @@ public class PlayerAnimationSet : ScriptableObject
         else if (locomotionMode == PlayerLocomotionMode.Run) run = group;
         else sprint = group;
         group.Loop.Configure(foot, profile, clip, fadeDuration);
+    }
+
+    public void ConfigureLanding(PlayerLandingPresentationKey presentation, PlayerMotionDefinition definition, AnimationClip clip, float fadeDuration)
+    {
+        landing ??= new PlayerLandingAnimationGroup();
+        landing.ConfigureMotion(presentation, definition, clip, fadeDuration);
+    }
+
+    public void ConfigureLandingTransition(PlayerLandingPresentationKey presentation, AnimationClip clip, float fadeDuration)
+    {
+        landing ??= new PlayerLandingAnimationGroup();
+        landing.ConfigureStandard(presentation, clip, fadeDuration);
     }
 #endif
 }

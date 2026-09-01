@@ -921,6 +921,7 @@ MonoBehaviour:
         _Names: []
       _Clip: {fileID: -2244535368116879837, guid: c2a9f1310cf941c48b029929997de42e, type: 3}
       _NormalizedStartTime: 0
+  landing:
     land1:
       _FadeDuration: 0.12
       _Speed: 1
@@ -937,7 +938,7 @@ MonoBehaviour:
         _NormalizedTimes: []
         _Callbacks: []
         _Names: []
-      _Clip: {fileID: 962398061609597802, guid: 679319a79fad5d74c9555c1faacdad26, type: 3}
+      _Clip: {fileID: 110800000, guid: 679319a79fad5d74c9555c1faacdad26, type: 3}
       _NormalizedStartTime: NaN
     land3:
       _FadeDuration: 0.12
@@ -958,32 +959,164 @@ MonoBehaviour:
       _Clip: {fileID: -1335869700265283491, guid: 204738cb83f4e6144b548212fa10e4d4, type: 3}
       _NormalizedStartTime: NaN
     landWalk:
-      _FadeDuration: 0
-      _Speed: 1
-      _Events:
-        _NormalizedTimes: []
-        _Callbacks: []
-        _Names: []
-      _Clip: {fileID: -7380433385476788225, guid: 7cb142ecb7c5c174a986bb0e0f21cc95, type: 3}
-      _NormalizedStartTime: NaN
+      definition: {fileID: 11400000, guid: f7a91572b6a59b24195f76343496f543, type: 2}
+      defaultTransition:
+        _FadeDuration: 0
+        _Speed: 1
+        _Events:
+          _NormalizedTimes: []
+          _Callbacks: []
+          _Names: []
+        _Clip: {fileID: -7380433385476788225, guid: 7cb142ecb7c5c174a986bb0e0f21cc95, type: 3}
+        _NormalizedStartTime: NaN
+      leftTransition:
+        _FadeDuration: 0.25
+        _Speed: 1
+        _Events:
+          _NormalizedTimes: []
+          _Callbacks: []
+          _Names: []
+        _Clip: {fileID: 0}
+        _NormalizedStartTime: NaN
+      rightTransition:
+        _FadeDuration: 0.25
+        _Speed: 1
+        _Events:
+          _NormalizedTimes: []
+          _Callbacks: []
+          _Names: []
+        _Clip: {fileID: 0}
+        _NormalizedStartTime: NaN
+      poseFadeWeight:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 0
+          inSlope: 0
+          outSlope: 1
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 1
+          value: 1
+          inSlope: 1
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
     landRun:
-      _FadeDuration: 0.25
-      _Speed: 1
-      _Events:
-        _NormalizedTimes: []
-        _Callbacks: []
-        _Names: []
-      _Clip: {fileID: 4480277035682638159, guid: 0a629831c0bf2b44fb0922bcb3841077, type: 3}
-      _NormalizedStartTime: NaN
+      definition: {fileID: 11400000, guid: dcfc2dc37d5f46e49895f84a800b1f51, type: 2}
+      defaultTransition:
+        _FadeDuration: 0.25
+        _Speed: 1
+        _Events:
+          _NormalizedTimes: []
+          _Callbacks: []
+          _Names: []
+        _Clip: {fileID: 4480277035682638159, guid: 0a629831c0bf2b44fb0922bcb3841077, type: 3}
+        _NormalizedStartTime: NaN
+      leftTransition:
+        _FadeDuration: 0.25
+        _Speed: 1
+        _Events:
+          _NormalizedTimes: []
+          _Callbacks: []
+          _Names: []
+        _Clip: {fileID: 0}
+        _NormalizedStartTime: NaN
+      rightTransition:
+        _FadeDuration: 0.25
+        _Speed: 1
+        _Events:
+          _NormalizedTimes: []
+          _Callbacks: []
+          _Names: []
+        _Clip: {fileID: 0}
+        _NormalizedStartTime: NaN
+      poseFadeWeight:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 0
+          inSlope: 0
+          outSlope: 1
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 1
+          value: 1
+          inSlope: 1
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
     landRoll:
-      _FadeDuration: 0.25
-      _Speed: 1
-      _Events:
-        _NormalizedTimes: []
-        _Callbacks: []
-        _Names: []
-      _Clip: {fileID: -9045715732119088931, guid: fd95762f23e1ffb408994bde0e1ddbd2, type: 3}
-      _NormalizedStartTime: NaN
+      definition: {fileID: 11400000, guid: 61858b1e90e2e3141a5fa38470f03480, type: 2}
+      defaultTransition:
+        _FadeDuration: 0.25
+        _Speed: 1
+        _Events:
+          _NormalizedTimes: []
+          _Callbacks: []
+          _Names: []
+        _Clip: {fileID: -9045715732119088931, guid: fd95762f23e1ffb408994bde0e1ddbd2, type: 3}
+        _NormalizedStartTime: NaN
+      leftTransition:
+        _FadeDuration: 0.25
+        _Speed: 1
+        _Events:
+          _NormalizedTimes: []
+          _Callbacks: []
+          _Names: []
+        _Clip: {fileID: 0}
+        _NormalizedStartTime: NaN
+      rightTransition:
+        _FadeDuration: 0.25
+        _Speed: 1
+        _Events:
+          _NormalizedTimes: []
+          _Callbacks: []
+          _Names: []
+        _Clip: {fileID: 0}
+        _NormalizedStartTime: NaN
+      poseFadeWeight:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 0
+          inSlope: 0
+          outSlope: 1
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 1
+          value: 1
+          inSlope: 1
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
   other:
     motionBindings:
     - definition: {fileID: 11400000, guid: e05c0ed7f402437499a78d5207b93b8e, type: 2}

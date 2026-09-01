@@ -40,10 +40,17 @@ namespace ProjectTools.AnimationPreview
             string calibrationHash = calibration.SettingsHash;
             string dependencyHash = ComputeDependencyHash(clipPath, modelPath, calibrationPath, calibrationHash);
             //写为永久SO，target已经是so文件
-            PlayerFootMotionBakeData leftFoot = SampleFootMotion(result.LeftFootPositions, result.SampleRate, calibration);
-            PlayerFootMotionBakeData rightFoot = SampleFootMotion(result.RightFootPositions, result.SampleRate, calibration);
+            PlayerFootMotionBakeData leftFoot = SampleFootMotion(result.LeftFootPositions, result.Duration, calibration);
+            PlayerFootMotionBakeData rightFoot = SampleFootMotion(result.RightFootPositions, result.Duration, calibration);
+            List<PlayerFootPlantDetection> detections = target.PlantMarkerMode == PlayerPlantMarkerMode.Auto
+                ? PlayerFootPlantDetector.Detect(leftFoot, rightFoot, result.Duration, result.PlanarPosition.Length, target.FootPlantDetectionMode)
+                : null;
             target.SetBakedData(result.Duration, result.SampleRate, result.PlanarPosition, result.TravelDistance, 
                 result.Yaw, clipGuid, clipLocalId, modelGuid, dependencyHash, leftFoot, rightFoot, calibrationGuid, calibrationHash);
+            if (detections != null)
+            {
+                target.ReplacePlantMarkers(detections.Select(detection => new PlayerFootPlantMarker(detection.Foot, detection.NormalizedTime, detection.Confidence)), PlayerMotionProfile.CurrentFootPlantDetectionVersion);
+            }
             //数据被更改
             EditorUtility.SetDirty(target);
             //修改先前被保存的so文件
@@ -52,27 +59,33 @@ namespace ProjectTools.AnimationPreview
 
         public static bool Validate(PlayerMotionProfile profile, ICollection<string> messages)
         {
-            if (profile == null) { messages?.Add("未选择 PlayerMotionProfile。"); return false; }
-            bool valid = profile.Validate(messages);
+            return Validate(profile, messages, null);
+        }
+
+        public static bool Validate(PlayerMotionProfile profile, ICollection<string> errors, ICollection<string> warnings)
+        {
+            if (profile == null) { errors?.Add("未选择 PlayerMotionProfile。"); return false; }
+            bool valid = profile.Validate(errors);
+            valid &= ValidatePlantDetection(profile, errors, warnings);
             PlayerMotionProfileMetadata metadata = profile.EditorMetadata;
-            if (metadata == null) { messages?.Add(profile.name + ": 缺少 Bake 元数据。"); return false; }
+            if (metadata == null) { errors?.Add(profile.name + ": 缺少 Bake 元数据。"); return false; }
             string clipPath = AssetDatabase.GUIDToAssetPath(metadata.SourceClipGuid);
             string modelPath = AssetDatabase.GUIDToAssetPath(metadata.ModelGuid);
-            if (metadata.BakeVersion != PlayerMotionProfile.CurrentBakeVersion) { messages?.Add(profile.name + ": Bake Version 已过期。"); valid = false; }
-            if (metadata.SampleRate != profile.SampleRate) { messages?.Add(profile.name + ": Metadata SampleRate 与 Runtime Data 不一致，需要 Rebake。"); valid = false; }
-            if (string.IsNullOrEmpty(clipPath) || string.IsNullOrEmpty(modelPath)) { messages?.Add(profile.name + ": Source Clip 或 Model 已丢失。"); return false; }
+            if (metadata.BakeVersion != PlayerMotionProfile.CurrentBakeVersion) { errors?.Add(profile.name + ": Bake Version 已过期。"); valid = false; }
+            if (metadata.SampleRate != profile.SampleRate) { errors?.Add(profile.name + ": Metadata SampleRate 与 Runtime Data 不一致，需要 Rebake。"); valid = false; }
+            if (string.IsNullOrEmpty(clipPath) || string.IsNullOrEmpty(modelPath)) { errors?.Add(profile.name + ": Source Clip 或 Model 已丢失。"); return false; }
             if (profile.HasFootData)
             {
                 string calibrationPath = AssetDatabase.GUIDToAssetPath(metadata.FootCalibrationGuid);
                 PlayerFootCalibration calibration = string.IsNullOrEmpty(calibrationPath) ? null : AssetDatabase.LoadAssetAtPath<PlayerFootCalibration>(calibrationPath);
-                if (calibration == null) { messages?.Add(profile.name + ": Foot Calibration 已丢失，需要重烘焙。"); return false; }
-                if (metadata.FootCalibrationHash != calibration.SettingsHash) { messages?.Add(profile.name + ": Foot Calibration 已变化，需要重烘焙。"); valid = false; }
+                if (calibration == null) { errors?.Add(profile.name + ": Foot Calibration 已丢失，需要重烘焙。"); return false; }
+                if (metadata.FootCalibrationHash != calibration.SettingsHash) { errors?.Add(profile.name + ": Foot Calibration 已变化，需要重烘焙。"); valid = false; }
                 string footCurrentHash = ComputeDependencyHash(clipPath, modelPath, calibrationPath, calibration.SettingsHash);
-                if (footCurrentHash != metadata.SourceDependencyHash) { messages?.Add(profile.name + ": Source Clip/Avatar/Foot Calibration 已变化，需要 Rebake。"); valid = false; }
+                if (footCurrentHash != metadata.SourceDependencyHash) { errors?.Add(profile.name + ": Source Clip/Avatar/Foot Calibration 已变化，需要 Rebake。"); valid = false; }
                 return valid;
             }
             string currentHash = Hash128.Compute(AssetDatabase.GetAssetDependencyHash(clipPath) + ":" + AssetDatabase.GetAssetDependencyHash(modelPath)).ToString();
-            if (currentHash != metadata.SourceDependencyHash) { messages?.Add(profile.name + ": Source Clip/Avatar 已变化，需要 Rebake。"); valid = false; }
+            if (currentHash != metadata.SourceDependencyHash) { errors?.Add(profile.name + ": Source Clip/Avatar 已变化，需要 Rebake。"); valid = false; }
             return valid;
         }
         /// <summary>
@@ -107,10 +120,16 @@ namespace ProjectTools.AnimationPreview
         internal static PlayerFootMotionBakeData SampleFootMotion(Vector3[] positions, int sampleRate, PlayerFootCalibration calibration)
         {
             if (positions == null || positions.Length < 2) throw new System.InvalidOperationException("脚底轨迹采样数量不足。");
+            return SampleFootMotion(positions, (positions.Length - 1) / (float)Mathf.Max(1, sampleRate), calibration);
+        }
+
+        internal static PlayerFootMotionBakeData SampleFootMotion(Vector3[] positions, float duration, PlayerFootCalibration calibration)
+        {
+            if (positions == null || positions.Length < 2) throw new System.InvalidOperationException("脚底轨迹采样数量不足。");
             if (calibration == null) throw new System.ArgumentNullException(nameof(calibration));
+            if (float.IsNaN(duration) || float.IsInfinity(duration) || duration <= 0f) throw new System.ArgumentOutOfRangeException(nameof(duration));
             int count = positions.Length;
-            //采集速率
-            float deltaTime = 1f / Mathf.Max(1, sampleRate);
+            float deltaTime = duration / (count - 1);
             float[] rawVertical = new float[count];
             float[] rawHorizontal = new float[count];
             //离地面高度
@@ -157,6 +176,23 @@ namespace ProjectTools.AnimationPreview
         private static string ComputeDependencyHash(string clipPath, string modelPath, string calibrationPath, string calibrationHash)
         {
             return Hash128.Compute(AssetDatabase.GetAssetDependencyHash(clipPath) + ":" + AssetDatabase.GetAssetDependencyHash(modelPath) + ":" + AssetDatabase.GetAssetDependencyHash(calibrationPath) + ":" + calibrationHash).ToString();
+        }
+
+        private static bool ValidatePlantDetection(PlayerMotionProfile profile, ICollection<string> errors, ICollection<string> warnings)
+        {
+            if (profile.PlantMarkerMode != PlayerPlantMarkerMode.Auto) return true;
+            bool valid = true;
+            if (!profile.HasFootData) { errors?.Add(profile.name + ": Auto Plant Detection 缺少 Foot Channel，需要 Rebake。"); valid = false; }
+            if (profile.FootPlantDetectionVersion != PlayerMotionProfile.CurrentFootPlantDetectionVersion) { errors?.Add(profile.name + ": Foot Plant Detection Version 已过期，需要 Rebake。"); valid = false; }
+            if (profile.FootPlantDetectionMode == PlayerFootPlantDetectionMode.Loop) valid &= profile.ValidateLoopPhase(errors);
+            else if (!profile.HasPlantMarkers) warnings?.Add(profile.name + ": Auto Plant Detection 未检测到 Plant Marker，请人工检查。");
+            IReadOnlyList<PlayerFootPlantMarker> markers = profile.PlantMarkers;
+            for (int index = 0; index < markers.Count; index++)
+            {
+                PlayerFootPlantMarker marker = markers[index];
+                if (marker.Confidence < PlayerFootPlantDetector.LowConfidenceThreshold) warnings?.Add($"{profile.name}: {marker.Foot} Plant {marker.NormalizedTime:F3} 的 Confidence 为 {marker.Confidence:F2}，请人工检查。");
+            }
+            return valid;
         }
     }
 

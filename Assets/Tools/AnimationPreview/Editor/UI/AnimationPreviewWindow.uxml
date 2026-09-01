@@ -59,6 +59,8 @@
                 <ui:Label text="Motion Tools" class="section-title" />
                 <uie:ObjectField name="motion-profile-field" label="Motion Profile" />
                 <uie:IntegerField name="motion-sample-rate-field" label="Sample Rate" value="60" />
+                <uie:EnumField name="foot-plant-detection-mode-field" label="Plant Detection" />
+                <uie:EnumField name="plant-marker-mode-field" label="Plant Marker" />
                 <ui:VisualElement class="source-actions">
                     <ui:Button name="motion-bake-button" text="Bake" />
                     <ui:Button name="motion-rebake-button" text="Rebake" />
