@@ -42,7 +42,7 @@ public class PlayerLocomotionPhaseRuntime
         }
         bool modeChanged = !hasLoop || mode != locomotionMode;
         bool enteredHandoff = motion.IsActive && motion.HandoffActive && loopMotionInstanceId != motion.InstanceId;
-        if (modeChanged || enteredHandoff || motion.JustCompleted || motion.JustCancelled)
+        if (modeChanged || enteredHandoff)
         {
             ActivateCycle(locomotionMode);
             loopMotionInstanceId = motion.ActiveDefinition != null ? motion.InstanceId : 0;
