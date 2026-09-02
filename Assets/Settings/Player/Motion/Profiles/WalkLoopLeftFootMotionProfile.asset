@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: WalkLoopLeftFootMotionProfile
   m_EditorClassIdentifier: Project.PlayerMotion.Runtime::PlayerMotionProfile
   duration: 1.1333334
+  cycleDistance: 1.7129396
   sampleRate: 60
   cumulativePlanarPosition:
   - {x: 0, y: 0}

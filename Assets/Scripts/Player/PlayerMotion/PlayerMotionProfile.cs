@@ -51,6 +51,7 @@ public class PlayerMotionProfile : ScriptableObject
     public const int CurrentFootPlantDetectionVersion = 1;
     //动画持续时间
     [Min(0f)] [SerializeField] private float duration;
+    [Min(0f)] [SerializeField] private float cycleDistance;
     [Min(1)] [SerializeField] private int sampleRate = 60;
     [SerializeField] private Vector2[] cumulativePlanarPosition = Array.Empty<Vector2>();
     [SerializeField] private float[] cumulativeTravelDistance = Array.Empty<float>();
@@ -67,6 +68,7 @@ public class PlayerMotionProfile : ScriptableObject
     [SerializeField] private PlayerMotionProfileMetadata editorMetadata = new PlayerMotionProfileMetadata();
 
     public float Duration => duration;
+    public float CycleDistance => cycleDistance;
     public int SampleRate => sampleRate;
     public int SampleCount => cumulativePlanarPosition?.Length ?? 0;
     public bool HasPlanarPosition => SampleCount >= 2;
@@ -95,7 +97,7 @@ public class PlayerMotionProfile : ScriptableObject
     public float EvaluateYaw(float progress) => Evaluate(cumulativeYaw, progress);
 
     /// <summary>
-    /// 按非循环动画时间解析截至当前时刻最近的 Plant Marker
+    /// 通过动画时间查找最近的脚步落点
     /// </summary>
     public PlayerFoot ResolveLastPlantFoot(float time, PlayerFoot fallback)
     {
@@ -114,13 +116,15 @@ public class PlayerMotionProfile : ScriptableObject
     }
 
     /// <summary>
-    /// 按循环动画时间和实际播放速度计算当前两次 Plant 之间的相位
+    /// 按 Simulation 提交的归一化循环相位解析当前两次 Plant 之间的关系。
     /// </summary>
-    public bool TryEvaluateLoopPhase(float normalizedTime, float effectiveSpeed, out PlayerLocomotionPhaseSnapshot snapshot)
+    public bool TryEvaluateLoopPhase(float normalizedPhase, out PlayerFoot lastPlantFoot, out PlayerFoot nextPlantFoot, out float stepProgress)
     {
-        snapshot = default;
-        if (!IsFinite(normalizedTime) || !IsFinite(effectiveSpeed) || effectiveSpeed <= Mathf.Epsilon || !TryValidateLoopPhaseConfiguration(out int markerCount)) return false;
-        float currentTime = Mathf.Repeat(normalizedTime, 1f);
+        lastPlantFoot = PlayerFoot.Unknown;
+        nextPlantFoot = PlayerFoot.Unknown;
+        stepProgress = 0f;
+        if (!IsFinite(normalizedPhase) || !TryValidateLoopPhaseConfiguration(out int markerCount)) return false;
+        float currentTime = Mathf.Repeat(normalizedPhase, 1f);
         int previousIndex;
         int nextIndex;
         float previousTime;
@@ -146,12 +150,10 @@ public class PlayerMotionProfile : ScriptableObject
         //整段时间
         float segmentLength = nextTime - previousTime;
         if (!(segmentLength > 0f)) return false;
-        //步长时间
-        float stepProgress = (currentTime - previousTime) / segmentLength;
-        //到下一次的实际时间
-        float timeToNextPlant = (nextTime - currentTime) * duration / effectiveSpeed;
-        if (!IsFinite(stepProgress) || stepProgress < 0f || stepProgress >= 1f || !IsFinite(timeToNextPlant)) return false;
-        snapshot = new PlayerLocomotionPhaseSnapshot(true, true, this, currentTime, effectiveSpeed, plantMarkers[previousIndex].Foot, plantMarkers[nextIndex].Foot, stepProgress, timeToNextPlant);
+        stepProgress = (currentTime - previousTime) / segmentLength;
+        if (!IsFinite(stepProgress) || stepProgress < 0f || stepProgress >= 1f) return false;
+        lastPlantFoot = plantMarkers[previousIndex].Foot;
+        nextPlantFoot = plantMarkers[nextIndex].Foot;
         return true;
     }
 
@@ -188,6 +190,7 @@ public class PlayerMotionProfile : ScriptableObject
     {
         bool valid = true;
         if (!IsFinite(duration) || duration <= 0f) { errors?.Add(name + ": Loop Phase 的 Duration 必须是大于 0 的有限值。"); valid = false; }
+        if (!IsFinite(cycleDistance) || cycleDistance <= 0f) { errors?.Add(name + ": Loop Phase 的 CycleDistance 必须是大于 0 的有限值。"); valid = false; }
         if (SampleCount < 2) { errors?.Add(name + ": Loop Phase 至少需要两个采样点。"); valid = false; }
         if (plantMarkers == null || plantMarkers.Count < 2) { errors?.Add(name + ": Loop Phase 至少需要两个 Plant Marker。"); valid = false; }
         if (plantMarkers == null || plantMarkers.Count == 0) return valid;
@@ -260,6 +263,7 @@ public class PlayerMotionProfile : ScriptableObject
         cumulativePlanarPosition = planarPosition ?? Array.Empty<Vector2>();
         cumulativeTravelDistance = travelDistance ?? Array.Empty<float>();
         cumulativeYaw = yaw ?? Array.Empty<float>();
+        if (footPlantDetectionMode == PlayerFootPlantDetectionMode.Loop && cumulativeTravelDistance.Length > 0) cycleDistance = cumulativeTravelDistance[cumulativeTravelDistance.Length - 1];
         leftFoot ??= new PlayerFootMotionChannel();
         rightFoot ??= new PlayerFootMotionChannel();
         if (leftFootData != null) leftFoot.SetBakedData(leftFootData);
@@ -272,6 +276,7 @@ public class PlayerMotionProfile : ScriptableObject
     {
         footPlantDetectionMode = detectionMode;
         plantMarkerMode = markerMode;
+        if (detectionMode == PlayerFootPlantDetectionMode.Loop && cycleDistance <= 0f && cumulativeTravelDistance != null && cumulativeTravelDistance.Length > 0) cycleDistance = cumulativeTravelDistance[cumulativeTravelDistance.Length - 1];
         detectionModePersisted = true;
     }
 
@@ -323,7 +328,7 @@ public class PlayerMotionProfile : ScriptableObject
     private bool TryValidateLoopPhaseConfiguration(out int markerCount)
     {
         markerCount = plantMarkers == null ? 0 : plantMarkers.Count;
-        if (markerCount < 2 || !IsFinite(duration) || duration <= 0f) return false;
+        if (markerCount < 2 || !IsFinite(duration) || duration <= 0f || !IsFinite(cycleDistance) || cycleDistance <= 0f) return false;
         for (int index = 0; index < markerCount; index++)
         {
             PlayerFootPlantMarker marker = plantMarkers[index];

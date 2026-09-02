@@ -50,7 +50,6 @@ public class PlayerSimulationDriver : MonoBehaviour
     {
         //设定标准时间供下层组件使用
         float deltaTime = Time.deltaTime;
-        PlayerLocomotionPhaseSnapshot phaseSnapshot = animationController.PhaseSnapshot;
         actionBuffer.Tick(deltaTime);
         motionPlanner.BeginFrame();
         dodge.TickCooldown(deltaTime);
@@ -63,11 +62,11 @@ public class PlayerSimulationDriver : MonoBehaviour
         PlayerGameplayIntent intent = PlayerGameplayIntent.Create(desiredMoveDirection, transform.forward);
         intent.LocomotionMode = stateController.CurrentLocomotionMode;
         //可空类型和一般类型完全是两个东西，需要通过.value获取
-        if (transition.HasValue) motionPlanner.HandleStateTransition(transition.Value, intent, motor.CurrentResult, phaseSnapshot);
-        else if (pendingTransition.HasValue) motionPlanner.HandleStateTransition(pendingTransition.Value, intent, motor.CurrentResult, phaseSnapshot);
+        if (transition.HasValue) motionPlanner.HandleStateTransition(transition.Value, intent, motor.CurrentResult);
+        else if (pendingTransition.HasValue) motionPlanner.HandleStateTransition(pendingTransition.Value, intent, motor.CurrentResult);
         //给状态机输入意图切换当前的运动状态，ref是确保tick中的修改修改到了原值而不是副本
         stateController.Tick(deltaTime, ref intent);
-        motionPlanner.ResolveContinuousMotion(stateController.CurrentState.GetType(), intent, motor.CurrentResult, phaseSnapshot);
+        motionPlanner.ResolveContinuousMotion(stateController.CurrentState.GetType(), intent, motor.CurrentResult);
         //依据数据真正的执行移动
         PlayerMotionFrame motionFrame = motionPlanner.Advance(deltaTime, intent);
         //拿到动画数据驱动时的命令
@@ -85,7 +84,7 @@ public class PlayerSimulationDriver : MonoBehaviour
         {
             PlayerGameplayIntent postTransitionIntent = PlayerGameplayIntent.Create(desiredMoveDirection, transform.forward);
             postTransitionIntent.LocomotionMode = stateController.CurrentLocomotionMode;
-            motionPlanner.HandleStateTransition(resultTransition.Value, postTransitionIntent, motorResult, phaseSnapshot);
+            motionPlanner.HandleStateTransition(resultTransition.Value, postTransitionIntent, motorResult);
         }
         PlayerStateTransition? presentationTransition = resultTransition ?? transition ?? pendingTransition;
         PlayerLandingPresentationKey? landingPresentation = ResolveLandingPresentation(resultTransition, LandingSnapshot);
@@ -93,11 +92,12 @@ public class PlayerSimulationDriver : MonoBehaviour
         {
             PlayerGameplayIntent landingIntent = PlayerGameplayIntent.Create(desiredMoveDirection, transform.forward);
             landingIntent.LocomotionMode = stateController.CurrentLocomotionMode;
-            motionPlanner.TryBeginLandingMotion(resultTransition.Value, landingPresentation.Value, landingIntent, motorResult, phaseSnapshot);
+            motionPlanner.TryBeginLandingMotion(resultTransition.Value, landingPresentation.Value, landingIntent, motorResult);
         }
         pendingTransition = null;
+        motionPlanner.CommitLocomotionPhase(stateController.CurrentLocomotionMode, motorResult);
         //播放动画表现
-        animationController.Present(stateController.CurrentState.GetType(), presentationTransition, motionPlanner.Snapshot, stateController.CurrentPresentationProgress, landingPresentation);
+        animationController.Present(stateController.CurrentState.GetType(), presentationTransition, motionPlanner.Snapshot, motionPlanner.PhaseSnapshot, stateController.CurrentPresentationProgress, landingPresentation);
         //animancer设定为手动后需要手动更新
         animationController.EvaluateGraph(deltaTime);
     }

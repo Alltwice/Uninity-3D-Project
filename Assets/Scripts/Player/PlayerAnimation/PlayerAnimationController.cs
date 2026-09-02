@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.Playables;
 
 /// <summary>
-/// 只把 Gameplay/Motion/Motor 事实表现为 Pose，并发布循环相位事实；不拥有 Gameplay 时间或运动权限
+/// 将 Gameplay、Motion 和 Simulation 相位事实表现为 Pose；不生产运动或脚步相位。
 /// </summary>
 public sealed class PlayerAnimationController : MonoBehaviour
 {
@@ -17,15 +17,11 @@ public sealed class PlayerAnimationController : MonoBehaviour
     private AnimancerState stableLoopState;
     private AnimancerState hardLandingState;
     private PlayerMotionAnimationBinding activeBinding;
-    private PlayerMotionProfile stableLoopProfile;
     private ulong presentedMotionInstanceId;
     private ulong presentationSequence;
     private Type gameplayStateType;
-    private PlayerFoot currentLastPlantFoot;
-    private PlayerLocomotionPhaseSnapshot phaseSnapshot;
 
     public float DebugBoundaryPhase { get; private set; }
-    public PlayerLocomotionPhaseSnapshot PhaseSnapshot => phaseSnapshot;
 
     private void Awake()
     {
@@ -37,18 +33,17 @@ public sealed class PlayerAnimationController : MonoBehaviour
         animancer.Graph.UpdateMode = DirectorUpdateMode.Manual;
     }
 
-    public void Present(Type currentGameplayStateType, PlayerStateTransition? transition, PlayerMotionSnapshot motion, float stateProgress, PlayerLandingPresentationKey? landingPresentation)
+    public void Present(Type currentGameplayStateType, PlayerStateTransition? transition, PlayerMotionSnapshot motion, PlayerLocomotionPhaseSnapshot locomotionPhase, float stateProgress, PlayerLandingPresentationKey? landingPresentation)
     {
         gameplayStateType = currentGameplayStateType;
-        if (motion.EntryLastPlantFoot != PlayerFoot.Unknown) currentLastPlantFoot = motion.EntryLastPlantFoot;
-        UpdateMotionLastPlantFoot(motion);
         bool newMotion = motion.ActiveDefinition != null && motion.InstanceId != presentedMotionInstanceId;
         bool motionCancelled = motion.JustCancelled && motion.InstanceId == presentedMotionInstanceId;
-        if (newMotion) PlayMotion(motion);
+        if (newMotion) PlayMotion(motion, locomotionPhase);
         else if (motionCancelled) ClearBoundary();
-        if (transition.HasValue && !newMotion) PlayStateTransition(transition.Value, landingPresentation);
-        else if (!newMotion && !motionCancelled && motion.ActiveDefinition != null && motion.InstanceId == presentedMotionInstanceId) UpdateBoundaryMotion(motion);
-        else if (!newMotion && !transition.HasValue && motionCancelled) PlayStableLoop(gameplayStateType);
+        if (transition.HasValue && !newMotion) PlayStateTransition(transition.Value, locomotionPhase, landingPresentation);
+        else if (!newMotion && !motionCancelled && motion.ActiveDefinition != null && motion.InstanceId == presentedMotionInstanceId) UpdateBoundaryMotion(motion, locomotionPhase);
+        else if (!newMotion && !transition.HasValue && motionCancelled) PlayStableLoop(gameplayStateType, locomotionPhase);
+        ApplyLoopPhase(locomotionPhase);
         if (gameplayStateType == typeof(PlayerHardLandingState) && hardLandingState != null)
         {
             hardLandingState.Speed = 0f;
@@ -59,48 +54,41 @@ public sealed class PlayerAnimationController : MonoBehaviour
     public void EvaluateGraph(float deltaTime)
     {
         animancer.Evaluate(Mathf.Max(0f, deltaTime));
-        RefreshPhaseSnapshot();
     }
+
     /// <summary>
-    /// 处理烘焙动画播放
+    /// 边界 Motion 始终由 MotionSnapshot.Progress 手动采样。
     /// </summary>
-    private void PlayMotion(PlayerMotionSnapshot motion)
+    private void PlayMotion(PlayerMotionSnapshot motion, PlayerLocomotionPhaseSnapshot locomotionPhase)
     {
         ++presentationSequence;
         presentedMotionInstanceId = motion.InstanceId;
         boundaryState = null;
         handoffLoopState = null;
         stableLoopState = null;
-        stableLoopProfile = null;
         activeBinding = null;
-        //没拿到烘焙动画数据就播放普通循环
         if (animationSet == null || !animationSet.TryGetBinding(motion.ActiveDefinition, motion.ActiveProfile, out activeBinding, out ClipTransition transition))
         {
-            PlayStableLoop(gameplayStateType);
+            PlayStableLoop(gameplayStateType, locomotionPhase);
             return;
         }
-        //拿到绑定播放动画，动画不自己播放，其播放进程绑定motionruntime
         boundaryState = animancer.Play(transition, transition.FadeDuration, FadeMode.FixedDuration);
         boundaryState.Speed = 0f;
         boundaryState.IsPlaying = false;
-        //依据motion状态判断动画现在播放到哪
-        float boundaryProgress = motion.Progress;
-        boundaryState.NormalizedTime = boundaryProgress;
-        DebugBoundaryPhase = boundaryProgress;
+        boundaryState.NormalizedTime = motion.Progress;
+        DebugBoundaryPhase = motion.Progress;
     }
 
-    private void UpdateBoundaryMotion(PlayerMotionSnapshot motion)
+    private void UpdateBoundaryMotion(PlayerMotionSnapshot motion, PlayerLocomotionPhaseSnapshot locomotionPhase)
     {
         if (boundaryState == null || activeBinding == null) return;
         boundaryState.Speed = 0f;
         boundaryState.IsPlaying = false;
-        float boundaryProgress = motion.Progress;
-        boundaryState.NormalizedTime = boundaryProgress;
-        DebugBoundaryPhase = boundaryProgress;
+        boundaryState.NormalizedTime = motion.Progress;
+        DebugBoundaryPhase = motion.Progress;
         if (motion.HandoffActive || motion.JustCompleted)
         {
-            EnsureHandoffLoop();
-            //依据播放进程调整权重
+            EnsureHandoffLoop(locomotionPhase);
             float loopWeight = motion.JustCompleted ? 1f : activeBinding.EvaluatePoseFade(motion.HandoffProgress);
             boundaryState.Weight = 1f - loopWeight;
             if (handoffLoopState != null) handoffLoopState.Weight = loopWeight;
@@ -108,30 +96,26 @@ public sealed class PlayerAnimationController : MonoBehaviour
         if (motion.JustCancelled && !motion.IsActive)
         {
             ClearBoundary();
-            PlayStableLoop(gameplayStateType);
+            PlayStableLoop(gameplayStateType, locomotionPhase);
         }
         else if (motion.JustCompleted)
         {
             ClearBoundary(false);
         }
     }
-    /// <summary>
-    /// 实际做出混合的逻辑
-    /// </summary>
-    private void EnsureHandoffLoop()
+
+    private void EnsureHandoffLoop(PlayerLocomotionPhaseSnapshot locomotionPhase)
     {
         if (handoffLoopState != null) return;
-        PlayerAnimationSelection selection = ResolveLoop(gameplayStateType);
-        if (!selection.IsValid) return;
-        //提前播放loop并调低其权重
+        if (!TryResolveLoop(gameplayStateType, locomotionPhase, out PlayerAnimationSelection selection, out bool manualSampling)) return;
         handoffLoopState = animancer.Play(selection.Transition);
         stableLoopState = handoffLoopState;
-        stableLoopProfile = selection.Profile;
+        if (manualSampling) ApplyLoopSample(handoffLoopState, locomotionPhase);
         boundaryState.Weight = 1f;
         handoffLoopState.Weight = 0f;
     }
-    
-    private void PlayStateTransition(PlayerStateTransition transition, PlayerLandingPresentationKey? landingPresentation)
+
+    private void PlayStateTransition(PlayerStateTransition transition, PlayerLocomotionPhaseSnapshot locomotionPhase, PlayerLandingPresentationKey? landingPresentation)
     {
         ++presentationSequence;
         ClearBoundary();
@@ -140,7 +124,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
             hardLandingState = null;
             if (animationSet == null || !animationSet.TryResolveLandingPresentation(PlayerLandingPresentationKey.HardLand, out ClipTransition hardLandingTransition))
             {
-                PlayStableLoop(typeof(PlayerHardLandingState));
+                PlayStableLoop(typeof(PlayerHardLandingState), locomotionPhase);
                 return;
             }
             hardLandingState = animancer.Play(hardLandingTransition);
@@ -150,70 +134,94 @@ public sealed class PlayerAnimationController : MonoBehaviour
         }
         if ((transition.PreviousStateType == typeof(PlayerWalkState) && transition.CurrentStateType == typeof(PlayerRunState)) || (transition.PreviousStateType == typeof(PlayerRunState) && transition.CurrentStateType == typeof(PlayerWalkState)))
         {
-            PlayStableLoopWithFade(transition.CurrentStateType);
+            PlayStableLoopWithFade(transition.CurrentStateType, locomotionPhase);
             return;
         }
         if (transition.CurrentStateType == typeof(PlayerAirState))
         {
-            if (transition.Reason == PlayerStateTransitionReason.Jumped && animationSet != null && animationSet.TryResolveCue(PlayerAnimationCue.JumpStart, out ClipTransition jumpStart)) PlayPresentationEdge(jumpStart, typeof(PlayerAirState), presentationSequence);
-            else PlayStableLoop(typeof(PlayerAirState));
+            if (transition.Reason == PlayerStateTransitionReason.Jumped && animationSet != null && animationSet.TryResolveCue(PlayerAnimationCue.JumpStart, out ClipTransition jumpStart)) PlayPresentationEdge(jumpStart, typeof(PlayerAirState), locomotionPhase, presentationSequence);
+            else PlayStableLoop(typeof(PlayerAirState), locomotionPhase);
             return;
         }
         if (transition.PreviousStateType == typeof(PlayerAirState) && IsGroundState(transition.CurrentStateType) && landingPresentation.HasValue)
         {
             if (IsLandingMotion(landingPresentation.Value))
             {
-                PlayStableLoop(transition.CurrentStateType);
+                PlayStableLoop(transition.CurrentStateType, locomotionPhase);
                 return;
             }
             if (animationSet != null && animationSet.TryResolveLandingPresentation(landingPresentation.Value, out ClipTransition landing))
             {
-                PlayPresentationEdge(landing, transition.CurrentStateType, presentationSequence);
+                PlayPresentationEdge(landing, transition.CurrentStateType, locomotionPhase, presentationSequence);
                 return;
             }
-            PlayStableLoop(transition.CurrentStateType);
+            PlayStableLoop(transition.CurrentStateType, locomotionPhase);
             return;
         }
-        PlayStableLoop(transition.CurrentStateType);
+        PlayStableLoop(transition.CurrentStateType, locomotionPhase);
     }
-    /// <summary>
-    /// 处理动画边
-    /// </summary>
-    private void PlayPresentationEdge(ClipTransition edge, Type targetLoopStateType, ulong sequence)
+
+    private void PlayPresentationEdge(ClipTransition edge, Type targetLoopStateType, PlayerLocomotionPhaseSnapshot locomotionPhase, ulong sequence)
     {
         if (edge == null || edge.Clip == null)
         {
-            PlayStableLoop(targetLoopStateType);
+            PlayStableLoop(targetLoopStateType, locomotionPhase);
             return;
         }
         AnimancerState state = animancer.Play(edge);
         state.Events(this).OnEnd = () =>
         {
-            if (sequence == presentationSequence) PlayStableLoop(targetLoopStateType);
+            if (sequence == presentationSequence) PlayStableLoop(targetLoopStateType, locomotionPhase);
         };
     }
 
-    private void PlayStableLoop(Type stateType)
+    private void PlayStableLoop(Type stateType, PlayerLocomotionPhaseSnapshot locomotionPhase)
     {
-        PlayerAnimationSelection selection = ResolveLoop(stateType);
-        if (!selection.IsValid) return;
+        if (!TryResolveLoop(stateType, locomotionPhase, out PlayerAnimationSelection selection, out bool manualSampling)) return;
         stableLoopState = animancer.Play(selection.Transition);
-        stableLoopProfile = selection.Profile;
+        if (manualSampling) ApplyLoopSample(stableLoopState, locomotionPhase);
     }
 
-    private void PlayStableLoopWithFade(Type stateType)
+    private void PlayStableLoopWithFade(Type stateType, PlayerLocomotionPhaseSnapshot locomotionPhase)
     {
-        PlayerAnimationSelection selection = ResolveLoop(stateType);
-        if (!selection.IsValid) return;
+        if (!TryResolveLoop(stateType, locomotionPhase, out PlayerAnimationSelection selection, out bool manualSampling)) return;
         stableLoopState = animancer.Play(selection.Transition, selection.Transition.FadeDuration, FadeMode.FixedDuration);
-        stableLoopProfile = selection.Profile;
+        if (manualSampling) ApplyLoopSample(stableLoopState, locomotionPhase);
     }
 
-    private PlayerAnimationSelection ResolveLoop(Type stateType)
+    private bool TryResolveLoop(Type stateType, PlayerLocomotionPhaseSnapshot locomotionPhase, out PlayerAnimationSelection selection, out bool manualSampling)
     {
-        PlayerLocomotionMode locomotionMode = stateType == typeof(PlayerWalkState) ? PlayerLocomotionMode.Walk : stateType == typeof(PlayerRunState) ? PlayerLocomotionMode.Run : stateType == typeof(PlayerFastRunState) ? PlayerLocomotionMode.FastRun : stateType == typeof(PlayerAirState) ? PlayerLocomotionMode.Air : stateType == typeof(PlayerHardLandingState) ? PlayerLocomotionMode.HardLanding : PlayerLocomotionMode.Idle;
-        if (animationSet != null && animationSet.TryResolveLoop(locomotionMode, currentLastPlantFoot, out PlayerAnimationSelection selection)) return selection;
-        return default;
+        PlayerLocomotionMode stateMode = ResolveLocomotionMode(stateType);
+        manualSampling = locomotionPhase.HasLoop && PlayerLocomotionCycleDefinition.IsGroundLoopMode(stateMode) && locomotionPhase.Mode == stateMode;
+        PlayerLocomotionMode resolveMode = manualSampling ? locomotionPhase.Mode : stateMode;
+        PlayerFoot resolveFoot = manualSampling ? locomotionPhase.VariantFoot : PlayerFoot.Unknown;
+        if (animationSet != null && animationSet.TryResolveLoop(resolveMode, resolveFoot, out selection)) return true;
+        selection = default;
+        return false;
+    }
+
+    private void ApplyLoopPhase(PlayerLocomotionPhaseSnapshot locomotionPhase)
+    {
+        if (!locomotionPhase.HasLoop || stableLoopState == null) return;
+        ApplyLoopSample(stableLoopState, locomotionPhase);
+        if (handoffLoopState != null && handoffLoopState != stableLoopState) ApplyLoopSample(handoffLoopState, locomotionPhase);
+    }
+
+    private static void ApplyLoopSample(AnimancerState state, PlayerLocomotionPhaseSnapshot locomotionPhase)
+    {
+        state.Speed = 0f;
+        state.IsPlaying = false;
+        state.NormalizedTime = locomotionPhase.NormalizedTime;
+    }
+
+    private static PlayerLocomotionMode ResolveLocomotionMode(Type stateType)
+    {
+        if (stateType == typeof(PlayerWalkState)) return PlayerLocomotionMode.Walk;
+        if (stateType == typeof(PlayerRunState)) return PlayerLocomotionMode.Run;
+        if (stateType == typeof(PlayerFastRunState)) return PlayerLocomotionMode.FastRun;
+        if (stateType == typeof(PlayerAirState)) return PlayerLocomotionMode.Air;
+        if (stateType == typeof(PlayerHardLandingState)) return PlayerLocomotionMode.HardLanding;
+        return PlayerLocomotionMode.Idle;
     }
 
     private static bool IsGroundState(Type stateType)
@@ -225,33 +233,6 @@ public sealed class PlayerAnimationController : MonoBehaviour
     {
         return presentation == PlayerLandingPresentationKey.LandWalk || presentation == PlayerLandingPresentationKey.LandRun || presentation == PlayerLandingPresentationKey.LandRoll;
     }
-    /// <summary>处理motion驱动动画脚步选择</summary>
-    private void UpdateMotionLastPlantFoot(PlayerMotionSnapshot motion)
-    {
-        if (motion.ActiveProfile == null) return;
-        PlayerFoot fallback = motion.EntryLastPlantFoot == PlayerFoot.Unknown ? currentLastPlantFoot : motion.EntryLastPlantFoot;
-        currentLastPlantFoot = motion.ActiveProfile.ResolveLastPlantFoot(motion.Progress, fallback);
-    }
-    /// <summary>
-    /// 拿到脚步相位数据
-    /// </summary>
-    private void RefreshPhaseSnapshot()
-    {
-        if (stableLoopState == null)
-        {
-            phaseSnapshot = new PlayerLocomotionPhaseSnapshot(false, false, null, 0f, 0f, currentLastPlantFoot, PlayerFoot.Unknown, 0f, 0f);
-            return;
-        }
-        float normalizedTime = Mathf.Repeat(stableLoopState.NormalizedTime, 1f);
-        float effectiveSpeed = stableLoopState.EffectiveSpeed;
-        if (stableLoopProfile != null && stableLoopProfile.TryEvaluateLoopPhase(normalizedTime, effectiveSpeed, out PlayerLocomotionPhaseSnapshot evaluatedSnapshot))
-        {
-            currentLastPlantFoot = evaluatedSnapshot.LastPlantFoot;
-            phaseSnapshot = evaluatedSnapshot;
-            return;
-        }
-        phaseSnapshot = new PlayerLocomotionPhaseSnapshot(true, false, stableLoopProfile, normalizedTime, effectiveSpeed, currentLastPlantFoot, PlayerFoot.Unknown, 0f, 0f);
-    }
 
     private void ClearBoundary(bool clearLoop = true)
     {
@@ -262,7 +243,6 @@ public sealed class PlayerAnimationController : MonoBehaviour
         {
             handoffLoopState = null;
             stableLoopState = null;
-            stableLoopProfile = null;
         }
     }
 }

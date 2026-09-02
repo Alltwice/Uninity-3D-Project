@@ -1,28 +1,26 @@
 /// <summary>
-/// AnimationController 在完成 Animancer 图评估后提供给 Planner 的循环相位事实
+/// Simulation 提交给表现层和 Motion Planner 的循环步态事实。
 /// </summary>
 public struct PlayerLocomotionPhaseSnapshot
 {
-    public PlayerLocomotionPhaseSnapshot(bool hasLoop, bool hasPhase, PlayerMotionProfile profile, float normalizedTime, float effectiveSpeed, PlayerFoot lastPlantFoot, PlayerFoot nextPlantFoot, float stepProgress, float timeToNextPlant)
+    public PlayerLocomotionPhaseSnapshot(bool hasLoop, bool hasPhase, PlayerLocomotionMode mode, PlayerFoot variantFoot, float normalizedTime, PlayerFoot lastPlantFoot, PlayerFoot nextPlantFoot, float stepProgress)
     {
         HasLoop = hasLoop;
         HasPhase = hasPhase;
-        Profile = profile;
+        Mode = mode;
+        VariantFoot = variantFoot;
         NormalizedTime = normalizedTime;
-        EffectiveSpeed = effectiveSpeed;
         LastPlantFoot = lastPlantFoot;
         NextPlantFoot = nextPlantFoot;
         StepProgress = stepProgress;
-        TimeToNextPlant = timeToNextPlant;
     }
 
     public bool HasLoop { get; }
     public bool HasPhase { get; }
-    public PlayerMotionProfile Profile { get; }
+    public PlayerLocomotionMode Mode { get; }
+    public PlayerFoot VariantFoot { get; }
     public float NormalizedTime { get; }
-    public float EffectiveSpeed { get; }
     public PlayerFoot LastPlantFoot { get; }
     public PlayerFoot NextPlantFoot { get; }
     public float StepProgress { get; }
-    public float TimeToNextPlant { get; }
 }

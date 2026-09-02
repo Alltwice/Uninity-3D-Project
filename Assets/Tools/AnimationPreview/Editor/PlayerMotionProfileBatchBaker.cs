@@ -229,14 +229,8 @@ namespace ProjectTools.AnimationPreview
                 string path = AssetDatabase.GUIDToAssetPath(guid);
                 PlayerMotionCatalog catalog = AssetDatabase.LoadAssetAtPath<PlayerMotionCatalog>(path);
                 if (catalog == null) { errors.Add(path + ": 无法加载 Motion Catalog。"); continue; }
-                if (catalog.Motions == null) { errors.Add(path + ": Catalog Entries 缺失。"); continue; }
-                HashSet<PlayerMotionId> ids = new HashSet<PlayerMotionId>();
-                for (int index = 0; index < catalog.Motions.Count; index++)
-                {
-                    PlayerMotionCatalogEntry entry = catalog.Motions[index];
-                    if (!ids.Add(entry.Id)) errors.Add(path + ": Catalog Entry " + index + " 的 MotionId 重复。");
-                    if (entry.Definition == null) errors.Add(path + ": Catalog Entry " + index + " 缺少 Definition。");
-                }
+                List<string> catalogErrors = new List<string>();
+                if (!catalog.Validate(catalogErrors)) foreach (string error in catalogErrors) errors.Add(path + ": " + error);
             }
         }
 

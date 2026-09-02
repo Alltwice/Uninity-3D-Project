@@ -25,11 +25,18 @@ public class PlayerAnimationSetEditor : Editor
                 valid &= ValidateProfile(binding.Definition.RightFootProfile, binding.Definition.name + ".Right", errors, validatedProfiles);
             }
         }
-        valid &= ValidateLoop(animationSet, PlayerLocomotionMode.Walk, "Walk", errors, validatedProfiles);
-        valid &= ValidateLoop(animationSet, PlayerLocomotionMode.Run, "Run", errors, validatedProfiles);
-        valid &= ValidateLoop(animationSet, PlayerLocomotionMode.FastRun, "Sprint", errors, validatedProfiles);
-        valid &= ValidateLoop(animationSet, PlayerLocomotionMode.Idle, "Idle", errors, validatedProfiles);
-        valid &= ValidateLoop(animationSet, PlayerLocomotionMode.Air, "Air", errors, validatedProfiles);
+        if (animationSet.MotionCatalog == null)
+        {
+            errors.Add("MotionCatalog 缺失。");
+            valid = false;
+        }
+        else
+        {
+            valid &= animationSet.MotionCatalog.Validate(errors);
+            valid &= ValidateCycle(animationSet, PlayerLocomotionMode.Walk, "Walk", errors, validatedProfiles);
+            valid &= ValidateCycle(animationSet, PlayerLocomotionMode.Run, "Run", errors, validatedProfiles);
+            valid &= ValidateCycle(animationSet, PlayerLocomotionMode.FastRun, "Sprint", errors, validatedProfiles);
+        }
         valid &= ValidateCue(animationSet, PlayerAnimationCue.JumpStart, "Jump.JumpStart", errors);
         WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandingLv1, "Landing.Land1");
         WarnIfCueUnbound(animationSet, PlayerAnimationCue.LandingLv2, "Landing.Land2");
@@ -39,19 +46,31 @@ public class PlayerAnimationSetEditor : Editor
         else Debug.LogError(string.Join("\n", errors), animationSet);
     }
 
-    private static bool ValidateLoop(PlayerAnimationSet animationSet, PlayerLocomotionMode mode, string label, ICollection<string> errors, ISet<PlayerMotionProfile> validatedProfiles)
+    private static bool ValidateCycle(PlayerAnimationSet animationSet, PlayerLocomotionMode mode, string label, ICollection<string> errors, ISet<PlayerMotionProfile> validatedProfiles)
     {
+        if (!animationSet.MotionCatalog.TryGetCycle(mode, out PlayerLocomotionCycleDefinition cycle))
+        {
+            errors.Add(label + ": Catalog Cycle 查询失败。");
+            return false;
+        }
         bool valid = true;
         PlayerFoot[] feet = { PlayerFoot.Unknown, PlayerFoot.Left, PlayerFoot.Right };
         for (int i = 0; i < feet.Length; i++)
         {
-            if (!animationSet.TryResolveLoop(mode, feet[i], out PlayerAnimationSelection selection))
+            PlayerFoot foot = feet[i];
+            if (!animationSet.TryResolveLoop(mode, foot, out _))
             {
                 errors.Add(label + ": 语义 Loop 查询失败。");
                 valid = false;
                 continue;
             }
-            if (selection.Profile != null) valid &= ValidateProfile(selection.Profile, label + "." + feet[i], errors, validatedProfiles);
+            if (!cycle.TryResolveProfile(foot, out PlayerMotionProfile profile, out _))
+            {
+                errors.Add(label + "." + foot + ": Catalog Loop Profile 查询失败。");
+                valid = false;
+                continue;
+            }
+            valid &= ValidateProfile(profile, label + "." + foot, errors, validatedProfiles);
         }
         return valid;
     }

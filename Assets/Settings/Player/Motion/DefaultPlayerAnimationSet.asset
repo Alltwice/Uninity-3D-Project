@@ -52,9 +52,6 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 1827226128182048838, guid: 28f94a65124f3284b8882da5e12ea584, type: 3}
         _NormalizedStartTime: NaN
-      defaultProfile: {fileID: 11400000, guid: 4fc4d00ff7bdfd4459abe29460a7d4cb, type: 2}
-      leftProfile: {fileID: 11400000, guid: 0813702f0159bb34d827669cd07fa131, type: 2}
-      rightProfile: {fileID: 11400000, guid: 4fc4d00ff7bdfd4459abe29460a7d4cb, type: 2}
     motionBindings:
     - definition: {fileID: 11400000, guid: e0aad969cd095344ab0d8497f8121581, type: 2}
       defaultTransition:
@@ -397,9 +394,6 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 1827226128182048838, guid: 99e4eb5572885a74b8602df50dac4516, type: 3}
         _NormalizedStartTime: NaN
-      defaultProfile: {fileID: 11400000, guid: 26b24586e7c31fc44ac65d663db4c6c5, type: 2}
-      leftProfile: {fileID: 11400000, guid: 44ec0196510a5924293948ecaa97c6bd, type: 2}
-      rightProfile: {fileID: 11400000, guid: 26b24586e7c31fc44ac65d663db4c6c5, type: 2}
     motionBindings:
     - definition: {fileID: 11400000, guid: 4437c1a77929315498589ebf3cad360d, type: 2}
       defaultTransition:
@@ -742,9 +736,6 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 1827226128182048838, guid: 3e2e69d8336b4a944969c564b91de69e, type: 3}
         _NormalizedStartTime: NaN
-      defaultProfile: {fileID: 11400000, guid: a91127b0c4ccfc34895e0ae3607a6b9c, type: 2}
-      leftProfile: {fileID: 11400000, guid: d3a00f56f5095df4082885a63f59285b, type: 2}
-      rightProfile: {fileID: 11400000, guid: a91127b0c4ccfc34895e0ae3607a6b9c, type: 2}
     motionBindings:
     - definition: {fileID: 11400000, guid: 1b657801f384c0e46bc9e358d99f73e1, type: 2}
       defaultTransition:

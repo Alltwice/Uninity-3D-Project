@@ -206,7 +206,7 @@ public class PlayerOtherAnimationGroup
 }
 
 /// <summary>
-/// 按当前脚选择循环动画及其 MotionProfile
+/// 按 Simulation 选定的循环变体选择表现 Transition。
 /// </summary>
 [Serializable]
 public class PlayerLoopAnimationPair
@@ -214,90 +214,47 @@ public class PlayerLoopAnimationPair
     [SerializeField] private ClipTransition defaultTransition = new ClipTransition();
     [SerializeField] private ClipTransition leftTransition = new ClipTransition();
     [SerializeField] private ClipTransition rightTransition = new ClipTransition();
-    [SerializeField] private PlayerMotionProfile defaultProfile;
-    [SerializeField] private PlayerMotionProfile leftProfile;
-    [SerializeField] private PlayerMotionProfile rightProfile;
 
     public ClipTransition DefaultTransition => defaultTransition;
     public ClipTransition LeftTransition => leftTransition;
     public ClipTransition RightTransition => rightTransition;
-    public PlayerMotionProfile DefaultProfile => defaultProfile;
-    public PlayerMotionProfile LeftProfile => leftProfile;
-    public PlayerMotionProfile RightProfile => rightProfile;
 
     public PlayerAnimationSelection Resolve(PlayerFoot foot)
     {
-        if (foot == PlayerFoot.Left && leftTransition != null && leftTransition.Clip != null && leftProfile != null) return new PlayerAnimationSelection(leftTransition, leftProfile);
-        if (foot == PlayerFoot.Right && rightTransition != null && rightTransition.Clip != null && rightProfile != null) return new PlayerAnimationSelection(rightTransition, rightProfile);
-        return new PlayerAnimationSelection(defaultTransition, defaultProfile);
+        if (foot == PlayerFoot.Left) return new PlayerAnimationSelection(leftTransition);
+        if (foot == PlayerFoot.Right) return new PlayerAnimationSelection(rightTransition);
+        return new PlayerAnimationSelection(defaultTransition);
     }
 
     public bool Validate(string label, ICollection<string> errors)
     {
-        return Validate(label, errors, null);
-    }
-
-    internal bool Validate(string label, ICollection<string> errors, HashSet<PlayerMotionProfile> validatedProfiles)
-    {
         bool valid = true;
-        valid &= ValidateSlot(defaultTransition, defaultProfile, label + ".Default", errors);
-        valid &= ValidateSlot(leftTransition, leftProfile, label + ".Left", errors);
-        valid &= ValidateSlot(rightTransition, rightProfile, label + ".Right", errors);
-#if UNITY_EDITOR
-        valid &= PlayerAnimationSet.ValidateProfileClip(defaultProfile, defaultTransition, label + ".Default", errors);
-        valid &= PlayerAnimationSet.ValidateProfileClip(leftProfile, leftTransition, label + ".Left", errors);
-        valid &= PlayerAnimationSet.ValidateProfileClip(rightProfile, rightTransition, label + ".Right", errors);
-#endif
-        if (validatedProfiles == null)
-        {
-            valid &= ValidateLoopProfile(defaultProfile, errors);
-            valid &= ValidateLoopProfile(leftProfile, errors);
-            valid &= ValidateLoopProfile(rightProfile, errors);
-        }
-        else
-        {
-            valid &= ValidateLoopProfile(defaultProfile, validatedProfiles, errors);
-            valid &= ValidateLoopProfile(leftProfile, validatedProfiles, errors);
-            valid &= ValidateLoopProfile(rightProfile, validatedProfiles, errors);
-        }
+        valid &= ValidateSlot(defaultTransition, label + ".Default", errors);
+        valid &= ValidateSlot(leftTransition, label + ".Left", errors);
+        valid &= ValidateSlot(rightTransition, label + ".Right", errors);
         return valid;
     }
 
-    private static bool ValidateSlot(ClipTransition transition, PlayerMotionProfile profile, string label, ICollection<string> errors)
+    private static bool ValidateSlot(ClipTransition transition, string label, ICollection<string> errors)
     {
-        bool valid = true;
-        if (transition == null || transition.Clip == null) { errors?.Add(label + ": 缺少循环 Clip。"); valid = false; }
-        if (profile == null) { errors?.Add(label + ": 缺少循环 Profile。"); valid = false; }
-        return valid;
-    }
-
-    private static bool ValidateLoopProfile(PlayerMotionProfile profile, ICollection<string> errors)
-    {
-        return profile != null && profile.ValidateLoopPhase(errors);
-    }
-
-    private static bool ValidateLoopProfile(PlayerMotionProfile profile, HashSet<PlayerMotionProfile> validatedProfiles, ICollection<string> errors)
-    {
-        if (profile == null || !validatedProfiles.Add(profile)) return profile != null;
-        return profile.ValidateLoopPhase(errors);
+        if (transition != null && transition.Clip != null) return true;
+        errors?.Add(label + ": 缺少循环 Clip。");
+        return false;
     }
 
 #if UNITY_EDITOR
-    public void Configure(PlayerFoot foot, PlayerMotionProfile motionProfile, AnimationClip clip, float fadeDuration)
+    public void Configure(PlayerFoot foot, AnimationClip clip, float fadeDuration)
     {
         if (foot == PlayerFoot.Left)
         {
-            leftProfile = motionProfile;
             ConfigureTransition(ref leftTransition, clip, fadeDuration);
         }
         else if (foot == PlayerFoot.Right)
         {
-            rightProfile = motionProfile;
             ConfigureTransition(ref rightTransition, clip, fadeDuration);
         }
         else
         {
-            defaultProfile = motionProfile;
             ConfigureTransition(ref defaultTransition, clip, fadeDuration);
         }
     }
@@ -314,14 +271,12 @@ public class PlayerLoopAnimationPair
 
 public struct PlayerAnimationSelection
 {
-    public PlayerAnimationSelection(ClipTransition transition, PlayerMotionProfile profile)
+    public PlayerAnimationSelection(ClipTransition transition)
     {
         Transition = transition;
-        Profile = profile;
     }
 
     public ClipTransition Transition { get; }
-    public PlayerMotionProfile Profile { get; }
     public bool IsValid => Transition != null && Transition.Clip != null;
 }
 
@@ -372,7 +327,7 @@ public class PlayerAnimationSet : ScriptableObject
         {
             case PlayerLocomotionMode.Idle:
             case PlayerLocomotionMode.HardLanding:
-                selection = new PlayerAnimationSelection(idle?.Loop, null);
+                selection = new PlayerAnimationSelection(idle?.Loop);
                 return selection.IsValid;
             case PlayerLocomotionMode.Walk:
                 selection = walk == null || walk.Loop == null ? default : walk.Loop.Resolve(foot);
@@ -384,7 +339,7 @@ public class PlayerAnimationSet : ScriptableObject
                 selection = sprint == null || sprint.Loop == null ? default : sprint.Loop.Resolve(foot);
                 return selection.IsValid;
             case PlayerLocomotionMode.Air:
-                selection = new PlayerAnimationSelection(jump?.AirLoop, null);
+                selection = new PlayerAnimationSelection(jump?.AirLoop);
                 return selection.IsValid;
             default:
                 selection = default;
@@ -440,6 +395,7 @@ public class PlayerAnimationSet : ScriptableObject
         }
         else
         {
+            valid &= motionCatalog.Validate(errors);
             for (int i = 0; i < motionCatalog.Motions.Count; i++)
             {
                 PlayerMotionDefinition definition = motionCatalog.Motions[i].Definition;
@@ -469,6 +425,9 @@ public class PlayerAnimationSet : ScriptableObject
         else valid &= ValidateLoop(run.Loop, "Run.Loop", errors);
         if (sprint == null) { errors?.Add(name + ": Sprint 分类缺失。"); valid = false; }
         else valid &= ValidateLoop(sprint.Loop, "Sprint.Loop", errors);
+        valid &= ValidateCycleBindings(PlayerLocomotionMode.Walk, walk?.Loop, "Walk.Loop", errors);
+        valid &= ValidateCycleBindings(PlayerLocomotionMode.Run, run?.Loop, "Run.Loop", errors);
+        valid &= ValidateCycleBindings(PlayerLocomotionMode.FastRun, sprint?.Loop, "Sprint.Loop", errors);
         valid &= ValidateTransition(jump?.JumpStart, "Jump.JumpStart", errors);
         valid &= ValidateTransition(jump?.AirLoop, "Jump.AirLoop", errors);
         // 落地表现槽位允许缺省，未绑定时由运行时直接进入目标地面循环。
@@ -552,6 +511,31 @@ public class PlayerAnimationSet : ScriptableObject
         return loop != null && loop.Validate(label, errors);
     }
 
+    private bool ValidateCycleBindings(PlayerLocomotionMode locomotionMode, PlayerLoopAnimationPair loop, string label, ICollection<string> errors)
+    {
+        if (motionCatalog == null || loop == null || !motionCatalog.TryGetCycle(locomotionMode, out PlayerLocomotionCycleDefinition cycle))
+        {
+            errors?.Add(name + ": " + label + " 缺少对应的 Catalog Cycle。");
+            return false;
+        }
+        bool valid = true;
+        PlayerFoot[] feet = { PlayerFoot.Unknown, PlayerFoot.Left, PlayerFoot.Right };
+        for (int i = 0; i < feet.Length; i++)
+        {
+            PlayerFoot foot = feet[i];
+            if (!cycle.TryResolveProfile(foot, out PlayerMotionProfile profile, out _))
+            {
+                errors?.Add(name + ": " + label + "." + foot + " 缺少 Catalog Loop Profile。");
+                valid = false;
+                continue;
+            }
+#if UNITY_EDITOR
+            valid &= ValidateProfileClip(profile, loop.Resolve(foot).Transition, label + "." + foot, errors);
+#endif
+        }
+        return valid;
+    }
+
     internal static bool ValidateProfilePlantMarkers(PlayerMotionProfile profile, string label, ICollection<string> errors)
     {
         if (profile == null)
@@ -590,14 +574,14 @@ public class PlayerAnimationSet : ScriptableObject
         motionCatalog = catalog;
     }
 
-    public void ConfigureLoop(PlayerLocomotionMode locomotionMode, PlayerFoot foot, PlayerMotionProfile profile, AnimationClip clip, float fadeDuration)
+    public void ConfigureLoop(PlayerLocomotionMode locomotionMode, PlayerFoot foot, AnimationClip clip, float fadeDuration)
     {
         PlayerLocomotionAnimationGroup group = locomotionMode == PlayerLocomotionMode.Walk ? walk : locomotionMode == PlayerLocomotionMode.Run ? run : sprint;
         group ??= new PlayerLocomotionAnimationGroup();
         if (locomotionMode == PlayerLocomotionMode.Walk) walk = group;
         else if (locomotionMode == PlayerLocomotionMode.Run) run = group;
         else sprint = group;
-        group.Loop.Configure(foot, profile, clip, fadeDuration);
+        group.Loop.Configure(foot, clip, fadeDuration);
     }
 
     public void ConfigureLanding(PlayerLandingPresentationKey presentation, PlayerMotionDefinition definition, AnimationClip clip, float fadeDuration)

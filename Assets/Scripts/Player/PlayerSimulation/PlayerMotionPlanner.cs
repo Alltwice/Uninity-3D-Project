@@ -9,17 +9,24 @@ public class PlayerMotionPlanner : MonoBehaviour
     [SerializeField] private PlayerMotionCatalog catalog;
 
     private readonly PlayerMotionRuntime runtime = new PlayerMotionRuntime();
+    private PlayerLocomotionPhaseRuntime phaseRuntime;
 
     public PlayerMotionCatalog Catalog => catalog;
     public PlayerMotionSnapshot Snapshot => runtime.Snapshot;
+    public PlayerLocomotionPhaseSnapshot PhaseSnapshot => phaseRuntime.Snapshot;
+
+    private void Awake()
+    {
+        phaseRuntime = new PlayerLocomotionPhaseRuntime(catalog);
+    }
 
     public void BeginFrame() => runtime.BeginFrame();
 
-    public void HandleStateTransition(PlayerStateTransition transition, PlayerGameplayIntent intent, PlayerMotorResult motorResult, PlayerLocomotionPhaseSnapshot phaseSnapshot)
+    public void HandleStateTransition(PlayerStateTransition transition, PlayerGameplayIntent intent, PlayerMotorResult motorResult)
     {
         if (TryResolveTargetTransitionMotion(transition, intent, out PlayerMotionDefinition definition))
         {
-            Begin(definition, intent, motorResult, phaseSnapshot);
+            Begin(definition, intent, motorResult);
             return;
         }
         PlayerMotionSnapshot motion = runtime.Snapshot;
@@ -31,7 +38,7 @@ public class PlayerMotionPlanner : MonoBehaviour
         }
         if (TryResolveSourceExitMotion(transition, out definition))
         {
-            Begin(definition, intent, motorResult, phaseSnapshot);
+            Begin(definition, intent, motorResult);
             return;
         }
         if (runtime.Snapshot.IsActive) runtime.Cancel();
@@ -39,7 +46,7 @@ public class PlayerMotionPlanner : MonoBehaviour
     /// <summary>
     /// 开始落地烘焙动画演进与id资源绑定
     /// </summary>
-    public bool TryBeginLandingMotion(PlayerStateTransition transition, PlayerLandingPresentationKey presentation, PlayerGameplayIntent intent, PlayerMotorResult motorResult, PlayerLocomotionPhaseSnapshot phaseSnapshot)
+    public bool TryBeginLandingMotion(PlayerStateTransition transition, PlayerLandingPresentationKey presentation, PlayerGameplayIntent intent, PlayerMotorResult motorResult)
     {
         if (transition.PreviousStateType != typeof(PlayerAirState)) return false;
         PlayerMotionId id;
@@ -61,14 +68,14 @@ public class PlayerMotionPlanner : MonoBehaviour
                 return false;
         }
         if (catalog == null || !catalog.TryGet(id, out PlayerMotionDefinition definition)) return false;
-        Begin(definition, intent, motorResult, phaseSnapshot);
+        Begin(definition, intent, motorResult);
         return runtime.Snapshot.IsActive;
     }
 
     /// <summary>
     /// 处理了左右转向的动画
     /// </summary>
-    public void ResolveContinuousMotion(Type stateType, PlayerGameplayIntent intent, PlayerMotorResult motorResult, PlayerLocomotionPhaseSnapshot phaseSnapshot)
+    public void ResolveContinuousMotion(Type stateType, PlayerGameplayIntent intent, PlayerMotorResult motorResult)
     {
         if (runtime.Snapshot.IsActive || intent.DesiredMoveDirection.sqrMagnitude < 0.0001f) return;
         PlayerMotionId left;
@@ -92,12 +99,17 @@ public class PlayerMotionPlanner : MonoBehaviour
         Vector3 reference = motorResult.HorizontalVelocity.sqrMagnitude > 0.0001f ? motorResult.HorizontalVelocity : transform.forward;
         float signedAngle = SignedPlanarAngle(reference, intent.DesiredMoveDirection);
         if (Mathf.Abs(signedAngle) < catalog.Turn180Threshold) return;
-        if (catalog.TryGet(signedAngle < 0f ? left : right, out PlayerMotionDefinition definition)) Begin(definition, intent, motorResult, phaseSnapshot);
+        if (catalog.TryGet(signedAngle < 0f ? left : right, out PlayerMotionDefinition definition)) Begin(definition, intent, motorResult);
     }
 
     public PlayerMotionFrame Advance(float deltaTime, PlayerGameplayIntent intent)
     {
         return runtime.Advance(deltaTime, intent);
+    }
+
+    public void CommitLocomotionPhase(PlayerLocomotionMode locomotionMode, PlayerMotorResult motorResult)
+    {
+        phaseRuntime.Commit(locomotionMode, motorResult, runtime.Snapshot);
     }
     /// <summary>
     /// 先解析目标进入 Motion，再按当前 Motion 的中断策略处理源状态退出 Motion
@@ -142,12 +154,12 @@ public class PlayerMotionPlanner : MonoBehaviour
         return catalog.TryGet(turnId, out _) ? turnId : standard;
     }
 
-    private void Begin(PlayerMotionDefinition definition, PlayerGameplayIntent intent, PlayerMotorResult motorResult, PlayerLocomotionPhaseSnapshot phaseSnapshot)
+    private void Begin(PlayerMotionDefinition definition, PlayerGameplayIntent intent, PlayerMotorResult motorResult)
     {
         Vector3 desired = intent.DesiredMoveDirection.sqrMagnitude > 0.0001f ? intent.DesiredMoveDirection : transform.forward;
         Vector3 entryVelocity = motorResult.HorizontalVelocity.sqrMagnitude > 0.0001f ? motorResult.HorizontalVelocity : transform.forward;
         Vector3 basis = definition.BasisPolicy == PlayerMotionBasisPolicy.DesiredDirection ? desired : definition.BasisPolicy == PlayerMotionBasisPolicy.EntryVelocityDirection ? entryVelocity : transform.forward;
-        PlayerFoot entryFoot = definition.ResolveEntryFoot(phaseSnapshot);
+        PlayerFoot entryFoot = definition.ResolveEntryFoot(PhaseSnapshot);
         PlayerMotionProfile selectedProfile = definition.ResolveProfile(entryFoot);
         runtime.Begin(definition, selectedProfile, entryFoot, basis, desired);
     }

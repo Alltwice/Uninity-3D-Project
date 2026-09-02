@@ -269,16 +269,15 @@ public class PlayerFootMotionTests
                 IReadOnlyList<PlayerFootPlantMarker> markers = profile.PlantMarkers;
                 for (int index = 0; index < markers.Count; index++)
                 {
-                    Assert.That(profile.TryEvaluateLoopPhase(markers[index].NormalizedTime, 1f, out PlayerLocomotionPhaseSnapshot markerSnapshot), Is.True, profile.name);
-                    Assert.That(markerSnapshot.LastPlantFoot, Is.EqualTo(markers[index].Foot), profile.name);
-                    Assert.That(markerSnapshot.StepProgress, Is.EqualTo(0f).Within(0.0001f), profile.name);
+                    Assert.That(profile.TryEvaluateLoopPhase(markers[index].NormalizedTime, out PlayerFoot markerLastFoot, out _, out float markerStepProgress), Is.True, profile.name);
+                    Assert.That(markerLastFoot, Is.EqualTo(markers[index].Foot), profile.name);
+                    Assert.That(markerStepProgress, Is.EqualTo(0f).Within(0.0001f), profile.name);
                     int previousIndex = (index + markers.Count - 1) % markers.Count;
                     float previousTime = index == 0 ? markers[previousIndex].NormalizedTime - 1f : markers[previousIndex].NormalizedTime;
                     float midpoint = (previousTime + markers[index].NormalizedTime) * 0.5f;
-                    Assert.That(profile.TryEvaluateLoopPhase(midpoint, 1f, out PlayerLocomotionPhaseSnapshot midpointSnapshot), Is.True, profile.name);
-                    Assert.That(midpointSnapshot.HasPhase, Is.True, profile.name);
-                    Assert.That(midpointSnapshot.NextPlantFoot, Is.EqualTo(markers[index].Foot), profile.name);
-                    Assert.That(midpointSnapshot.StepProgress, Is.GreaterThan(0f).And.LessThan(1f), profile.name);
+                    Assert.That(profile.TryEvaluateLoopPhase(midpoint, out _, out PlayerFoot midpointNextFoot, out float midpointStepProgress), Is.True, profile.name);
+                    Assert.That(midpointNextFoot, Is.EqualTo(markers[index].Foot), profile.name);
+                    Assert.That(midpointStepProgress, Is.GreaterThan(0f).And.LessThan(1f), profile.name);
                 }
             }
         }

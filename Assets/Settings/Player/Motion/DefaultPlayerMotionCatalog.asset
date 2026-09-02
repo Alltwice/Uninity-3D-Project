@@ -51,4 +51,17 @@ MonoBehaviour:
     definition: {fileID: 11400000, guid: dcfc2dc37d5f46e49895f84a800b1f51, type: 2}
   - id: 18
     definition: {fileID: 11400000, guid: 61858b1e90e2e3141a5fa38470f03480, type: 2}
+  locomotionCycles:
+  - mode: 1
+    defaultProfile: {fileID: 11400000, guid: 4fc4d00ff7bdfd4459abe29460a7d4cb, type: 2}
+    leftProfile: {fileID: 11400000, guid: 0813702f0159bb34d827669cd07fa131, type: 2}
+    rightProfile: {fileID: 11400000, guid: 4fc4d00ff7bdfd4459abe29460a7d4cb, type: 2}
+  - mode: 2
+    defaultProfile: {fileID: 11400000, guid: 26b24586e7c31fc44ac65d663db4c6c5, type: 2}
+    leftProfile: {fileID: 11400000, guid: 44ec0196510a5924293948ecaa97c6bd, type: 2}
+    rightProfile: {fileID: 11400000, guid: 26b24586e7c31fc44ac65d663db4c6c5, type: 2}
+  - mode: 3
+    defaultProfile: {fileID: 11400000, guid: a91127b0c4ccfc34895e0ae3607a6b9c, type: 2}
+    leftProfile: {fileID: 11400000, guid: d3a00f56f5095df4082885a63f59285b, type: 2}
+    rightProfile: {fileID: 11400000, guid: a91127b0c4ccfc34895e0ae3607a6b9c, type: 2}
   turn180Threshold: 150
