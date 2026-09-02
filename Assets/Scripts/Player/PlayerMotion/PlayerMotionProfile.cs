@@ -51,6 +51,7 @@ public class PlayerMotionProfile : ScriptableObject
     public const int CurrentFootPlantDetectionVersion = 1;
     //动画持续时间
     [Min(0f)] [SerializeField] private float duration;
+    //一轮动画位移
     [Min(0f)] [SerializeField] private float cycleDistance;
     [Min(1)] [SerializeField] private int sampleRate = 60;
     [SerializeField] private Vector2[] cumulativePlanarPosition = Array.Empty<Vector2>();
@@ -116,7 +117,7 @@ public class PlayerMotionProfile : ScriptableObject
     }
 
     /// <summary>
-    /// 按 Simulation 提交的归一化循环相位解析当前两次 Plant 之间的关系。
+    /// 按 Simulation 提交的归一化循环相位解析当前两次 Plant 之间的关系
     /// </summary>
     public bool TryEvaluateLoopPhase(float normalizedPhase, out PlayerFoot lastPlantFoot, out PlayerFoot nextPlantFoot, out float stepProgress)
     {
@@ -150,6 +151,7 @@ public class PlayerMotionProfile : ScriptableObject
         //整段时间
         float segmentLength = nextTime - previousTime;
         if (!(segmentLength > 0f)) return false;
+        //脚步相位
         stepProgress = (currentTime - previousTime) / segmentLength;
         if (!IsFinite(stepProgress) || stepProgress < 0f || stepProgress >= 1f) return false;
         lastPlantFoot = plantMarkers[previousIndex].Foot;

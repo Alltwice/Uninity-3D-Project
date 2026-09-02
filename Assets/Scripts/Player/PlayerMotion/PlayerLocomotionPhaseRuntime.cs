@@ -2,13 +2,14 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// 以 Motor 的实际平面位移推进循环相位，并保留 Boundary Motion 的最后落地脚。
+/// 以 Motor 的实际平面位移推进循环相位，并保留 Boundary Motion 的最后落地脚
 /// </summary>
 public class PlayerLocomotionPhaseRuntime
 {
     private readonly PlayerMotionCatalog catalog;
     private PlayerLocomotionMode mode;
     private PlayerMotionProfile profile;
+    //当前在使用什么脚的脚步资源，相当于标明资源语义
     private PlayerFoot variantFoot;
     private PlayerFoot lastPlantFoot;
     private float normalizedPhase;
@@ -23,11 +24,12 @@ public class PlayerLocomotionPhaseRuntime
     public PlayerLocomotionPhaseSnapshot Snapshot => BuildSnapshot();
 
     /// <summary>
-    /// 在本帧最终 Motion 决策和 Motor.Simulate 后提交相位。激活循环的帧不会消费此前位移。
+    /// 在一帧的最后，拿到motor的移动数据后反推动画相位来到了多少，然后将数据交由动画管理器由其推进动画
     /// </summary>
     public void Commit(PlayerLocomotionMode locomotionMode, PlayerMotorResult motorResult, PlayerMotionSnapshot motion)
     {
         UpdateLastPlantFootFromBoundary(motion);
+        //是不是loop动画
         if (!PlayerLocomotionCycleDefinition.IsGroundLoopMode(locomotionMode) || !motorResult.IsGrounded)
         {
             CloseCycle(locomotionMode);
@@ -46,6 +48,7 @@ public class PlayerLocomotionPhaseRuntime
             loopMotionInstanceId = motion.ActiveDefinition != null ? motion.InstanceId : 0;
             return;
         }
+        //开始计算当前在这个循环周期内的百分比
         normalizedPhase = Mathf.Repeat(normalizedPhase + motorResult.ActualPlanarDisplacement.magnitude / profile.CycleDistance, 1f);
         ResolveCurrentPlantFeet(out PlayerFoot resolvedLastFoot, out _, out _);
         lastPlantFoot = resolvedLastFoot;
@@ -63,7 +66,9 @@ public class PlayerLocomotionPhaseRuntime
         ResolveCurrentPlantFeet(out PlayerFoot resolvedLastFoot, out _, out _);
         lastPlantFoot = resolvedLastFoot;
     }
-
+    /// <summary>
+    /// 处理最后落地脚
+    /// </summary>
     private void UpdateLastPlantFootFromBoundary(PlayerMotionSnapshot motion)
     {
         if (motion.ActiveProfile == null) return;
@@ -80,7 +85,9 @@ public class PlayerLocomotionPhaseRuntime
         loopMotionInstanceId = 0;
         hasLoop = false;
     }
-
+    /// <summary>
+    /// 结束地面循环
+    /// </summary>
     private void CloseCycle(PlayerLocomotionMode locomotionMode)
     {
         mode = locomotionMode;

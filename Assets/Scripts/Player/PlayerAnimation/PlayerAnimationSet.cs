@@ -268,7 +268,9 @@ public class PlayerLoopAnimationPair
     }
 #endif
 }
-
+/// <summary>
+/// 动画
+/// </summary>
 public struct PlayerAnimationSelection
 {
     public PlayerAnimationSelection(ClipTransition transition)
@@ -320,7 +322,9 @@ public class PlayerAnimationSet : ScriptableObject
         transition = null;
         return false;
     }
-
+    /// <summary>
+    /// 对于移动模式，脚步返回正确的动画
+    /// </summary>
     public bool TryResolveLoop(PlayerLocomotionMode locomotionMode, PlayerFoot foot, out PlayerAnimationSelection selection)
     {
         switch (locomotionMode)

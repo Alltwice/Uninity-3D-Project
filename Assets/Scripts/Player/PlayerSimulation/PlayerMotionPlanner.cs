@@ -106,7 +106,9 @@ public class PlayerMotionPlanner : MonoBehaviour
     {
         return runtime.Advance(deltaTime, intent);
     }
-
+    /// <summary>
+    /// 这里planner通过移动数据驱动phaseRuntime
+    /// </summary>
     public void CommitLocomotionPhase(PlayerLocomotionMode locomotionMode, PlayerMotorResult motorResult)
     {
         phaseRuntime.Commit(locomotionMode, motorResult, runtime.Snapshot);

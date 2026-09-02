@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.Playables;
 
 /// <summary>
-/// 将 Gameplay、Motion 和 Simulation 相位事实表现为 Pose；不生产运动或脚步相位。
+/// 将 Gameplay、Motion 和 Simulation 相位事实表现为 Pose；不生产运动或脚步相位
 /// </summary>
 public sealed class PlayerAnimationController : MonoBehaviour
 {
@@ -57,7 +57,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
     }
 
     /// <summary>
-    /// 边界 Motion 始终由 MotionSnapshot.Progress 手动采样。
+    /// 边界 Motion 始终由 MotionSnapshot.Progress 手动采样
     /// </summary>
     private void PlayMotion(PlayerMotionSnapshot motion, PlayerLocomotionPhaseSnapshot locomotionPhase)
     {
@@ -192,8 +192,11 @@ public sealed class PlayerAnimationController : MonoBehaviour
     private bool TryResolveLoop(Type stateType, PlayerLocomotionPhaseSnapshot locomotionPhase, out PlayerAnimationSelection selection, out bool manualSampling)
     {
         PlayerLocomotionMode stateMode = ResolveLocomotionMode(stateType);
+        //是否是受Simulation控制的Loop
         manualSampling = locomotionPhase.HasLoop && PlayerLocomotionCycleDefinition.IsGroundLoopMode(stateMode) && locomotionPhase.Mode == stateMode;
+        //决定使用哪个mode查询动画
         PlayerLocomotionMode resolveMode = manualSampling ? locomotionPhase.Mode : stateMode;
+        //决定使用哪个脚步动画
         PlayerFoot resolveFoot = manualSampling ? locomotionPhase.VariantFoot : PlayerFoot.Unknown;
         if (animationSet != null && animationSet.TryResolveLoop(resolveMode, resolveFoot, out selection)) return true;
         selection = default;
@@ -206,14 +209,16 @@ public sealed class PlayerAnimationController : MonoBehaviour
         ApplyLoopSample(stableLoopState, locomotionPhase);
         if (handoffLoopState != null && handoffLoopState != stableLoopState) ApplyLoopSample(handoffLoopState, locomotionPhase);
     }
-
+    //从零状态开始播放，动画如何播放由外部数据提供，实际推进动画播放的位置
     private static void ApplyLoopSample(AnimancerState state, PlayerLocomotionPhaseSnapshot locomotionPhase)
     {
         state.Speed = 0f;
         state.IsPlaying = false;
         state.NormalizedTime = locomotionPhase.NormalizedTime;
     }
-
+    /// <summary>
+    /// 将状态转译为播放语义
+    /// </summary>
     private static PlayerLocomotionMode ResolveLocomotionMode(Type stateType)
     {
         if (stateType == typeof(PlayerWalkState)) return PlayerLocomotionMode.Walk;

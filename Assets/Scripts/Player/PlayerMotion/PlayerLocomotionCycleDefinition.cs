@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 定义一个地面循环模式的三种起步脚变体；Unknown 始终使用 Default。
+/// 定义一个地面循环模式的三种起步脚变体；Unknown 始终使用 Default
 /// </summary>
 [Serializable]
 public class PlayerLocomotionCycleDefinition
@@ -44,7 +44,9 @@ public class PlayerLocomotionCycleDefinition
         rightProfile = rightLoopProfile;
     }
 #endif
-
+    /// <summary>
+    /// 确认地面移动模式
+    /// </summary>
     public static bool IsGroundLoopMode(PlayerLocomotionMode locomotionMode)
     {
         return locomotionMode == PlayerLocomotionMode.Walk || locomotionMode == PlayerLocomotionMode.Run || locomotionMode == PlayerLocomotionMode.FastRun;

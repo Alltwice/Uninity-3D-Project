@@ -65,7 +65,9 @@ public class PlayerMotionCatalog : ScriptableObject
         definition = null;
         return false;
     }
-
+    /// <summary>
+    /// 供外部拿到脚步相位数据
+    /// </summary>
     public bool TryGetCycle(PlayerLocomotionMode locomotionMode, out PlayerLocomotionCycleDefinition definition)
     {
         for (int i = 0; i < locomotionCycles.Count; i++)
