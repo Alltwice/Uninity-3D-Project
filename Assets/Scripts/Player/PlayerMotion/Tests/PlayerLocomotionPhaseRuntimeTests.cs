@@ -57,25 +57,54 @@ public sealed class PlayerLocomotionPhaseRuntimeTests
         Assert.That(activated.NormalizedTime, Is.Zero);
         fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(1f), BoundaryMotion(fixture, 7, 0.9f, true, true, false, false));
         Assert.That(fixture.Runtime.Snapshot.NormalizedTime, Is.EqualTo(0.5f).Within(0.0001f));
-        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(1f), BoundaryMotion(fixture, 7, 1f, true, false, true, false));
-        Assert.That(fixture.Runtime.Snapshot.NormalizedTime, Is.Zero);
+        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(0.5f), BoundaryMotion(fixture, 7, 1f, true, false, true, false));
+        Assert.That(fixture.Runtime.Snapshot.NormalizedTime, Is.EqualTo(0.75f).Within(0.0001f));
     }
 
     [Test]
-    public void CompletionAndCancellation_ReenterLoopAtPhaseZeroWithResolvedFoot()
+    public void CompletionAfterHandoff_PreservesPhaseAndVariant()
     {
         using PhaseFixture fixture = new PhaseFixture();
-        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(0f), BoundaryMotion(fixture, 11, 0.6f, true, false, true, false));
+        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(0f), default);
+        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(0f), BoundaryMotion(fixture, 7, 0.6f, false, true, false, false));
+        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(0f), BoundaryMotion(fixture, 7, 0.8f, true, true, false, false));
+        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(1f), BoundaryMotion(fixture, 7, 0.9f, true, true, false, false));
+        PlayerLocomotionPhaseSnapshot beforeCompletion = fixture.Runtime.Snapshot;
+        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(0.5f), BoundaryMotion(fixture, 7, 1f, true, false, true, false));
+        PlayerLocomotionPhaseSnapshot completed = fixture.Runtime.Snapshot;
+        Assert.That(completed.HasLoop, Is.True);
+        Assert.That(completed.VariantFoot, Is.EqualTo(beforeCompletion.VariantFoot));
+        Assert.That(completed.NormalizedTime, Is.Not.Zero);
+        Assert.That(completed.NormalizedTime, Is.EqualTo(0.75f).Within(0.0001f));
+    }
+
+    [Test]
+    public void CancellationAfterHandoff_PreservesPhaseAndVariant()
+    {
+        using PhaseFixture fixture = new PhaseFixture();
+        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(0f), default);
+        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(0f), BoundaryMotion(fixture, 7, 0.6f, false, true, false, false));
+        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(0f), BoundaryMotion(fixture, 7, 0.8f, true, true, false, false));
+        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(1f), BoundaryMotion(fixture, 7, 0.9f, true, true, false, false));
+        PlayerLocomotionPhaseSnapshot beforeCancellation = fixture.Runtime.Snapshot;
+        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(0.5f), BoundaryMotion(fixture, 7, 0.9f, true, false, false, true));
+        PlayerLocomotionPhaseSnapshot cancelled = fixture.Runtime.Snapshot;
+        Assert.That(cancelled.HasLoop, Is.True);
+        Assert.That(cancelled.VariantFoot, Is.EqualTo(beforeCancellation.VariantFoot));
+        Assert.That(cancelled.NormalizedTime, Is.Not.Zero);
+        Assert.That(cancelled.NormalizedTime, Is.EqualTo(0.75f).Within(0.0001f));
+    }
+
+    [Test]
+    public void CompletionWithoutActiveLoop_ActivatesCycleAtPhaseZero()
+    {
+        using PhaseFixture fixture = new PhaseFixture();
+        Assert.That(fixture.Runtime.Snapshot.HasLoop, Is.False);
+        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(0f), BoundaryMotion(fixture, 11, 0.6f, false, false, true, false));
         PlayerLocomotionPhaseSnapshot completed = fixture.Runtime.Snapshot;
         Assert.That(completed.HasLoop, Is.True);
         Assert.That(completed.VariantFoot, Is.EqualTo(PlayerFoot.Left));
         Assert.That(completed.NormalizedTime, Is.Zero);
-        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(1f), default);
-        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(0f), BoundaryMotion(fixture, 12, 0.6f, false, false, false, true));
-        PlayerLocomotionPhaseSnapshot cancelled = fixture.Runtime.Snapshot;
-        Assert.That(cancelled.HasLoop, Is.True);
-        Assert.That(cancelled.VariantFoot, Is.EqualTo(PlayerFoot.Left));
-        Assert.That(cancelled.NormalizedTime, Is.Zero);
     }
 
     [Test]
