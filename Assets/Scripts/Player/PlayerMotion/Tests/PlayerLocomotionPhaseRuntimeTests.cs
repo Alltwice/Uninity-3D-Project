@@ -62,6 +62,25 @@ public sealed class PlayerLocomotionPhaseRuntimeTests
     }
 
     [Test]
+    public void EntryHandoff_RetainsAndAdvancesExistingSourceLoopAfterIdleTransition()
+    {
+        using PhaseFixture fixture = new PhaseFixture();
+        fixture.Runtime.Commit(PlayerLocomotionMode.Walk, MotorResult(0f), default);
+        PlayerLocomotionPhaseSnapshot beforeEntry = fixture.Runtime.Snapshot;
+        PlayerMotionSnapshot entry = new PlayerMotionSnapshot(fixture.BoundaryDefinition, fixture.BoundaryProfile, PlayerFoot.Right, 17, 0.05f, 0f, false, true, true, 1f / 3f, PlayerLocomotionMode.Walk, true, false, false);
+        fixture.Runtime.Commit(PlayerLocomotionMode.Idle, MotorResult(1f), entry);
+        PlayerLocomotionPhaseSnapshot duringEntry = fixture.Runtime.Snapshot;
+        Assert.That(duringEntry.HasLoop, Is.True);
+        Assert.That(duringEntry.Mode, Is.EqualTo(beforeEntry.Mode));
+        Assert.That(duringEntry.VariantFoot, Is.EqualTo(beforeEntry.VariantFoot));
+        Assert.That(duringEntry.NormalizedTime, Is.GreaterThan(beforeEntry.NormalizedTime));
+
+        PlayerMotionSnapshot completed = new PlayerMotionSnapshot(fixture.BoundaryDefinition, fixture.BoundaryProfile, PlayerFoot.Right, 17, 0.15f, 0f, false, true, false, 1f, PlayerLocomotionMode.Walk, false, true, false);
+        fixture.Runtime.Commit(PlayerLocomotionMode.Idle, MotorResult(0f), completed);
+        Assert.That(fixture.Runtime.Snapshot.HasLoop, Is.False);
+    }
+
+    [Test]
     public void CompletionAfterHandoff_PreservesPhaseAndVariant()
     {
         using PhaseFixture fixture = new PhaseFixture();

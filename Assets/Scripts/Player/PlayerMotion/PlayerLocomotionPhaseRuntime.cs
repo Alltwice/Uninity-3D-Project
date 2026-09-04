@@ -29,29 +29,32 @@ public class PlayerLocomotionPhaseRuntime
     public void Commit(PlayerLocomotionMode locomotionMode, PlayerMotorResult motorResult, PlayerMotionSnapshot motion)
     {
         UpdateLastPlantFootFromBoundary(motion);
+        bool retainEntrySourceLoop = motion.HasEntrySource && motion.EntryHandoffActive && PlayerLocomotionCycleDefinition.IsGroundLoopMode(motion.EntrySourceLocomotionMode) && motorResult.IsGrounded;
+        if (retainEntrySourceLoop)
+        {
+            AdvanceLoop(motorResult);
+            return;
+        }
         //是不是loop动画
         if (!PlayerLocomotionCycleDefinition.IsGroundLoopMode(locomotionMode) || !motorResult.IsGrounded)
         {
             CloseCycle(locomotionMode);
             return;
         }
-        if (motion.IsActive && !motion.HandoffActive)
+        if (motion.IsActive && !motion.ExitHandoffActive)
         {
             PauseForBoundary(locomotionMode);
             return;
         }
         bool modeChanged = !hasLoop || mode != locomotionMode;
-        bool enteredHandoff = motion.IsActive && motion.HandoffActive && loopMotionInstanceId != motion.InstanceId;
+        bool enteredHandoff = motion.IsActive && motion.ExitHandoffActive && loopMotionInstanceId != motion.InstanceId;
         if (modeChanged || enteredHandoff)
         {
             ActivateCycle(locomotionMode);
             loopMotionInstanceId = motion.ActiveDefinition != null ? motion.InstanceId : 0;
             return;
         }
-        //开始计算当前在这个循环周期内的百分比
-        normalizedPhase = Mathf.Repeat(normalizedPhase + motorResult.ActualPlanarDisplacement.magnitude / profile.CycleDistance, 1f);
-        ResolveCurrentPlantFeet(out PlayerFoot resolvedLastFoot, out _, out _);
-        lastPlantFoot = resolvedLastFoot;
+        AdvanceLoop(motorResult);
     }
 
     private void ActivateCycle(PlayerLocomotionMode locomotionMode)
@@ -96,6 +99,14 @@ public class PlayerLocomotionPhaseRuntime
         normalizedPhase = 0f;
         loopMotionInstanceId = 0;
         hasLoop = false;
+    }
+
+    private void AdvanceLoop(PlayerMotorResult motorResult)
+    {
+        //开始计算当前在这个循环周期内的百分比
+        normalizedPhase = Mathf.Repeat(normalizedPhase + motorResult.ActualPlanarDisplacement.magnitude / profile.CycleDistance, 1f);
+        ResolveCurrentPlantFeet(out PlayerFoot resolvedLastFoot, out _, out _);
+        lastPlantFoot = resolvedLastFoot;
     }
 
     private PlayerLocomotionPhaseSnapshot BuildSnapshot()

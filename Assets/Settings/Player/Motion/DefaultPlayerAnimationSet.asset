@@ -81,7 +81,7 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 1827226128182048838, guid: 3a14f330c6c12724ebc08fd33fc4956d, type: 3}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -133,7 +133,31 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 1827226128182048838, guid: 3299c8fc6f9861a4eadc99f2de26204f, type: 3}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 0
+          inSlope: 0
+          outSlope: 1
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 1
+          value: 1
+          inSlope: 1
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      entryPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -185,7 +209,7 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 0}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -237,7 +261,7 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 0}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -289,7 +313,7 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 1827226128182048838, guid: 752a0f155bfb7c1458200c10ec0ce4b2, type: 3}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -341,7 +365,7 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 1827226128182048838, guid: 5a6a3fcf1ff41a842b409093feaf0ecd, type: 3}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -423,7 +447,7 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 5687401409094618642, guid: 35992bdcd19478c4691d10e366e1546f, type: 3}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -475,7 +499,31 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 1323507923967955738, guid: c05870e3ec3168b4a94f488e7ada5f40, type: 3}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 0
+          inSlope: 0
+          outSlope: 1
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 1
+          value: 1
+          inSlope: 1
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      entryPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -527,7 +575,7 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 0}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -579,7 +627,7 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 0}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -631,7 +679,7 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 934423465960791222, guid: 4425a3223627498409b4a469e48d9e77, type: 3}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -683,7 +731,7 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 8242617978284009519, guid: a1969baaa6134ad4f972ef6d57c356cc, type: 3}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -765,7 +813,31 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 3193550521350188915, guid: 23bdeea9c8345b24faad4a23a1ef0204, type: 3}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 0
+          inSlope: 0
+          outSlope: 1
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 1
+          value: 1
+          inSlope: 1
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      entryPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -817,7 +889,7 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 8568171489415138635, guid: 4736608bca693914893d52d1e89071ed, type: 3}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -869,7 +941,7 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: -816637831197849413, guid: 10d8330a2ecd83d449f557497ae84489, type: 3}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -978,7 +1050,7 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 0}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -1031,7 +1103,7 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 0}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -1084,7 +1156,7 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 0}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3
@@ -1138,7 +1210,7 @@ MonoBehaviour:
           _Names: []
         _Clip: {fileID: 0}
         _NormalizedStartTime: NaN
-      poseFadeWeight:
+      exitPoseWeight:
         serializedVersion: 2
         m_Curve:
         - serializedVersion: 3

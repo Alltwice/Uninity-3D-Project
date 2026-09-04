@@ -31,6 +31,25 @@ public enum PlayerMotorRotationMode
     //直接
     YawDelta
 }
+
+/// <summary>
+/// Finite Motion 开始时捕获的源地面循环模拟事实
+/// </summary>
+public struct PlayerMotionEntrySource
+{
+    public PlayerMotionEntrySource(PlayerLocomotionMode locomotionMode, Vector3 planarVelocity)
+    {
+        IsValid = true;
+        LocomotionMode = locomotionMode;
+        planarVelocity.y = 0f;
+        PlanarVelocity = planarVelocity;
+    }
+
+    public bool IsValid;
+    public PlayerLocomotionMode LocomotionMode;
+    public Vector3 PlanarVelocity;
+}
+
 /// <summary>
 /// 玩家输入意图
 /// </summary>

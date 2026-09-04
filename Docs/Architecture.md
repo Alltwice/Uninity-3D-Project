@@ -1,7 +1,7 @@
 # Architecture
 
 > 本文记录项目当前较稳定的职责边界、依赖方向和核心运行流  
-> 最后核对的运行时代码基线：`34e2987da871bda762f65d3f099d1fe145f575e9`（2026-09-03）。若当前源码有后续修改，以源码为准
+> 最后核对的运行时代码基线：当前工作树（2026-09-04）
 
 ## 1. 当前架构概览
 
@@ -235,7 +235,7 @@ PlayerMotionFrame / PlayerMotionSnapshot
 - 旋转策略
 - Basis 选择
 - 运行时持续时间与位移倍率
-- Motion → 常规移动的 Handoff 区间
+- Entry Handoff（源地面循环 → Finite Motion）与 Exit Handoff（Finite Motion → 目标 Locomotion）的区间和权重曲线
 - Transition Lock 承诺窗口
 - 被打断后的退出策略
 - 是否按 Foot Phase 选择左右脚 Profile
@@ -264,6 +264,7 @@ PlayerMotionDefinition
 - 状态进入 / 退出 Motion 解析
 - Dodge / Start / Stop / 180° Turn / Motion-backed Landing 等语义选择
 - 根据 Foot Phase 选择对应 Foot Profile
+- Stop Motion 启动时从 `PhaseSnapshot.Mode` 与 `MotorResult.HorizontalVelocity` 捕获有效的地面 Loop Entry Source
 - 驱动 `PlayerMotionRuntime`
 - 持有并提交 `PlayerLocomotionPhaseRuntime`
 
@@ -280,7 +281,8 @@ PlayerMotionDefinition
 
 - 管理 Motion instance 与 progress
 - 采样烘焙位移、Yaw
-- 计算 Handoff 与 Translation Authority
+- 捕获并保留 Entry Source 的地面模式与平面速度
+- 计算 Entry / Exit Handoff 进度、位移权重与 Translation Authority
 - 暴露完成 / 取消 / Transition Lock 快照
 - 产出本帧 `PlayerMotionFrame`
 
@@ -310,11 +312,31 @@ PlayerMotorResult
 
 状态层表达移动意图，Motion 提供当前特殊运动的本帧贡献，Composer 生成最终 Motor 参数：
 
+- Entry Source 速度、Authored Motion 位移与目标 Locomotion 预测速度使用统一三路权重合成
 - Velocity Driven
 - Displacement Driven
 - Face Direction
 - Yaw Delta
 - 垂直冲量
+
+Entry / Exit Handoff 的跨层数据流为：
+
+```text
+Stop Transition + PhaseSnapshot + MotorResult.HorizontalVelocity
+                              │
+                              ▼
+                     PlayerMotionPlanner
+                              │ PlayerMotionEntrySource
+                              ▼
+                     PlayerMotionRuntime
+                       ├──► PlayerMotionFrame
+                       │       └──► PlayerMotionComposer
+                       └──► PlayerMotionSnapshot
+                               ├──► PlayerLocomotionPhaseRuntime
+                               └──► PlayerAnimationController
+```
+
+`PlayerMotionEntrySource` 只包含地面 Loop 模式与平面速度等 Simulation 数据；Planner、Runtime 和 Composer 不持有 Animancer State 或 AnimationClip。位移由 Entry Source 速度、Authored Motion 位移和目标 Locomotion 预测速度三路权重合成。
 
 ### PlayerMotor
 
@@ -411,6 +433,8 @@ PlayerLocomotionPhaseSnapshot
 当前相位关系：
 
 - Phase 的推进依据实际运动结果与 Motion 状态
+- Entry Handoff Active 时，即使 Gameplay 已切换到 Idle，仍保留当前 Source Loop 的 Profile、VariantFoot 与 NormalizedPhase，并用本帧实际平面位移推进
+- Entry Handoff 完成后按当前 Locomotion 状态正常关闭或重新建立 Loop；Exit Handoff 不改变该 Phase 所有权
 - AnimationController 不生产 Phase
 - Motion Definition 消费 Phase 选择左右脚版本
 - AnimationController 把同一份 Phase Fact 转换为 Pose
@@ -439,7 +463,9 @@ PlayerLocomotionPhaseSnapshot
 - **Boundary Motion**：按 `PlayerMotionSnapshot.Progress` 手动采样
 - **Ground Loop**：按 `PlayerLocomotionPhaseSnapshot.NormalizedTime` 手动采样
 
-Handoff 阶段由 Motion Definition 的区间与 Animation Binding 的 Pose Fade 共同完成 Boundary Pose 到稳定 Loop 的过渡。
+Entry Handoff 期间，Controller 从当前 `stableLoopState` 转移并拥有 `entrySourceLoopState`，按 Phase Snapshot 采样源 Loop，同时按 `entryPoseWeight` 混合目标 Finite Pose；Entry 完成、取消或替换时清理 Source State。
+
+Exit Handoff 期间，Controller 使用 `exitPoseWeight` 将 Boundary Pose 混合到目标 Locomotion Loop。位移侧对应使用 Definition 的 Entry Translation Weight 与 Exit Translation Authority。
 
 ## 10. Editor 烘焙与预览工具链
 
@@ -525,6 +551,8 @@ Assets/Settings/Player/Motion/
 - `PlayerFootCalibration`：Foot Marker / 烘焙相关角色校准数据
 
 `Assets/Prefabs/Player.prefab` 是当前 Player 组件装配和序列化引用的重要 Source of Truth。
+
+默认 `WalkToIdle`、`RunToIdle` 与 `FastRunToIdle` 启用 `0→0.15` Entry Handoff，并使用线性位移/姿态目标权重；其余 Start、Turn、Landing、Dodge 与 Loop→Loop Motion 的 Entry Handoff 保持关闭。
 
 ## 13. 当前依赖关系
 

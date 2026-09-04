@@ -107,6 +107,69 @@ public sealed class PlayerMotionRuntimeTests
         Object.DestroyImmediate(profile);
     }
 
+    [Test]
+    public void MotionDefinition_EntryHandoffDefaultsClosedAndMapsProgress()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        Assert.That(definition.EntryHandoffEndProgress, Is.Zero);
+        Assert.That(definition.HasEntryHandoff, Is.False);
+        definition.ConfigureEntryHandoff(0.15f);
+        Assert.That(definition.HasEntryHandoff, Is.True);
+        Assert.That(definition.CalculateEntryHandoffProgress(0f), Is.Zero);
+        Assert.That(definition.CalculateEntryHandoffProgress(0.075f), Is.EqualTo(0.5f).Within(0.0001f));
+        Assert.That(definition.CalculateEntryHandoffProgress(0.15f), Is.EqualTo(1f).Within(0.0001f));
+        Assert.That(definition.EvaluateEntryTranslationWeight(0f), Is.Zero);
+        Assert.That(definition.EvaluateEntryTranslationWeight(0.15f), Is.EqualTo(1f).Within(0.0001f));
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void MotionDefinition_ValidateRejectsOverlappingEntryAndExitHandoffs()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile, 0.7f, 1f);
+        definition.ConfigureEntryHandoff(0.8f);
+        List<string> errors = new List<string>();
+        Assert.That(definition.Validate(errors), Is.False);
+        Assert.That(errors.Exists(error => error.Contains("EntryHandoffEndProgress") && error.Contains("ExitHandoffStartProgress")), Is.True);
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void MotionDefinition_FormerlySerializedFieldsKeepLegacyAssetNames()
+    {
+        FieldInfo exitStart = typeof(PlayerMotionDefinition).GetField("exitHandoffStartProgress", BindingFlags.Instance | BindingFlags.NonPublic);
+        FieldInfo exitEnd = typeof(PlayerMotionDefinition).GetField("exitHandoffEndProgress", BindingFlags.Instance | BindingFlags.NonPublic);
+        FieldInfo exitAuthority = typeof(PlayerMotionDefinition).GetField("exitTranslationAuthority", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(exitStart.GetCustomAttributes(typeof(UnityEngine.Serialization.FormerlySerializedAsAttribute), false), Has.Length.EqualTo(1));
+        Assert.That(exitEnd.GetCustomAttributes(typeof(UnityEngine.Serialization.FormerlySerializedAsAttribute), false), Has.Length.EqualTo(1));
+        Assert.That(exitAuthority.GetCustomAttributes(typeof(UnityEngine.Serialization.FormerlySerializedAsAttribute), false), Has.Length.EqualTo(1));
+    }
+
+    [Test]
+    public void Runtime_CapturesEntrySourceAndKeepsVelocityConstant()
+    {
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile);
+        definition.ConfigureEntryHandoff(0.15f);
+        PlayerMotionRuntime runtime = new PlayerMotionRuntime();
+        runtime.Begin(definition, new PlayerMotionEntrySource(PlayerLocomotionMode.Run, new Vector3(0f, 7f, 4f)), Vector3.forward, Vector3.forward);
+        Assert.That(runtime.Snapshot.HasEntrySource, Is.True);
+        Assert.That(runtime.Snapshot.EntrySourceLocomotionMode, Is.EqualTo(PlayerLocomotionMode.Run));
+        Assert.That(runtime.Snapshot.EntryHandoffActive, Is.True);
+        PlayerMotionFrame middle = runtime.Advance(0.075f, default);
+        Assert.That(middle.EntryHandoffActive, Is.True);
+        Assert.That(middle.EntryTargetTranslationWeight, Is.EqualTo(0.5f).Within(0.0001f));
+        Assert.That(middle.EntrySourcePlanarVelocity, Is.EqualTo(new Vector3(0f, 0f, 4f)));
+        PlayerMotionFrame end = runtime.Advance(0.075f, default);
+        Assert.That(end.EntryHandoffActive, Is.False);
+        Assert.That(end.EntryTargetTranslationWeight, Is.EqualTo(1f).Within(0.0001f));
+        Assert.That(runtime.Snapshot.HasEntrySource, Is.True);
+        Assert.That(runtime.Snapshot.EntryHandoffActive, Is.False);
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
     [TestCase(0.25f, PlayerFoot.Left)]
     [TestCase(0.499f, PlayerFoot.Left)]
     [TestCase(0.5f, PlayerFoot.Right)]
@@ -197,6 +260,18 @@ public sealed class PlayerMotionRuntimeTests
         Assert.That(definition.RightFootProfile, Is.Not.Null, assetPath);
         Assert.That(definition.LeftFootProfile.PlantMarkers[0].Foot, Is.EqualTo(leftExpectedPlant), assetPath);
         Assert.That(definition.RightFootProfile.PlantMarkers[0].Foot, Is.EqualTo(rightExpectedPlant), assetPath);
+    }
+
+    [TestCase("Assets/Settings/Player/Motion/Definitions/WalkToIdleDefinition.asset")]
+    [TestCase("Assets/Settings/Player/Motion/Definitions/RunToIdleDefinition.asset")]
+    [TestCase("Assets/Settings/Player/Motion/Definitions/FastRunToIdleDefinition.asset")]
+    public void StopDefinitions_UseEntryAndExitHandoffWindows(string assetPath)
+    {
+        PlayerMotionDefinition definition = UnityEditor.AssetDatabase.LoadAssetAtPath<PlayerMotionDefinition>(assetPath);
+        Assert.That(definition.EntryHandoffEndProgress, Is.EqualTo(0.15f).Within(0.0001f), assetPath);
+        Assert.That(definition.ExitHandoffStartProgress, Is.EqualTo(0.7f).Within(0.0001f), assetPath);
+        Assert.That(definition.ExitHandoffEndProgress, Is.EqualTo(1f).Within(0.0001f), assetPath);
+        Assert.That(definition.Validate(new List<string>()), Is.True, assetPath);
     }
 
     [Test]
@@ -400,8 +475,8 @@ public sealed class PlayerMotionRuntimeTests
     public void Handoff_EndpointsAndComposerHaveNoDoubleMovement()
     {
         PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile, 0.5f, 1f);
-        Assert.That(definition.EvaluateTranslationAuthority(0.5f), Is.EqualTo(1f).Within(0.0001f));
-        Assert.That(definition.EvaluateTranslationAuthority(1f), Is.EqualTo(0f).Within(0.0001f));
+        Assert.That(definition.EvaluateExitTranslationAuthority(0.5f), Is.EqualTo(1f).Within(0.0001f));
+        Assert.That(definition.EvaluateExitTranslationAuthority(1f), Is.EqualTo(0f).Within(0.0001f));
         PlayerMovementConfig config = ScriptableObject.CreateInstance<PlayerMovementConfig>();
         PlayerGameplayIntent intent = PlayerGameplayIntent.Create(Vector3.forward, Vector3.forward);
         intent.LocomotionMode = PlayerLocomotionMode.Run;
@@ -414,10 +489,62 @@ public sealed class PlayerMotionRuntimeTests
     }
 
     [Test]
+    public void EntryHandoff_ComposerUsesUnifiedThreeWayTranslationWeights()
+    {
+        PlayerMovementConfig config = ScriptableObject.CreateInstance<PlayerMovementConfig>();
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile, 0.7f, 1f);
+        PlayerGameplayIntent intent = PlayerGameplayIntent.Create(Vector3.forward, Vector3.forward);
+        intent.LocomotionMode = PlayerLocomotionMode.Run;
+        PlayerMotorResult result = new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.forward * 2f, 0f, true, false, 0f, CollisionFlags.None);
+        float deltaTime = 0.1f;
+        float entryTargetWeight = 0.5f;
+        float exitSourceWeight = 0.25f;
+        PlayerMotionFrame frame = new PlayerMotionFrame(definition, profile, PlayerFoot.Unknown, Vector3.forward * 2f, 0f, 0f, 0f, 0.5f, exitSourceWeight, true, entryTargetWeight, Vector3.forward * 4f);
+        PlayerMotorCommand command = PlayerMotionComposer.Compose(intent, frame, result, config, deltaTime, Vector3.forward);
+        Vector3 predictedTargetVelocity = PlayerMotionComposer.CalculateVelocity(result.HorizontalVelocity, intent.DesiredMoveDirection * config.Locomotion.RunSpeed, intent.LocomotionMode, config.Locomotion, deltaTime);
+        Vector3 expected = Vector3.forward * 4f * deltaTime * (1f - entryTargetWeight)
+            + Vector3.forward * 2f * (entryTargetWeight * exitSourceWeight)
+            + predictedTargetVelocity * deltaTime * (entryTargetWeight * (1f - exitSourceWeight));
+        Assert.That(command.TranslationMode, Is.EqualTo(PlayerMotorTranslationMode.DisplacementDriven));
+        Assert.That(command.PlanarDisplacement.x, Is.EqualTo(expected.x).Within(0.0001f));
+        Assert.That(command.PlanarDisplacement.y, Is.EqualTo(expected.y).Within(0.0001f));
+        Assert.That(command.PlanarDisplacement.z, Is.EqualTo(expected.z).Within(0.0001f));
+        Assert.That((1f - entryTargetWeight) + entryTargetWeight * exitSourceWeight + entryTargetWeight * (1f - exitSourceWeight), Is.EqualTo(1f).Within(0.0001f));
+        Object.DestroyImmediate(config);
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
+    public void EntryHandoff_ComposerUsesSourceAtStartAndAuthoredAtEnd()
+    {
+        PlayerMovementConfig config = ScriptableObject.CreateInstance<PlayerMovementConfig>();
+        PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile, 0.7f, 1f);
+        definition.ConfigureEntryHandoff(0.15f);
+        PlayerMotionRuntime runtime = new PlayerMotionRuntime();
+        PlayerGameplayIntent intent = PlayerGameplayIntent.Create(Vector3.zero, Vector3.forward);
+        intent.LocomotionMode = PlayerLocomotionMode.Idle;
+        PlayerMotorResult result = new PlayerMotorResult(Vector3.zero, Vector3.zero, Vector3.zero, 0f, true, false, 0f, CollisionFlags.None);
+        runtime.Begin(definition, new PlayerMotionEntrySource(PlayerLocomotionMode.Walk, Vector3.forward * 4f), Vector3.forward, Vector3.forward);
+        PlayerMotionFrame start = runtime.Advance(0f, intent);
+        PlayerMotorCommand startCommand = PlayerMotionComposer.Compose(intent, start, result, config, 0.1f, Vector3.forward);
+        Assert.That(start.EntryTargetTranslationWeight, Is.Zero);
+        Assert.That(startCommand.PlanarDisplacement.z, Is.EqualTo(0.4f).Within(0.0001f));
+        PlayerMotionFrame end = runtime.Advance(0.15f, intent);
+        PlayerMotorCommand endCommand = PlayerMotionComposer.Compose(intent, end, result, config, 0.1f, Vector3.forward);
+        Assert.That(end.EntryHandoffActive, Is.False);
+        Assert.That(end.EntryTargetTranslationWeight, Is.EqualTo(1f).Within(0.0001f));
+        Assert.That(endCommand.PlanarDisplacement.z, Is.EqualTo(profile.EvaluateTravelDistance(0.15f)).Within(0.0001f));
+        Object.DestroyImmediate(config);
+        Object.DestroyImmediate(definition);
+        Object.DestroyImmediate(profile);
+    }
+
+    [Test]
     public void ZeroLengthHandoff_KeepsAuthoredAuthorityThroughCompletionFrame()
     {
         PlayerMotionDefinition definition = CreateDefinition(out PlayerMotionProfile profile, 1f, 1f);
-        Assert.That(definition.EvaluateTranslationAuthority(1f), Is.EqualTo(1f));
+        Assert.That(definition.EvaluateExitTranslationAuthority(1f), Is.EqualTo(1f));
         Object.DestroyImmediate(definition);
         Object.DestroyImmediate(profile);
     }
@@ -501,6 +628,46 @@ public sealed class PlayerMotionRuntimeTests
             PlayerLocomotionPhaseSnapshot secondPhase = new PlayerLocomotionPhaseSnapshot(true, true, PlayerLocomotionMode.Walk, PlayerFoot.Left, 0.62f, PlayerFoot.Left, PlayerFoot.Right, 0.25f);
             present.Invoke(controller, new object[] { walkStateType, null, default(PlayerMotionSnapshot), secondPhase, 0f, null });
             Assert.That(state.NormalizedTime, Is.EqualTo(secondPhase.NormalizedTime).Within(0.0001f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(instance);
+        }
+    }
+
+    [Test]
+    public void PlayerAnimationController_TransfersAndClearsEntrySourceLoop()
+    {
+        GameObject instance = Object.Instantiate(UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab"));
+        try
+        {
+            Component controller = instance.GetComponent("PlayerAnimationController");
+            System.Type controllerType = controller.GetType();
+            System.Type walkStateType = FindLoadedType("PlayerWalkState");
+            System.Type idleStateType = FindLoadedType("PlayerIdleState");
+            MethodInfo initialize = controllerType.GetMethod("InitializeManualEvaluation", BindingFlags.Instance | BindingFlags.Public);
+            MethodInfo playStableLoop = controllerType.GetMethod("PlayStableLoop", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo present = controllerType.GetMethod("Present", BindingFlags.Instance | BindingFlags.Public);
+            FieldInfo stableLoopField = controllerType.GetField("stableLoopState", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo entrySourceField = controllerType.GetField("entrySourceLoopState", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo boundaryField = controllerType.GetField("boundaryState", BindingFlags.Instance | BindingFlags.NonPublic);
+            PlayerLocomotionPhaseSnapshot phase = new PlayerLocomotionPhaseSnapshot(true, true, PlayerLocomotionMode.Walk, PlayerFoot.Left, 0.37f, PlayerFoot.Right, PlayerFoot.Left, 0.5f);
+            initialize.Invoke(controller, null);
+            playStableLoop.Invoke(controller, new object[] { walkStateType, phase });
+            AnimancerState source = (AnimancerState)stableLoopField.GetValue(controller);
+            PlayerMotionDefinition stopDefinition = UnityEditor.AssetDatabase.LoadAssetAtPath<PlayerMotionDefinition>("Assets/Settings/Player/Motion/Definitions/WalkToIdleDefinition.asset");
+            PlayerMotionSnapshot entryMotion = new PlayerMotionSnapshot(stopDefinition, stopDefinition.Profile, PlayerFoot.Right, 900, 0.05f, 0f, false, true, true, 1f / 3f, PlayerLocomotionMode.Walk, true, false, false);
+            present.Invoke(controller, new object[] { idleStateType, null, entryMotion, phase, 0f, null });
+            AnimancerState entrySource = (AnimancerState)entrySourceField.GetValue(controller);
+            AnimancerState boundary = (AnimancerState)boundaryField.GetValue(controller);
+            Assert.That(entrySource, Is.SameAs(source));
+            Assert.That(stableLoopField.GetValue(controller), Is.Null);
+            Assert.That(entrySource.Weight, Is.EqualTo(2f / 3f).Within(0.0001f));
+            Assert.That(boundary.Weight, Is.EqualTo(1f / 3f).Within(0.0001f));
+
+            PlayerMotionSnapshot coreMotion = new PlayerMotionSnapshot(stopDefinition, stopDefinition.Profile, PlayerFoot.Right, 900, 0.2f, 0f, false, true, false, 1f, PlayerLocomotionMode.Walk, true, false, false);
+            present.Invoke(controller, new object[] { idleStateType, null, coreMotion, phase, 0f, null });
+            Assert.That(entrySourceField.GetValue(controller), Is.Null);
         }
         finally
         {
@@ -962,12 +1129,12 @@ public sealed class PlayerMotionRuntimeTests
         Object.DestroyImmediate(profile);
     }
 
-    private static PlayerMotionDefinition CreateDefinition(out PlayerMotionProfile profile, float handoffStart = 1f, float handoffEnd = 1f)
+    private static PlayerMotionDefinition CreateDefinition(out PlayerMotionProfile profile, float exitHandoffStart = 1f, float exitHandoffEnd = 1f)
     {
         profile = ScriptableObject.CreateInstance<PlayerMotionProfile>();
         profile.SetBakedData(1f, 2, new[] { Vector2.zero, new Vector2(0f, 1f), new Vector2(0f, 2f) }, new[] { 0f, 1f, 2f }, new[] { 0f, 0f, 0f }, string.Empty, 0, string.Empty, string.Empty);
         PlayerMotionDefinition definition = ScriptableObject.CreateInstance<PlayerMotionDefinition>();
-        definition.Configure(profile, PlayerMotionTranslationPolicy.TravelAlongCapturedDirection, PlayerMotionRotationPolicy.FaceDirection, PlayerMotionBasisPolicy.DesiredDirection, 0f, 1f, handoffStart, handoffEnd);
+        definition.Configure(profile, PlayerMotionTranslationPolicy.TravelAlongCapturedDirection, PlayerMotionRotationPolicy.FaceDirection, PlayerMotionBasisPolicy.DesiredDirection, 0f, 1f, exitHandoffStart, exitHandoffEnd);
         return definition;
     }
 

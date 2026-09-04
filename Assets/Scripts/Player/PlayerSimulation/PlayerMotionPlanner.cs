@@ -163,7 +163,14 @@ public class PlayerMotionPlanner : MonoBehaviour
         Vector3 basis = definition.BasisPolicy == PlayerMotionBasisPolicy.DesiredDirection ? desired : definition.BasisPolicy == PlayerMotionBasisPolicy.EntryVelocityDirection ? entryVelocity : transform.forward;
         PlayerFoot entryFoot = definition.ResolveEntryFoot(PhaseSnapshot);
         PlayerMotionProfile selectedProfile = definition.ResolveProfile(entryFoot);
-        runtime.Begin(definition, selectedProfile, entryFoot, basis, desired);
+        runtime.Begin(definition, selectedProfile, entryFoot, ResolveEntrySource(definition, motorResult), basis, desired);
+    }
+
+    private PlayerMotionEntrySource ResolveEntrySource(PlayerMotionDefinition definition, PlayerMotorResult motorResult)
+    {
+        PlayerLocomotionPhaseSnapshot phase = PhaseSnapshot;
+        if (definition == null || !definition.HasEntryHandoff || !phase.HasLoop || !PlayerLocomotionCycleDefinition.IsGroundLoopMode(phase.Mode)) return default;
+        return new PlayerMotionEntrySource(phase.Mode, motorResult.HorizontalVelocity);
     }
     /// <summary>
     /// 角度计算

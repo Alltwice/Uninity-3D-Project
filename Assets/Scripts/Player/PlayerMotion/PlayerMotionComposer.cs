@@ -13,11 +13,17 @@ public static class PlayerMotionComposer
         PlayerMotorTranslationMode translationMode = PlayerMotorTranslationMode.VelocityDriven;
         Vector3 displacement = Vector3.zero;
         //烘焙和程序混合态时的位移信息
-        if (motionFrame.IsValid && motionFrame.TranslationAuthority > 0f && motionFrame.Definition.TranslationPolicy != PlayerMotionTranslationPolicy.VelocityDriven)
+        if (motionFrame.IsValid && motionFrame.Definition.TranslationPolicy != PlayerMotionTranslationPolicy.VelocityDriven)
         {
-            float authority = Mathf.Clamp01(motionFrame.TranslationAuthority);
-            displacement = motionFrame.AuthoredPlanarDisplacement * authority + predictedVelocity * deltaTime * (1f - authority);
-            translationMode = PlayerMotorTranslationMode.DisplacementDriven;
+            float entryTargetWeight = motionFrame.EntryHandoffActive ? Mathf.Clamp01(motionFrame.EntryTargetTranslationWeight) : 1f;
+            float exitSourceWeight = Mathf.Clamp01(motionFrame.ExitTranslationAuthority);
+            float entrySourceWeight = 1f - entryTargetWeight;
+            float authoredWeight = entryTargetWeight * exitSourceWeight;
+            float targetLocomotionWeight = entryTargetWeight * (1f - exitSourceWeight);
+            displacement = motionFrame.EntrySourcePlanarVelocity * deltaTime * entrySourceWeight
+                + motionFrame.AuthoredPlanarDisplacement * authoredWeight
+                + predictedVelocity * deltaTime * targetLocomotionWeight;
+            if (entrySourceWeight > 0f || authoredWeight > 0f) translationMode = PlayerMotorTranslationMode.DisplacementDriven;
         }
         ResolveRotation(intent, motionFrame, currentFacing, out PlayerMotorRotationMode rotationMode, out Vector3 facingDirection, out float yawDelta);
         float acceleration = ResolveAcceleration(previousMotorResult.HorizontalVelocity, targetVelocity, intent.LocomotionMode, config.Locomotion);

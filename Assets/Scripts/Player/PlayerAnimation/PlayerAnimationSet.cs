@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Animancer;
 using UnityEngine;
+using UnityEngine.Serialization;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -16,13 +17,16 @@ public class PlayerMotionAnimationBinding
     [SerializeField] private ClipTransition defaultTransition = new ClipTransition();
     [SerializeField] private ClipTransition leftTransition = new ClipTransition();
     [SerializeField] private ClipTransition rightTransition = new ClipTransition();
-    [SerializeField] private AnimationCurve poseFadeWeight = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+    [FormerlySerializedAs("poseFadeWeight")]
+    [SerializeField] private AnimationCurve exitPoseWeight = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+    [SerializeField] private AnimationCurve entryPoseWeight = AnimationCurve.Linear(0f, 0f, 1f, 1f);
 
     public PlayerMotionDefinition Definition => definition;
     public ClipTransition Transition => defaultTransition;
     public ClipTransition LeftTransition => leftTransition;
     public ClipTransition RightTransition => rightTransition;
-    public float EvaluatePoseFade(float handoffProgress) => Mathf.Clamp01(poseFadeWeight == null ? handoffProgress : poseFadeWeight.Evaluate(handoffProgress));
+    public float EvaluateExitPoseWeight(float handoffProgress) => Mathf.Clamp01(exitPoseWeight == null ? handoffProgress : exitPoseWeight.Evaluate(handoffProgress));
+    public float EvaluateEntryPoseWeight(float handoffProgress) => Mathf.Clamp01(entryPoseWeight == null ? handoffProgress : entryPoseWeight.Evaluate(handoffProgress));
 
     public ClipTransition ResolveTransition(PlayerMotionProfile selectedProfile)
     {
@@ -43,6 +47,8 @@ public class PlayerMotionAnimationBinding
             return false;
         }
         valid &= ValidateTransition(defaultTransition, label + ".Default", errors);
+        valid &= ValidateWeightCurve(exitPoseWeight, label + ".ExitPoseWeight", 0f, 1f, errors);
+        valid &= ValidateWeightCurve(entryPoseWeight, label + ".EntryPoseWeight", 0f, 1f, errors);
 #if UNITY_EDITOR
         valid &= PlayerAnimationSet.ValidateProfileClip(definition.Profile, defaultTransition, label + ".Default", errors);
 #endif
@@ -71,7 +77,8 @@ public class PlayerMotionAnimationBinding
     {
         definition = motionDefinition;
         ConfigureTransition(ref defaultTransition, clip, fadeDuration);
-        poseFadeWeight = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+        exitPoseWeight = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+        entryPoseWeight = AnimationCurve.Linear(0f, 0f, 1f, 1f);
     }
 
     public void ConfigureFoot(PlayerFoot foot, AnimationClip clip, float fadeDuration)
@@ -87,7 +94,29 @@ public class PlayerMotionAnimationBinding
         transition.FadeDuration = fadeDuration;
         transition.Speed = 1f;
     }
+
+    public void ConfigureEntryPoseWeight(AnimationCurve targetPoseWeight)
+    {
+        entryPoseWeight = targetPoseWeight ?? AnimationCurve.Linear(0f, 0f, 1f, 1f);
+    }
 #endif
+
+    private static bool ValidateWeightCurve(AnimationCurve curve, string label, float expectedStart, float expectedEnd, ICollection<string> errors)
+    {
+        if (curve == null)
+        {
+            errors?.Add(label + ": 曲线不能为空。");
+            return false;
+        }
+        float start = curve.Evaluate(0f);
+        float end = curve.Evaluate(1f);
+        if (float.IsNaN(start) || float.IsInfinity(start) || float.IsNaN(end) || float.IsInfinity(end) || !Mathf.Approximately(start, expectedStart) || !Mathf.Approximately(end, expectedEnd))
+        {
+            errors?.Add(label + ": 曲线端点必须为 " + expectedStart + " 和 " + expectedEnd + "。");
+            return false;
+        }
+        return true;
+    }
 }
 
 /// <summary>

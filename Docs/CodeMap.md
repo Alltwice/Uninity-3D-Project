@@ -12,7 +12,7 @@
 | 状态共享的输入与模拟事实 | `Assets/Scripts/Player/PlayerState/PlayerContext.cs` |
 | Start / Stop / Turn / Dodge / Landing Motion 选择 | `Assets/Scripts/Player/PlayerSimulation/PlayerMotionPlanner.cs` |
 | 烘焙 Motion 的时间推进 | `Assets/Scripts/Player/PlayerMotion/PlayerMotionRuntime.cs` |
-| Motion 的位移 / 旋转 / Handoff / Transition Lock 策略 | `Assets/Scripts/Player/PlayerMotion/PlayerMotionDefinition.cs` |
+| Motion 的位移 / 旋转 / Entry/Exit Handoff / Transition Lock 策略 | `Assets/Scripts/Player/PlayerMotion/PlayerMotionDefinition.cs` |
 | 动画烘焙数据、Foot Motion Channel 与 Foot Marker | `Assets/Scripts/Player/PlayerMotion/PlayerMotionProfile.cs` + `PlayerFoot.cs` |
 | Foot Plant 自动检测算法 | `Assets/Tools/AnimationPreview/Editor/PlayerFootPlantDetector.cs` |
 | Foot Phase 推进 | `Assets/Scripts/Player/PlayerMotion/PlayerLocomotionPhaseRuntime.cs` |
@@ -175,6 +175,7 @@ Gameplay → Motion 的规划器。
 - 180° Start / Turn
 - Motion-backed Landing
 - Foot Phase 驱动的左右脚 Profile 选择
+- Stop Motion 的 Entry Source 捕获只读取 `PhaseSnapshot.Mode` 与 `MotorResult.HorizontalVelocity`
 - `PlayerMotionRuntime` 生命周期
 - 持有并提交 `PlayerLocomotionPhaseRuntime`
 
@@ -236,6 +237,7 @@ Player Simulation 跨层基础数据契约：
 - `PlayerGameplayIntent`
 - `PlayerMotorCommand`
 - `PlayerMotorResult`
+- `PlayerMotionEntrySource`
 - Motor translation / rotation mode
 - `PlayerMotorKinematics`
 
@@ -278,7 +280,8 @@ Motion 语义总索引。
 - Rotation Policy
 - Basis Policy
 - Duration / Translation Scale
-- Handoff
+- Entry Handoff end progress 与 Target Translation Weight 曲线
+- Exit Handoff start/end progress 与 Translation Authority 曲线
 - Transition Lock
 - Interrupted Exit Policy
 - Phase Foot Selection
@@ -323,14 +326,16 @@ Profile 由 Editor 工具生成和维护；Gameplay Runtime 消费烘焙结果�
 - Begin / Advance / Cancel
 - Progress / InstanceId
 - 烘焙位移、Yaw
-- Translation Authority
-- Handoff
+- Entry Source 捕获与 Entry Handoff 进度/目标位移权重
+- Exit Handoff 进度与 Translation Authority
 - Completion / Cancellation
 - Transition Lock
 
 ### `PlayerMotionComposer.cs`
 
 将 `PlayerGameplayIntent + PlayerMotionFrame + previous PlayerMotorResult` 合成为最终 `PlayerMotorCommand`，其输出只流向 `PlayerMotor`，不直接流向 `PlayerAnimationSet`。
+
+当 Motion 使用烘焙位移时，Composer 按 Entry Source 速度、Authored Motion 位移和目标 Locomotion 预测速度的统一三路权重合成平面位移。
 
 ### Foot / Phase
 
@@ -339,7 +344,7 @@ Profile 由 Editor 工具生成和维护；Gameplay Runtime 消费烘焙结果�
 | `PlayerFoot.cs` | `PlayerFoot`、Foot Plant Marker、Foot Motion Channel 与自动检测模式等基础语义 |
 | `PlayerFootCalibration.cs` | 角色脚部检测/烘焙所需校准数据 |
 | `PlayerLocomotionCycleDefinition.cs` | Walk / Run / FastRun 的循环相位数据定义 |
-| `PlayerLocomotionPhaseRuntime.cs` | 根据实际运动与 Motion 状态推进脚步/循环相位 |
+| `PlayerLocomotionPhaseRuntime.cs` | 根据实际运动与 Motion 状态推进脚步/循环相位；Entry Handoff 期间保留 Source Loop 并继续推进 |
 | `PlayerLocomotionPhaseSnapshot.cs` | 对 Planner 与 AnimationController 暴露稳定相位事实 |
 
 默认 Foot Calibration 资产位于：
@@ -410,7 +415,8 @@ Animancer 表现入口。
 主要负责：
 
 - Boundary Motion 播放与按 Motion Progress 手动采样
-- Handoff 到 Locomotion Loop
+- Entry Handoff：拥有从 stable Loop 转移的 `entrySourceLoopState`，按 Phase Snapshot 采样源 Loop，并与 Boundary Pose 按 Entry Pose Weight 混合
+- Exit Handoff：按 Exit Pose Weight 将 Boundary Pose 混合到 Locomotion Loop
 - Loop 按 Phase NormalizedTime 手动采样
 - Jump / Landing Presentation Edge
 - HardLanding Presentation Progress
@@ -434,6 +440,8 @@ LocomotionMode + PlayerFoot
 Presentation Cue / Landing Key
     → ClipTransition
 ```
+
+Motion Binding 同时保存 Entry Pose Weight 与 Exit Pose Weight 曲线；默认 Stop Motion 的 Walk / Run / FastRun 绑定启用线性 Entry Pose Weight。
 
 默认资产：
 
@@ -483,7 +491,7 @@ Runtime 当前不依赖这些 Editor 类型。
 | 文件 | 主要覆盖范围 |
 |---|---|
 | `PlayerMotionRuntimeTests.cs` | Motion Runtime、Definition、Composer、AnimationSet、Prefab、Landing Presentation 等 |
-| `PlayerLocomotionPhaseRuntimeTests.cs` | Phase 推进、Boundary/Handoff、循环资产契约与 Animation 消费边界 |
+| `PlayerLocomotionPhaseRuntimeTests.cs` | Phase 推进、Entry/Exit Handoff、循环资产契约与 Animation 消费边界 |
 | `PlayerLandingTrackerTests.cs` | 空中生命周期、严重度、一次性 Snapshot 与 Reset |
 | `Project.PlayerMotion.Tests.asmdef` | Editor 测试程序集定义 |
 
@@ -513,6 +521,8 @@ Runtime 当前不依赖这些 Editor 类型。
 | `FootCalibration/` | Foot 检测/烘焙校准资产 |
 
 当前默认 Catalog 包含 19 个 Motion Definition 索引，以及 Walk / Run / FastRun 三个 Locomotion Cycle。
+
+默认 `WalkToIdle`、`RunToIdle` 与 `FastRunToIdle` Definition 及其 Animation Binding 启用 `0→0.15` Entry Handoff；其他默认 Motion 的 Entry Handoff 保持关闭。
 
 ## 15. 非主链路代码
 
@@ -564,6 +574,24 @@ PlayerMotionCatalog ──索引──► PlayerMotionDefinition ──引用─
 ```
 
 `PlayerAnimationSet` 与 `PlayerMotionCatalog`、Definition/Profile 和 Clip 建立资产绑定；`PlayerAnimationController` 使用 Motion Snapshot 与 AnimationSet 选择并采样表现。它不是 `PlayerMotionComposer` 的下游。
+
+Entry / Exit Handoff 的关键数据流：
+
+```text
+Stop Transition + PhaseSnapshot + MotorResult.HorizontalVelocity
+                         │
+                         ▼
+                PlayerMotionPlanner
+                         │ PlayerMotionEntrySource
+                         ▼
+                PlayerMotionRuntime
+                  ├──► Frame ──► PlayerMotionComposer ──► PlayerMotor
+                  └──► Snapshot
+                          ├──► PlayerLocomotionPhaseRuntime
+                          └──► PlayerAnimationController
+```
+
+Planner 只传递 Simulation 数据；Entry Source Loop State 由 AnimationController 从当前 stable Loop 内部转移并自行清理。
 
 ### Foot Phase / Stop 选脚
 
