@@ -164,7 +164,7 @@ MonoBehaviour:
           time: 0
           value: 0
           inSlope: 0
-          outSlope: 1
+          outSlope: 0
           tangentMode: 0
           weightedMode: 0
           inWeight: 0
@@ -172,7 +172,7 @@ MonoBehaviour:
         - serializedVersion: 3
           time: 1
           value: 1
-          inSlope: 1
+          inSlope: 0
           outSlope: 0
           tangentMode: 0
           weightedMode: 0
@@ -530,7 +530,7 @@ MonoBehaviour:
           time: 0
           value: 0
           inSlope: 0
-          outSlope: 1
+          outSlope: 0
           tangentMode: 0
           weightedMode: 0
           inWeight: 0
@@ -538,7 +538,7 @@ MonoBehaviour:
         - serializedVersion: 3
           time: 1
           value: 1
-          inSlope: 1
+          inSlope: 0
           outSlope: 0
           tangentMode: 0
           weightedMode: 0
@@ -844,7 +844,7 @@ MonoBehaviour:
           time: 0
           value: 0
           inSlope: 0
-          outSlope: 1
+          outSlope: 0
           tangentMode: 0
           weightedMode: 0
           inWeight: 0
@@ -852,7 +852,7 @@ MonoBehaviour:
         - serializedVersion: 3
           time: 1
           value: 1
-          inSlope: 1
+          inSlope: 0
           outSlope: 0
           tangentMode: 0
           weightedMode: 0
@@ -992,7 +992,7 @@ MonoBehaviour:
         _NormalizedTimes: []
         _Callbacks: []
         _Names: []
-      _Clip: {fileID: -6497942813740932517, guid: 0c6fbb9a756146845855b0e7c4e4dda6, type: 3}
+      _Clip: {fileID: -8279524762354361089, guid: baf09bbd25c69914f8a9ce626ec3ca2e, type: 3}
       _NormalizedStartTime: NaN
     land2:
       _FadeDuration: 0.15
@@ -1001,7 +1001,7 @@ MonoBehaviour:
         _NormalizedTimes: []
         _Callbacks: []
         _Names: []
-      _Clip: {fileID: 110800000, guid: 679319a79fad5d74c9555c1faacdad26, type: 3}
+      _Clip: {fileID: 6556368241875813538, guid: 99cab675c97159144b5e2a5c0f7ac5c8, type: 3}
       _NormalizedStartTime: NaN
     land3:
       _FadeDuration: 0.12
@@ -1010,7 +1010,7 @@ MonoBehaviour:
         _NormalizedTimes: []
         _Callbacks: []
         _Names: []
-      _Clip: {fileID: -6603950736313917538, guid: d9551179ff6f397419c480f5cae1ac16, type: 3}
+      _Clip: {fileID: -6100782008150006348, guid: 99a16fe2ad96a6f438fc859c1a6bada2, type: 3}
       _NormalizedStartTime: NaN
     land4:
       _FadeDuration: 0.25
@@ -1019,7 +1019,7 @@ MonoBehaviour:
         _NormalizedTimes: []
         _Callbacks: []
         _Names: []
-      _Clip: {fileID: -1335869700265283491, guid: 204738cb83f4e6144b548212fa10e4d4, type: 3}
+      _Clip: {fileID: 3986369646147372437, guid: 419f05142f3141044a03fff9a52de773, type: 3}
       _NormalizedStartTime: NaN
     landWalk:
       definition: {fileID: 11400000, guid: f7a91572b6a59b24195f76343496f543, type: 2}
@@ -1083,7 +1083,7 @@ MonoBehaviour:
           _NormalizedTimes: []
           _Callbacks: []
           _Names: []
-        _Clip: {fileID: 4480277035682638159, guid: 0a629831c0bf2b44fb0922bcb3841077, type: 3}
+        _Clip: {fileID: -1719515128412065721, guid: d9e107a51968ae94f83db8290e2b3c1c, type: 3}
         _NormalizedStartTime: NaN
       leftTransition:
         _FadeDuration: 0.25
