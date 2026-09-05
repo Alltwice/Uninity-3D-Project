@@ -18,6 +18,8 @@ public sealed class PlayerAnimationController : MonoBehaviour
     private AnimancerState stableLoopState;
     private AnimancerState hardLandingState;
     private PlayerMotionAnimationBinding activeBinding;
+    private float entryPoseEndProgress;
+    private bool entrySourceUsesLocomotionPhase;
     private ulong presentedMotionInstanceId;
     private ulong presentationSequence;
     private Type gameplayStateType;
@@ -64,26 +66,34 @@ public sealed class PlayerAnimationController : MonoBehaviour
     {
         ++presentationSequence;
         presentedMotionInstanceId = motion.InstanceId;
-        AnimancerState sourceLoop = motion.HasEntrySource && motion.EntryHandoffActive ? stableLoopState : null;
-        ClearEntrySourceLoop();
-        entrySourceLoopState = sourceLoop;
-        boundaryState = null;
-        exitHandoffLoopState = null;
-        stableLoopState = null;
-        activeBinding = null;
-        if (animationSet == null || !animationSet.TryGetBinding(motion.ActiveDefinition, motion.ActiveProfile, out activeBinding, out ClipTransition transition))
+        if (animationSet == null || !animationSet.TryGetBinding(motion.ActiveDefinition, motion.ActiveProfile, out PlayerMotionAnimationBinding binding, out ClipTransition transition))
         {
-            ClearEntrySourceLoop();
+            ClearBoundary();
             PlayStableLoop(gameplayStateType, locomotionPhase);
             return;
         }
-        float fadeDuration = motion.EntryHandoffActive && motion.HasEntrySource ? 0f : transition.FadeDuration;
-        boundaryState = animancer.Play(transition, fadeDuration, FadeMode.FixedDuration);
+        bool useMotionEntry = motion.HasEntrySource && motion.EntryHandoffActive;
+        AnimancerState sourceLoop = stableLoopState;
+        float motionDuration = motion.ActiveDefinition.GetDuration(motion.ActiveProfile);
+        float fallbackEntryEndProgress = motionDuration > 0f ? Mathf.Clamp01(transition.FadeDuration / motionDuration) : 0f;
+        if (!useMotionEntry && fallbackEntryEndProgress <= 0f) sourceLoop = null;
+        ClearEntrySourceLoop(sourceLoop);
+        StopUnownedActiveStates(sourceLoop);
+        entrySourceLoopState = sourceLoop;
+        entrySourceUsesLocomotionPhase = useMotionEntry;
+        entryPoseEndProgress = useMotionEntry ? motion.ActiveDefinition.EntryHandoffEndProgress : fallbackEntryEndProgress;
+        boundaryState = null;
+        exitHandoffLoopState = null;
+        stableLoopState = null;
+        activeBinding = binding;
+        hardLandingState = null;
+        boundaryState = PlayManual(transition);
         boundaryState.Speed = 0f;
         boundaryState.IsPlaying = false;
         boundaryState.NormalizedTime = motion.Progress;
         DebugBoundaryPhase = motion.Progress;
-        if (motion.EntryHandoffActive && motion.HasEntrySource) ApplyEntryHandoffPose(motion);
+        if (motion.ExitHandoffActive || motion.JustCompleted) EnsureExitHandoffLoop(locomotionPhase);
+        ApplyMotionPoseWeights(motion);
     }
 
     private void UpdateBoundaryMotion(PlayerMotionSnapshot motion, PlayerLocomotionPhaseSnapshot locomotionPhase)
@@ -93,20 +103,12 @@ public sealed class PlayerAnimationController : MonoBehaviour
         boundaryState.IsPlaying = false;
         boundaryState.NormalizedTime = motion.Progress;
         DebugBoundaryPhase = motion.Progress;
-        if (motion.HasEntrySource && !motion.EntryHandoffActive) ClearEntrySourceLoop();
-        if (motion.EntryHandoffActive && motion.HasEntrySource)
-        {
-            ApplyEntryHandoffPose(motion);
-            return;
-        }
-        boundaryState.Weight = 1f;
+        if (!IsEntryPoseActive(motion)) ClearEntrySourceLoop();
         if (motion.ExitHandoffActive || motion.JustCompleted)
         {
             EnsureExitHandoffLoop(locomotionPhase);
-            float loopWeight = motion.JustCompleted ? 1f : activeBinding.EvaluateExitPoseWeight(motion.ExitHandoffProgress);
-            boundaryState.Weight = 1f - loopWeight;
-            if (exitHandoffLoopState != null) exitHandoffLoopState.Weight = loopWeight;
         }
+        ApplyMotionPoseWeights(motion);
         if (motion.JustCancelled && !motion.IsActive)
         {
             ClearBoundary();
@@ -117,28 +119,76 @@ public sealed class PlayerAnimationController : MonoBehaviour
             ClearBoundary(false);
         }
     }
-
-    private void ApplyEntryHandoffPose(PlayerMotionSnapshot motion)
+    /// <summary>
+    /// 计算动画混合权重
+    /// </summary>
+    /// <param name="motion"></param>
+    private void ApplyMotionPoseWeights(PlayerMotionSnapshot motion)
     {
-        float targetPoseWeight = activeBinding.EvaluateEntryPoseWeight(motion.EntryHandoffProgress);
-        if (entrySourceLoopState == null)
-        {
-            boundaryState.Weight = 1f;
-            return;
-        }
-        entrySourceLoopState.Weight = 1f - targetPoseWeight;
-        boundaryState.Weight = targetPoseWeight;
+        if (boundaryState == null || activeBinding == null) return;
+        float entryTargetWeight = entrySourceLoopState == null ? 1f : activeBinding.EvaluateEntryPoseWeight(ResolveEntryPoseProgress(motion));
+        float exitTargetWeight = exitHandoffLoopState != null && (motion.ExitHandoffActive || motion.JustCompleted) ? motion.JustCompleted ? 1f : activeBinding.EvaluateExitPoseWeight(motion.ExitHandoffProgress) : 0f;
+        float sourceWeight = 1f - entryTargetWeight;
+        float boundaryWeight = entryTargetWeight * (1f - exitTargetWeight);
+        float targetLoopWeight = entryTargetWeight * exitTargetWeight;
+        ResetMotionStateWeights();
+        AddStateWeight(entrySourceLoopState, sourceWeight);
+        AddStateWeight(boundaryState, boundaryWeight);
+        AddStateWeight(exitHandoffLoopState, targetLoopWeight);
     }
 
     private void EnsureExitHandoffLoop(PlayerLocomotionPhaseSnapshot locomotionPhase)
     {
         if (exitHandoffLoopState != null) return;
         if (!TryResolveLoop(gameplayStateType, locomotionPhase, out PlayerAnimationSelection selection, out bool manualSampling)) return;
-        exitHandoffLoopState = animancer.Play(selection.Transition);
+        exitHandoffLoopState = PlayManual(selection.Transition);
         stableLoopState = exitHandoffLoopState;
         if (manualSampling) ApplyLoopSample(exitHandoffLoopState, locomotionPhase);
-        boundaryState.Weight = 1f;
-        exitHandoffLoopState.Weight = 0f;
+    }
+
+    private AnimancerState PlayManual(ClipTransition transition)
+    {
+        AnimancerState state = animancer.Layers[0].GetOrCreateState(transition);
+        transition.Apply(state);
+        state.CancelFade();
+        state.Play();
+        return state;
+    }
+
+    private bool IsEntryPoseActive(PlayerMotionSnapshot motion)
+    {
+        if (entrySourceLoopState == null || !motion.IsActive) return false;
+        if (entrySourceUsesLocomotionPhase) return motion.HasEntrySource && motion.EntryHandoffActive;
+        return motion.Progress < entryPoseEndProgress;
+    }
+
+    private float ResolveEntryPoseProgress(PlayerMotionSnapshot motion)
+    {
+        if (entrySourceUsesLocomotionPhase) return motion.EntryHandoffProgress;
+        return entryPoseEndProgress > 0f ? Mathf.Clamp01(motion.Progress / entryPoseEndProgress) : 1f;
+    }
+
+    private void ResetMotionStateWeights()
+    {
+        if (entrySourceLoopState != null) entrySourceLoopState.Weight = 0f;
+        if (boundaryState != null && boundaryState != entrySourceLoopState) boundaryState.Weight = 0f;
+        if (exitHandoffLoopState != null && exitHandoffLoopState != entrySourceLoopState && exitHandoffLoopState != boundaryState) exitHandoffLoopState.Weight = 0f;
+    }
+
+    private static void AddStateWeight(AnimancerState state, float weight)
+    {
+        if (state != null && weight > 0f) state.Weight += weight;
+    }
+
+    private void StopUnownedActiveStates(AnimancerState retainedState)
+    {
+        AnimancerLayer layer = animancer.Layers[0];
+        if (retainedState != null) retainedState.CancelFade();
+        for (int i = layer.ActiveStates.Count - 1; i >= 0; i--)
+        {
+            AnimancerState state = layer.ActiveStates[i];
+            if (state != retainedState) state.Stop();
+        }
     }
 
     private void PlayStateTransition(PlayerStateTransition transition, PlayerLocomotionPhaseSnapshot locomotionPhase, PlayerLandingPresentationKey? landingPresentation)
@@ -234,7 +284,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
         if (!locomotionPhase.HasLoop) return;
         if (stableLoopState != null) ApplyLoopSample(stableLoopState, locomotionPhase);
         if (exitHandoffLoopState != null && exitHandoffLoopState != stableLoopState) ApplyLoopSample(exitHandoffLoopState, locomotionPhase);
-        if (entrySourceLoopState != null && entrySourceLoopState != stableLoopState) ApplyLoopSample(entrySourceLoopState, locomotionPhase);
+        if (entrySourceUsesLocomotionPhase && entrySourceLoopState != null && entrySourceLoopState != stableLoopState) ApplyLoopSample(entrySourceLoopState, locomotionPhase);
     }
     //从零状态开始播放，动画如何播放由外部数据提供，实际推进动画播放的位置
     private static void ApplyLoopSample(AnimancerState state, PlayerLocomotionPhaseSnapshot locomotionPhase)
@@ -279,15 +329,14 @@ public sealed class PlayerAnimationController : MonoBehaviour
         }
     }
 
-    private void ClearEntrySourceLoop()
+    private void ClearEntrySourceLoop(AnimancerState retainedState = null)
     {
+        entryPoseEndProgress = 0f;
+        entrySourceUsesLocomotionPhase = false;
         if (entrySourceLoopState == null) return;
         AnimancerState sourceLoop = entrySourceLoopState;
         entrySourceLoopState = null;
-        if (stableLoopState == sourceLoop) stableLoopState = null;
-        if (exitHandoffLoopState == sourceLoop) exitHandoffLoopState = null;
-        sourceLoop.Weight = 0f;
-        sourceLoop.IsPlaying = false;
-        sourceLoop.Destroy();
+        if (sourceLoop == retainedState || sourceLoop == boundaryState || sourceLoop == exitHandoffLoopState || sourceLoop == stableLoopState) return;
+        sourceLoop.Stop();
     }
 }

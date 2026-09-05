@@ -676,6 +676,126 @@ public sealed class PlayerMotionRuntimeTests
     }
 
     [Test]
+    public void PlayerAnimationController_ManualMotionOwnsEveryActiveStateWeight()
+    {
+        GameObject instance = Object.Instantiate(UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab"));
+        try
+        {
+            Component controller = instance.GetComponent("PlayerAnimationController");
+            System.Type controllerType = controller.GetType();
+            MethodInfo initialize = controllerType.GetMethod("InitializeManualEvaluation", BindingFlags.Instance | BindingFlags.Public);
+            MethodInfo playStableLoop = controllerType.GetMethod("PlayStableLoop", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo present = controllerType.GetMethod("Present", BindingFlags.Instance | BindingFlags.Public);
+            MethodInfo evaluateGraph = controllerType.GetMethod("EvaluateGraph", BindingFlags.Instance | BindingFlags.Public);
+            FieldInfo stableLoopField = controllerType.GetField("stableLoopState", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo entrySourceField = controllerType.GetField("entrySourceLoopState", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo boundaryField = controllerType.GetField("boundaryState", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo exitLoopField = controllerType.GetField("exitHandoffLoopState", BindingFlags.Instance | BindingFlags.NonPublic);
+            initialize.Invoke(controller, null);
+            playStableLoop.Invoke(controller, new object[] { FindLoadedType("PlayerIdleState"), default(PlayerLocomotionPhaseSnapshot) });
+            AnimancerState idle = (AnimancerState)stableLoopField.GetValue(controller);
+            PlayerMotionDefinition definition = UnityEditor.AssetDatabase.LoadAssetAtPath<PlayerMotionDefinition>("Assets/Settings/Player/Motion/Definitions/IdleToWalkDefinition.asset");
+            PlayerLocomotionPhaseSnapshot phase = new PlayerLocomotionPhaseSnapshot(true, true, PlayerLocomotionMode.Walk, PlayerFoot.Right, 0.1f, PlayerFoot.Right, PlayerFoot.Left, 0.2f);
+            PlayerMotionSnapshot motion = new PlayerMotionSnapshot(definition, definition.Profile, PlayerFoot.Unknown, 901, 0.01f, 0.25f, true, false, false, 0f, PlayerLocomotionMode.Idle, true, false, false);
+            present.Invoke(controller, new object[] { FindLoadedType("PlayerWalkState"), null, motion, phase, 0f, null });
+            evaluateGraph.Invoke(controller, new object[] { 1f / 60f });
+            AnimancerState source = (AnimancerState)entrySourceField.GetValue(controller);
+            AnimancerState boundary = (AnimancerState)boundaryField.GetValue(controller);
+            AnimancerState exitLoop = (AnimancerState)exitLoopField.GetValue(controller);
+            Assert.That(source, Is.SameAs(idle));
+            Assert.That(boundary, Is.Not.Null);
+            Assert.That(exitLoop, Is.Not.Null);
+            float totalWeight = 0f;
+            AnimancerLayer layer = instance.GetComponent<AnimancerComponent>().Layers[0];
+            for (int i = 0; i < layer.ActiveStates.Count; i++)
+            {
+                AnimancerState state = layer.ActiveStates[i];
+                Assert.That(state == source || state == boundary || state == exitLoop, Is.True, "Motion Layer 存在 Controller 未拥有的活动 State：" + state);
+                Assert.That(state.FadeGroup, Is.Null, state + " 仍由 Animancer FadeGroup 控制。");
+                totalWeight += state.Weight;
+            }
+            Assert.That(totalWeight, Is.EqualTo(1f).Within(0.0001f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(instance);
+        }
+    }
+
+    [Test]
+    public void PlayerAnimationController_ComposesEntryBoundaryAndExitWeightsToOne()
+    {
+        GameObject instance = Object.Instantiate(UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab"));
+        try
+        {
+            Component controller = instance.GetComponent("PlayerAnimationController");
+            System.Type controllerType = controller.GetType();
+            MethodInfo initialize = controllerType.GetMethod("InitializeManualEvaluation", BindingFlags.Instance | BindingFlags.Public);
+            MethodInfo playStableLoop = controllerType.GetMethod("PlayStableLoop", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo present = controllerType.GetMethod("Present", BindingFlags.Instance | BindingFlags.Public);
+            MethodInfo evaluateGraph = controllerType.GetMethod("EvaluateGraph", BindingFlags.Instance | BindingFlags.Public);
+            FieldInfo stableLoopField = controllerType.GetField("stableLoopState", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo entrySourceField = controllerType.GetField("entrySourceLoopState", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo boundaryField = controllerType.GetField("boundaryState", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo exitLoopField = controllerType.GetField("exitHandoffLoopState", BindingFlags.Instance | BindingFlags.NonPublic);
+            PlayerLocomotionPhaseSnapshot phase = new PlayerLocomotionPhaseSnapshot(true, true, PlayerLocomotionMode.Walk, PlayerFoot.Right, 0.37f, PlayerFoot.Right, PlayerFoot.Left, 0.5f);
+            initialize.Invoke(controller, null);
+            playStableLoop.Invoke(controller, new object[] { FindLoadedType("PlayerWalkState"), phase });
+            AnimancerState walk = (AnimancerState)stableLoopField.GetValue(controller);
+            PlayerMotionDefinition definition = UnityEditor.AssetDatabase.LoadAssetAtPath<PlayerMotionDefinition>("Assets/Settings/Player/Motion/Definitions/WalkToIdleDefinition.asset");
+            PlayerMotionSnapshot motion = new PlayerMotionSnapshot(definition, definition.Profile, PlayerFoot.Right, 902, 0.05f, 0.25f, true, true, true, 1f / 3f, PlayerLocomotionMode.Walk, true, false, false);
+            present.Invoke(controller, new object[] { FindLoadedType("PlayerIdleState"), null, motion, phase, 0f, null });
+            evaluateGraph.Invoke(controller, new object[] { 1f / 60f });
+            AnimancerState source = (AnimancerState)entrySourceField.GetValue(controller);
+            AnimancerState boundary = (AnimancerState)boundaryField.GetValue(controller);
+            AnimancerState exitLoop = (AnimancerState)exitLoopField.GetValue(controller);
+            Assert.That(source, Is.SameAs(walk));
+            Assert.That(source.Weight, Is.EqualTo(2f / 3f).Within(0.0001f));
+            Assert.That(boundary.Weight, Is.EqualTo(0.25f).Within(0.0001f));
+            Assert.That(exitLoop.Weight, Is.EqualTo(1f / 12f).Within(0.0001f));
+            Assert.That(source.Weight + boundary.Weight + exitLoop.Weight, Is.EqualTo(1f).Within(0.0001f));
+            Assert.That(source.FadeGroup, Is.Null);
+            Assert.That(boundary.FadeGroup, Is.Null);
+            Assert.That(exitLoop.FadeGroup, Is.Null);
+        }
+        finally
+        {
+            Object.DestroyImmediate(instance);
+        }
+    }
+
+    [Test]
+    public void PlayerAnimationController_ClearingEntryPreservesSharedTargetLoop()
+    {
+        GameObject instance = Object.Instantiate(UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab"));
+        try
+        {
+            Component controller = instance.GetComponent("PlayerAnimationController");
+            System.Type controllerType = controller.GetType();
+            MethodInfo initialize = controllerType.GetMethod("InitializeManualEvaluation", BindingFlags.Instance | BindingFlags.Public);
+            MethodInfo playStableLoop = controllerType.GetMethod("PlayStableLoop", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo clearEntrySourceLoop = controllerType.GetMethod("ClearEntrySourceLoop", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo stableLoopField = controllerType.GetField("stableLoopState", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo entrySourceField = controllerType.GetField("entrySourceLoopState", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo exitLoopField = controllerType.GetField("exitHandoffLoopState", BindingFlags.Instance | BindingFlags.NonPublic);
+            initialize.Invoke(controller, null);
+            playStableLoop.Invoke(controller, new object[] { FindLoadedType("PlayerIdleState"), default(PlayerLocomotionPhaseSnapshot) });
+            AnimancerState idle = (AnimancerState)stableLoopField.GetValue(controller);
+            entrySourceField.SetValue(controller, idle);
+            exitLoopField.SetValue(controller, idle);
+            clearEntrySourceLoop.Invoke(controller, new object[] { null });
+            Assert.That(entrySourceField.GetValue(controller), Is.Null);
+            Assert.That(stableLoopField.GetValue(controller), Is.SameAs(idle));
+            Assert.That(exitLoopField.GetValue(controller), Is.SameAs(idle));
+            Assert.That(idle.IsPlaying, Is.True);
+        }
+        finally
+        {
+            Object.DestroyImmediate(instance);
+        }
+    }
+
+    [Test]
     public void DefaultAnimationSet_ResolvesStableLoopsAndLandingPresentations()
     {
         ScriptableObject animationSet = LoadDefaultAnimationSet();

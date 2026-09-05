@@ -23,7 +23,7 @@ MonoBehaviour:
   basisPolicy: 1
   durationOverride: 0
   translationScale: 1
-  entryHandoffEndProgress: 0
+  entryHandoffEndProgress: 0.2
   entryTranslationWeight:
     serializedVersion: 2
     m_Curve:
@@ -48,7 +48,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  exitHandoffStartProgress: 0
+  exitHandoffStartProgress: 0.7
   exitHandoffEndProgress: 1
   transitionLockEndProgress: 0.6
   interruptedExitPolicy: 1
