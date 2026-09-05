@@ -18,12 +18,12 @@ MonoBehaviour:
   requiresFootProfiles: 1
   usePhaseFootSelection: 1
   nextPlantFootThreshold: 0.5
-  translationPolicy: 3
+  translationPolicy: 4
   rotationPolicy: 0
   basisPolicy: 1
   durationOverride: 0
   translationScale: 1
-  entryHandoffEndProgress: 0.08
+  entryHandoffEndProgress: 0.12
   entryTranslationWeight:
     serializedVersion: 2
     m_Curve:
@@ -48,7 +48,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  exitHandoffStartProgress: 0
+  exitHandoffStartProgress: 0.7
   exitHandoffEndProgress: 1
   transitionLockEndProgress: 0
   interruptedExitPolicy: 0

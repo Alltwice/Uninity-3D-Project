@@ -129,7 +129,9 @@ public class PlayerMotionDefinition : ScriptableObject
         if (entryHandoffEndProgress <= 0f) return 1f;
         return Mathf.Clamp01(motionProgress / entryHandoffEndProgress);
     }
-
+    /// <summary>
+    /// 位移混合0为动画，1为motion
+    /// </summary>
     public float EvaluateEntryTranslationWeight(float motionProgress)
     {
         float handoffProgress = CalculateEntryHandoffProgress(motionProgress);
