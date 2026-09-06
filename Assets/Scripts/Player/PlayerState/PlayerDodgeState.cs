@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// 闪避 Gameplay 状态，拥有闪避能力的开始、逐帧执行和结束转换。
+/// 闪避 Gameplay 状态，拥有闪避能力的开始、逐帧执行和结束转换
 /// </summary>
 public sealed class PlayerDodgeState : PlayerStateBase
 {

@@ -1,7 +1,7 @@
 # Architecture
 
 > 本文记录项目当前较稳定的职责边界、依赖方向和核心运行流  
-> 最后核对的运行时代码基线：当前工作树（2026-09-04）
+> 最后核对的运行时代码基线：当前工作树（2026-09-06）
 
 ## 1. 当前架构概览
 
@@ -463,9 +463,19 @@ PlayerLocomotionPhaseSnapshot
 - **Boundary Motion**：按 `PlayerMotionSnapshot.Progress` 手动采样
 - **Ground Loop**：按 `PlayerLocomotionPhaseSnapshot.NormalizedTime` 手动采样
 
-Entry Handoff 期间，Controller 从当前 `stableLoopState` 转移并拥有 `entrySourceLoopState`，按 Phase Snapshot 采样源 Loop，同时按 `entryPoseWeight` 混合目标 Finite Pose；Entry 完成、取消或替换时清理 Source State。
+Controller 使用 `GetOrCreateState` 建立手动播放状态，取消 Animancer Fade，并在新 Motion 开始时停止自身未持有的活动 State。Motion 播放期间 Source Loop、Boundary Motion 与 Target Loop 的权重统一由 Controller 写入，不再与 Animancer FadeGroup 同时竞争控制权。
 
-Exit Handoff 期间，Controller 使用 `exitPoseWeight` 将 Boundary Pose 混合到目标 Locomotion Loop。位移侧对应使用 Definition 的 Entry Translation Weight 与 Exit Translation Authority。
+存在有效 Motion Entry Source 时，Controller 从当前 `stableLoopState` 转移并拥有 `entrySourceLoopState`，按 Phase Snapshot 继续采样源 Loop，并使用 Motion Definition 的 Entry 区间计算姿态权重。不存在有效 Entry Source 时，如果当前稳定 Loop 存在，则使用 `ClipTransition.FadeDuration / Motion Duration` 形成回退 Entry Pose 区间；区间结束、Motion 取消或被替换时清理 Source State。
+
+Exit Handoff 期间，Controller 使用 `exitPoseWeight` 将 Boundary Pose 移交到目标 Locomotion Loop。Entry 与 Exit 区间重叠时，三路姿态权重统一组合：
+
+```text
+Source Loop    = 1 - EntryTargetWeight
+Boundary Pose  = EntryTargetWeight × (1 - ExitTargetWeight)
+Target Loop    = EntryTargetWeight × ExitTargetWeight
+```
+
+位移侧对应由 `PlayerMotionComposer` 使用 Entry Translation Weight 与 Exit Translation Authority 组合 Entry Source、Authored Motion 和目标 Locomotion 三路位移。
 
 ## 10. Editor 烘焙与预览工具链
 
@@ -519,13 +529,16 @@ Project.AnimationPreview.Editor
 ```text
 Project.PlayerMotion.Tests
     ├──► Project.PlayerMotion.Runtime
-    ├──► Project.PlayerLanding.Runtime
-    └──► Kybernetik.Animancer
+    └──► Project.PlayerLanding.Runtime
 
 Project.AnimationPreview.Editor.Tests
     ├──► Project.AnimationPreview.Editor
     └──► Project.PlayerMotion.Runtime
 ```
+
+测试程序集只验证稳定的行为契约：Motion/Phase/Landing 的纯运行时演进、Definition/Profile/Composer 数值约束、必要的默认资产合法性，以及 Editor 采样、检测和批量烘焙的原子性。测试不通过反射锁定默认程序集的私有结构，也不参与玩家运行时数据流。
+
+动画 State 所有权、场景衔接、卡顿、滑步和输入手感由人工场景检查与 `PlayerAnimationSetEditor` 资产校验承担；测试程序集编译成功也不等同于 Unity EditMode 测试已经实际执行。
 
 ## 12. 配置与资产 Source of Truth
 
@@ -552,7 +565,7 @@ Assets/Settings/Player/Motion/
 
 `Assets/Prefabs/Player.prefab` 是当前 Player 组件装配和序列化引用的重要 Source of Truth。
 
-默认 `WalkToIdle`、`RunToIdle` 与 `FastRunToIdle` 启用 `0→0.15` Entry Handoff，并使用线性位移/姿态目标权重；其余 Start、Turn、Landing、Dodge 与 Loop→Loop Motion 的 Entry Handoff 保持关闭。
+当前默认 Catalog 的 19 个 Motion Definition 均配置 Entry / Exit Handoff：Entry 通常为 `0→0.2`，`WalkToIdle` 为 `0→0.12`，Exit 统一为 `0.7→1`。有有效地面 Loop Source 时 Entry 同时驱动位移与姿态移交；没有有效 Entry Source 时动画层使用 Clip FadeDuration 形成回退姿态混合。
 
 ## 13. 当前依赖关系
 

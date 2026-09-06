@@ -1,7 +1,7 @@
 # CodeMap
 
 > 本文记录当前项目功能、模块与文件位置的对应关系  
-> 最后核对的运行时代码基线：`34e2987da871bda762f65d3f099d1fe145f575e9`（2026-09-03）。若当前源码有后续修改，以源码为准
+> 最后核对的运行时代码基线：当前工作树（2026-09-06）
 
 ## 1. 功能与实现位置
 
@@ -415,8 +415,10 @@ Animancer 表现入口。
 主要负责：
 
 - Boundary Motion 播放与按 Motion Progress 手动采样
-- Entry Handoff：拥有从 stable Loop 转移的 `entrySourceLoopState`，按 Phase Snapshot 采样源 Loop，并与 Boundary Pose 按 Entry Pose Weight 混合
+- Motion 开始时取消 Animancer Fade、停止未拥有的活动 State，并统一写入所持 State 权重
+- Entry Handoff：有 Motion Entry Source 时按 Phase Snapshot 采样源 Loop；无有效 Source 时按 Clip FadeDuration 建立回退 Entry Pose 区间
 - Exit Handoff：按 Exit Pose Weight 将 Boundary Pose 混合到 Locomotion Loop
+- Entry / Exit 重叠时按 `1-Entry`、`Entry×(1-Exit)`、`Entry×Exit` 组合 Source、Boundary、Target 三路姿态权重
 - Loop 按 Phase NormalizedTime 手动采样
 - Jump / Landing Presentation Edge
 - HardLanding Presentation Progress
@@ -441,7 +443,7 @@ Presentation Cue / Landing Key
     → ClipTransition
 ```
 
-Motion Binding 同时保存 Entry Pose Weight 与 Exit Pose Weight 曲线；默认 Stop Motion 的 Walk / Run / FastRun 绑定启用线性 Entry Pose Weight。
+Motion Binding 同时保存 Entry Pose Weight 与 Exit Pose Weight 曲线；当前默认 Motion Binding 使用线性 Entry / Exit Pose Weight。
 
 默认资产：
 
@@ -490,8 +492,9 @@ Runtime 当前不依赖这些 Editor 类型。
 
 | 文件 | 主要覆盖范围 |
 |---|---|
-| `PlayerMotionRuntimeTests.cs` | Motion Runtime、Definition、Composer、AnimationSet、Prefab、Landing Presentation 等 |
-| `PlayerLocomotionPhaseRuntimeTests.cs` | Phase 推进、Entry/Exit Handoff、循环资产契约与 Animation 消费边界 |
+| `PlayerMotionRuntimeTests.cs` | Motion 生命周期、帧率无关性、取消/替换、Entry Source、方向与 Yaw |
+| `PlayerMotionContractTests.cs` | Definition、Profile、Composer 数值边界、三路位移权重与默认 Catalog 合法性 |
+| `PlayerLocomotionPhaseRuntimeTests.cs` | Phase 推进、Entry/Exit Handoff、循环暂停、恢复与必要 Cycle 资产契约 |
 | `PlayerLandingTrackerTests.cs` | 空中生命周期、严重度、一次性 Snapshot 与 Reset |
 | `Project.PlayerMotion.Tests.asmdef` | Editor 测试程序集定义 |
 
@@ -501,9 +504,11 @@ Runtime 当前不依赖这些 Editor 类型。
 
 | 文件 | 主要覆盖范围 |
 |---|---|
-| `PlayerFootMotionTests.cs` | Foot Motion 采样、Plant 自动检测、批量烘焙与 Profile 契约 |
-| `AnimationPreviewClipLibraryTests.cs` | Preview Clip Library 查询与组织 |
+| `PlayerFootMotionTests.cs` | Foot Motion 采样、Plant 检测算法、Marker 编辑与批量烘焙原子性 |
+| `AnimationPreviewClipLibraryTests.cs` | Clip 扫描、Preview Graph 创建与 Sequence 混合 |
 | `Project.AnimationPreview.Editor.Tests.asmdef` | Editor 工具测试程序集定义 |
+
+这些测试只保护稳定的输入、输出和数据契约，不通过反射检查 PlayerAnimationController、PlayerSimulationDriver 等默认程序集类型的私有实现。动画 State 所有权和实际衔接效果由人工场景检查，动画资产引用完整性由 `PlayerAnimationSetEditor` 校验。
 
 ## 14. Motion 配置资产
 
@@ -522,7 +527,7 @@ Runtime 当前不依赖这些 Editor 类型。
 
 当前默认 Catalog 包含 19 个 Motion Definition 索引，以及 Walk / Run / FastRun 三个 Locomotion Cycle。
 
-默认 `WalkToIdle`、`RunToIdle` 与 `FastRunToIdle` Definition 及其 Animation Binding 启用 `0→0.15` Entry Handoff；其他默认 Motion 的 Entry Handoff 保持关闭。
+19 个默认 Motion Definition 均配置 Entry / Exit Handoff：Entry 通常为 `0→0.2`，`WalkToIdle` 为 `0→0.12`，Exit 为 `0.7→1`。有有效地面 Loop Source 时 Entry 同时驱动位移与姿态移交；无有效 Source 时 AnimationController 使用 Clip FadeDuration 形成回退 Entry Pose。
 
 ## 15. 非主链路代码
 
@@ -648,4 +653,4 @@ DefaultPlayerMovementConfig.asset ────┘
                                       Runtime Components
 ```
 
-测试程序集验证 Runtime、Editor 工具和默认资产契约，不参与运行时数据流。
+测试程序集验证 Runtime、Editor 工具和必要默认资产契约，不参与运行时数据流，也不替代动画观感、卡顿、滑步与输入手感的人工检查。

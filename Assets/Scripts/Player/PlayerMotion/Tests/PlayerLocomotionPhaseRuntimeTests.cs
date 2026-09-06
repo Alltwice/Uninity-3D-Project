@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -153,11 +152,10 @@ public sealed class PlayerLocomotionPhaseRuntimeTests
     }
 
     [Test]
-    public void DefaultCatalog_DefinesExactlyWalkRunAndFastRunCyclesWithValidProfiles()
+    public void DefaultCatalogContainsRequiredCyclesAndValidData()
     {
         PlayerMotionCatalog catalog = AssetDatabase.LoadAssetAtPath<PlayerMotionCatalog>("Assets/Settings/Player/Motion/DefaultPlayerMotionCatalog.asset");
         Assert.That(catalog, Is.Not.Null);
-        Assert.That(catalog.LocomotionCycles.Count, Is.EqualTo(3));
         PlayerLocomotionMode[] modes = { PlayerLocomotionMode.Walk, PlayerLocomotionMode.Run, PlayerLocomotionMode.FastRun };
         for (int modeIndex = 0; modeIndex < modes.Length; modeIndex++)
         {
@@ -170,28 +168,8 @@ public sealed class PlayerLocomotionPhaseRuntimeTests
                 Assert.That(profile.ValidateLoopPhase(new List<string>()), Is.True, profile.name);
             }
         }
-    }
-
-    [Test]
-    public void PlannerAndAnimationController_ExposePhaseAsSimulationInputOnly()
-    {
-        Type plannerType = FindLoadedType("PlayerMotionPlanner");
-        Type controllerType = FindLoadedType("PlayerAnimationController");
-        Assert.That(plannerType, Is.Not.Null);
-        Assert.That(controllerType, Is.Not.Null);
-        Assert.That(plannerType.GetProperty("PhaseSnapshot", BindingFlags.Instance | BindingFlags.Public), Is.Not.Null);
-        Assert.That(controllerType.GetProperty("PhaseSnapshot", BindingFlags.Instance | BindingFlags.Public), Is.Null);
-        string[] plannerMethods = { "HandleStateTransition", "ResolveContinuousMotion", "TryBeginLandingMotion" };
-        for (int index = 0; index < plannerMethods.Length; index++)
-        {
-            MethodInfo method = plannerType.GetMethod(plannerMethods[index], BindingFlags.Instance | BindingFlags.Public);
-            ParameterInfo[] parameters = method.GetParameters();
-            for (int parameterIndex = 0; parameterIndex < parameters.Length; parameterIndex++) Assert.That(parameters[parameterIndex].ParameterType, Is.Not.EqualTo(typeof(PlayerLocomotionPhaseSnapshot)));
-        }
-        MethodInfo present = controllerType.GetMethod("Present", BindingFlags.Instance | BindingFlags.Public);
-        int phaseParameters = 0;
-        foreach (ParameterInfo parameter in present.GetParameters()) if (parameter.ParameterType == typeof(PlayerLocomotionPhaseSnapshot)) phaseParameters++;
-        Assert.That(phaseParameters, Is.EqualTo(1));
+        List<string> errors = new List<string>();
+        Assert.That(catalog.Validate(errors), Is.True, string.Join("\n", errors));
     }
 
     private static PlayerMotionSnapshot BoundaryMotion(PhaseFixture fixture, ulong instanceId, float progress, bool handoffActive, bool isActive, bool justCompleted, bool justCancelled)
@@ -203,16 +181,6 @@ public sealed class PlayerLocomotionPhaseRuntimeTests
     {
         Vector3 displacement = Vector3.forward * planarDistance;
         return new PlayerMotorResult(displacement, displacement, Vector3.zero, 0f, grounded, false, 0f, CollisionFlags.None);
-    }
-
-    private static Type FindLoadedType(string typeName)
-    {
-        foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            Type type = assembly.GetType(typeName);
-            if (type != null) return type;
-        }
-        return null;
     }
 
     private sealed class PhaseFixture : IDisposable

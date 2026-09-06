@@ -302,6 +302,7 @@ public sealed class PlayerAnimationController : MonoBehaviour
         if (stateType == typeof(PlayerRunState)) return PlayerLocomotionMode.Run;
         if (stateType == typeof(PlayerFastRunState)) return PlayerLocomotionMode.FastRun;
         if (stateType == typeof(PlayerAirState)) return PlayerLocomotionMode.Air;
+        
         if (stateType == typeof(PlayerHardLandingState)) return PlayerLocomotionMode.HardLanding;
         return PlayerLocomotionMode.Idle;
     }

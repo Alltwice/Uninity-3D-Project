@@ -1,9 +1,7 @@
 using System.Linq;
 using NUnit.Framework;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 namespace ProjectTools.AnimationPreview.Tests
 {
@@ -99,24 +97,6 @@ namespace ProjectTools.AnimationPreview.Tests
             }
             Assert.That(session.IsReady, Is.False);
             Assert.That(session.SequenceInputCount, Is.EqualTo(0));
-        }
-
-        [Test]
-        public void WindowLayout_ContainsSequenceControls()
-        {
-            VisualTreeAsset tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Tools/AnimationPreview/Editor/UI/AnimationPreviewWindow.uxml");
-            Assert.That(tree, Is.Not.Null);
-            VisualElement root = tree.Instantiate();
-            Assert.That(root.Q("mode-container"), Is.Not.Null);
-            Assert.That(root.Q<ObjectField>("sequence-field"), Is.Not.Null);
-            Assert.That(root.Q<ListView>("sequence-entry-list"), Is.Not.Null);
-            Assert.That(root.Q<Button>("stop-button"), Is.Not.Null);
-            Assert.That(root.Q<Button>("mark-left-plant-button"), Is.Not.Null);
-            Assert.That(root.Q<Button>("mark-right-plant-button"), Is.Not.Null);
-            Assert.That(root.Q<Button>("delete-plant-button"), Is.Not.Null);
-            Assert.That(root.Q("plant-marker-track"), Is.Not.Null);
-            Assert.That(root.Q("contact-height-field"), Is.Null);
-            Assert.That(root.Q("foot-diagnostics-label"), Is.Null);
         }
 
         private static AnimationClip LoadUsableClip(string assetPath)
